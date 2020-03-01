@@ -1,0 +1,7 @@
+name: braid-blackboard
+channels:
+  - conda-forge
+dependencies:
+  - numpy
+  - matplotlib
+  - ipycanvs
