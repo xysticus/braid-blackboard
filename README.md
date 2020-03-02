@@ -1,4 +1,4 @@
-
+# Ardoise à tresse
 
 Un notebook pour dessiner des éléments du groupe de tresse (Artin braid group). C'est ipycanvas qui est utilisé pour dessiner sur le canvas HTML5.
 
