@@ -6,6 +6,6 @@ Exemple :
 
 ![Une tresse](4m23m2.png)
 
-Accéder au notebook : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/xysticus/braid-blackboard/master)
+Accéder au notebook : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/xysticus/braid-blackboard/master?filepath=CanvasTresse.ipynb)
 
 Mon livre de chevet sur les tresses : "Le calcul des tresses", Patrick Dehornoy, Calvage & Mounet, Collection.-Nano
