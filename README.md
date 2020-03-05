@@ -2,7 +2,7 @@
 
 Un notebook pour dessiner des éléments du groupe de tresse (Artin braid group).
 
-Exemple avec la tresse ![4 -2 3 -2](CodeCogsEqn1.gif) :
+Exemple avec le dessin de la tresse ![4 -2 3 -2](CodeCogsEqn1.gif) :
 
 ![Une tresse](4m23m2.png)
 
