@@ -6,7 +6,7 @@ Exemple du dessin de la tresse ![4 -2 3 -2](CodeCogsEqn1.gif) avec l'appel `dess
 
 ![Une tresse](4m23m2.png)
 
-Accéder au notebook : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/xysticus/braid-blackboard/master?filepath=CanvasTresse.ipynb)
+Accéder au notebook : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/xysticus/braid-blackboard/master?filepath=CanvasTresse.ipynb?urlpath=lab)
 
 C'est [ipycanvas](https://github.com/martinRenou/ipycanvas) qui est utilisé pour dessiner sur le canvas [HTML5](https://fr.wikipedia.org/wiki/Canvas_(HTML)).
 
