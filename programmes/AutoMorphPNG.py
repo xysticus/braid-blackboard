@@ -1,5 +1,6 @@
 import functools
 import itertools
+import operator
 import math
 import cairo
 
@@ -51,17 +52,14 @@ applatir = itertools.chain.from_iterable
 def calcule_autofn_de_tresse(tresse):
     '''Calcule l'automorphisme du groupe libre associé à une tresse.
     La tresse est donnée par la liste de ses générateurs.'''
-    if tresse: 
-        abs_tresse = [abs(x) for x in tresse[:]]
-    else:
-        abs_tresse = [5]
-    auto = morphisme_identite(max(abs_tresse))
+    auto = morphisme_identite(5 if not(tresse) else max(map(operator.abs, tresse)))
     # on avance sur la tresse par composition (donc à l'envers)
     for sigma in reversed(tresse): conjugaison_locale(sigma, auto) 
     for a in auto: simplifie(a)
 
     return auto
-    
+
+'''   
 def image_par_fn(morphisme, generateur):
     nb_generateurs = len(morphisme)
     if abs(generateur) > nb_generateurs:
@@ -74,10 +72,11 @@ def image_par_fn(morphisme, generateur):
         print('Cas imprévu dans image_par_fn')
     
 def autofn(morphisme, mot):
-    '''Calcule l'image d'un mot de fn par un automorphisme de fn.'''
+    """Calcule l'image d'un mot de fn par un automorphisme de fn."""
     resultat = list(applatir([image_par_fn(morphisme, e) for e in mot]))
     simplifie(resultat)
     return resultat
+'''
 
 # Dessin des automorphismes de fn
 
