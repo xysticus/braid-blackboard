@@ -237,10 +237,7 @@ def cherche_debuts(arcs):
 (NORD, SUD) = (0, 1)
 
 def antipodes(x):
-    if x == 0:
-        return 1
-    else:
-        return 0
+    return (1 if x == 0 else 0)
 
 def chemine(tete, arcs_h1, arcs_h2, hemisphere):
     ''' part de la tete puis suis le meandre d'arc en arc.
