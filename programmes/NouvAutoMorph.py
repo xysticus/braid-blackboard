@@ -83,7 +83,7 @@ def nouvelle_decoupe(liste):
         match liste[i]:
             case t if t - courant == 1: courant = t
             case t : 
-                resultat.append((abs(debut), abs(courant)))
+                resultat.append((debut, courant))
                 signe_bas = 1 if abs(t) - abs(courant) < 0 else - 1
                 if signe_bas < 0:
                     tt = abs(courant) + 1 if courant > 0 else abs(courant)
@@ -91,17 +91,21 @@ def nouvelle_decoupe(liste):
                 else:
                     tt = abs(courant) if courant > 0 else abs(courant) - 1
                     qq = abs(t) if t > 0 else abs(t) + 1
-                resultat.append((tt, qq))                               
+                resultat.append((tt * signe_bas, qq * signe_bas))                               
                 courant = t
                 debut = t
-    resultat.append((abs(debut), abs(courant)))
+    resultat.append((debut, courant))
     return resultat
 
-t = calcule_autofn_de_tresse([1,1,2])
+t = calcule_autofn_de_tresse([1,1,2,2])
 print(t)
 
 d = nouvelle_decoupe(t[0]) 
 print(d)
+
+print(nouvelle_decoupe(t[1]))
+
+print(nouvelle_decoupe(t[2]))
 
 def generatrice_haut(suites):
     ''' Calcule tous les arcs qui apparaissent dans l'hémisphère nord.
