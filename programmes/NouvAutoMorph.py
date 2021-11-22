@@ -42,10 +42,8 @@ def simplifie(mot_de_fn):
         if mot_de_fn[i] == -mot_de_fn[i + 1]: 
             del mot_de_fn[i:i+2] 
             i-=1 
-            if i < 0: 
-                i = 0 
-        else: 
-            i+=1
+            if i < 0: i = 0 
+        else: i+=1
             
 applatir = itertools.chain.from_iterable
 
@@ -107,37 +105,3 @@ print(nouvelle_decoupe(t[1]))
 
 print(nouvelle_decoupe(t[2]))
 
-def generatrice_haut(suites):
-    ''' Calcule tous les arcs qui apparaissent dans l'hémisphère nord.
-    L'entrée est une liste de suites croissantes
-    La sortie une liste d'arcs.'''
-    def calcule_arc(suite):
-        tete = abs(suite[0])
-        queue = abs(suite[-1])
-        if suite[0] < 0:
-            return (tete, queue -1)
-        else:
-            return (tete - 1, queue)
-    return [calcule_arc(arc) for arc in suites]
-
-def generatrice_bas(suites):
-    '''Idem generatrice_haut sauf que là ça calcule les arc de l'hémisphère sud.'''
-    def reorganise_paire(x, y):
-        if x > 0:
-            a = x
-        else:
-            a = -x - 1
-        if y > 0:
-            b = y - 1
-        else:
-            b = -y
-        return (a , b)                     
-    i = 0
-    resultat = []
-    encore_deux = len(suites) - 2
-    while i <= encore_deux:
-        resultat.append(
-            reorganise_paire(
-                suites[i][-1], suites[i + 1][0]))
-        i += 1
-    return resultat
