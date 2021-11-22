@@ -64,19 +64,29 @@ def calcule_arcs(liste):
     resultat = []
     for i in range(1,len(liste)):
         match liste[i]:
+            # on est sur une suite monotone, on continue
             case t if t - courant == 1: courant = t
+
+            # une suite monotone se termine faut écrire les arcs 
             case t : 
-                resultat.append((debut, courant))
-                signe_bas = 1 if abs(t) - abs(courant) < 0 else - 1
+                resultat.append((debut, courant)) # on écrit l'arc du haut
+
+                # pour l'arc du bas ça se complique
+                signe_bas = 1 if abs(t) - abs(courant) < 0 else - 1 # on calcule le sens de l'arc
+
+                # bon bhen là c'est des cas à gérer en fonction du fait que l'on arrive
+                # par le dedans de l'arc du bas ou pas et de si on est à gauche ou à droite.
                 if signe_bas < 0:
                     tt = abs(courant) + 1 if courant > 0 else abs(courant)
                     qq = abs(t) - 1 if t > 0 else abs(t)
                 else:
                     tt = abs(courant) if courant > 0 else abs(courant) - 1
                     qq = abs(t) if t > 0 else abs(t) + 1
-                resultat.append((tt * signe_bas, qq * signe_bas))                               
+                resultat.append((tt * signe_bas, qq * signe_bas)) # on écrit l'arc du bas en rajoutant son signe                         
                 courant = t
                 debut = t
+
+    # on écrit le dernier arc. C'est un arc du haut.
     resultat.append((debut, courant))
     return resultat
 
@@ -91,3 +101,18 @@ print(calcule_arcs(t[1]))
 
 print(calcule_arcs(t[2]))
 
+# le type pour une intersection (numéro du brin, numéro du trou, position sur le brin)
+# si le numéro du brin est nul, c'est un trou de numéro le numéro du trou
+# si le numéro du trou est nul c'est un brin de position le numéro du brin 
+# le numéro sur le brin 1 est relié au clou en bas. le numéro sur le brin
+# valant longueur du brin en arcs est relié au clou.
+# algo : on part de l'intersection de départ. On se déplace à gauche ou à droite 
+# en fonction du signe de l'arc suivant vers le trou ciblé.  On stocke les arcs croisés qui sont 
+# du côté de notre arc (nord ou sud). On enlève du stock si on croise l'autre extrémité.
+# Une fois le trou cible dépassé si le stock est vide, on a trouvé l'intersection d'arrivée.
+# la parité de la position sur le brin indique quelle moitié on considère.
+# on sait par le pied de départ de l'arc autour de quoi on a tourné par le 
+# pied d'arrivée autour du quel on tourne à l'arrivée
+# A la fin on a un tableau d'intersections.
+# Pour finalement parcourir un brin il faut retrouver chacune des intersections et noter son index
+# on fait un dictionnaire avec comme clées les triplet no bnrin, no trou, position et comme valeur l'index
