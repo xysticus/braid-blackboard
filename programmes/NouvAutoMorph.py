@@ -13,12 +13,6 @@ def morphisme_identite(abs_max_de_tresse):
 def inverse(mot):
     return [-e for e in reversed(mot)]
 
-def conjugue_droite(m1, m2):
-    return m1 + m2 + inverse(m1)
-
-def conjugue_gauche(m1, m2):
-    return inverse(m2) + m1 + m2
-
 def conjugaison_locale (sigma, images):
     '''Sert à calculer l'automorphisme de fn associé à une tresse.
     L'automorphisme est donné par l'image de chaque des générateurs.
@@ -27,12 +21,12 @@ def conjugaison_locale (sigma, images):
     xi = abs(sigma)
     x1 = images[xi - 1]
     x2 = images[xi]
-    if sigma > 0:
-        images[xi - 1] = conjugue_droite(x1, x2)
+    if sigma > 0: 
+        images[xi - 1] = x1 + x2 + inverse(x1) # on conjugue à droite
         images[xi] = x1
     else:
         images[xi - 1] = x2
-        images[xi] = conjugue_gauche(x1, x2)
+        images[xi] = inverse(x2) + x1 + x2 # on conjugue à gauche
         
 def simplifie(mot_de_fn): 
     '''Simplifie entièrement un mot de fn
@@ -60,20 +54,11 @@ def calcule_autofn_de_tresse(tresse):
 
 # Dessin des automorphismes de fn
 
-def decoupeuse(liste):
-    '''Decoupe une liste d'entiers en suites monotones croissantes.'''
-    resultat = []
-    longueur = len(liste)
-    i = 0
-    j = 0
-    while j < longueur - 1:
-        if liste[j] + 1 != liste[j + 1]:
-            resultat.append(liste[i:j + 1])
-            i = j + 1
-        j += 1
-    resultat.append(liste[i:j+1])
-
-def nouvelle_decoupe(liste):
+def calcule_arcs(liste):
+    '''Prend une liste de générateurs de fn et calcule les arcs correspondant.
+    Les arcs du haut aux indices pairs ceux du bas aux indices impairs.
+    Renvoie une liste de couples qui est la liste des extrémités des arcs.
+    Le signe des extrémités des arcs donne le sens de l'arc.'''
     debut = liste[0]
     courant = liste[0]
     resultat = []
@@ -95,13 +80,14 @@ def nouvelle_decoupe(liste):
     resultat.append((debut, courant))
     return resultat
 
+# tests sur la tresse compliquée
 t = calcule_autofn_de_tresse([1,1,2,2])
 print(t)
 
-d = nouvelle_decoupe(t[0]) 
+d = calcule_arcs(t[0]) 
 print(d)
 
-print(nouvelle_decoupe(t[1]))
+print(calcule_arcs(t[1]))
 
-print(nouvelle_decoupe(t[2]))
+print(calcule_arcs(t[2]))
 
