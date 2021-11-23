@@ -106,9 +106,11 @@ print(calcule_arcs(t[2]))
 # si le numéro du trou est nul c'est un brin de position le numéro du brin 
 # le numéro sur le brin 1 est relié au clou en bas. le numéro sur le brin
 # valant longueur du brin en arcs est relié au clou.
+# la parité de l'index indique si on insère en haut ou en bas. Pair en haut impair en bas.
 # algo : on part de l'intersection de départ. On se déplace à gauche ou à droite 
 # en fonction du signe de l'arc suivant vers le trou ciblé.  On stocke les arcs croisés qui sont 
-# du côté de notre arc (nord ou sud). On enlève du stock si on croise l'autre extrémité.
+# du côté de notre arc (nord ou sud c'est la parité de la position sur le brin qui le dit).
+# On enlève du stock si on croise l'autre extrémité.
 # Une fois le trou cible dépassé si le stock est vide, on a trouvé l'intersection d'arrivée.
 # la parité de la position sur le brin indique quelle moitié on considère.
 # on sait par le pied de départ de l'arc autour de quoi on a tourné par le 
@@ -116,3 +118,24 @@ print(calcule_arcs(t[2]))
 # A la fin on a un tableau d'intersections.
 # Pour finalement parcourir un brin il faut retrouver chacune des intersections et noter son index
 # on fait un dictionnaire avec comme clées les triplet no bnrin, no trou, position et comme valeur l'index
+
+def insere_arc(droite, index_droite, arc, index_arc):
+    def arc_neutre(dep,arr):
+        return min(abs(dep),abs(arr)), max(abs(dep),abs(arr))
+
+    (depart, arrivee) = arc
+    sens = 1 if depart > 0 else -1 # On se déplace à gauche ou à droite 
+                                    # en fonction du signe de l'arc suivant vers le trou ciblé.
+    i = abs(depart)  # on part de l'intersection de départ.
+    ensemble = set()
+    trou_atteind = False
+
+    while True:
+        (brin, trou, position) = droite[index_droite]
+        trou_atteind = trou == abs(arrivee)
+
+        if len(ensemble) == 0: break 
+        i += sens
+    
+    return droite
+
