@@ -104,7 +104,7 @@ print(calcule_arcs(t[2]))
 # le type pour une intersection (numéro du brin, numéro du trou, position sur le brin)
 # si le numéro du brin est nul, c'est un trou de numéro le numéro du trou
 # si le numéro du trou est nul c'est un brin de position le numéro du brin 
-# le numéro sur le brin 1 est relié au clou en bas. le numéro sur le brin
+# position sur le brin 0 est relié au clou en bas. position sur le brin
 # valant longueur du brin en arcs est relié au clou.
 # la parité de l'index indique si on insère en haut ou en bas. Pair en haut impair en bas.
 # algo : on part de l'intersection de départ. On se déplace à gauche ou à droite 
