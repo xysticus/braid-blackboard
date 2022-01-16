@@ -119,6 +119,12 @@ print(calcule_arcs(t[2]))
 # Pour finalement parcourir un brin il faut retrouver chacune des intersections et noter son index
 # on fait un dictionnaire avec comme clées les triplet no bnrin, no trou, position et comme valeur l'index
 
+# on pourrait aussi reprendre l'idée du tri d'arc. On position le nouvelle arc entre tous ceux qui sont plus petits
+# et tous ceux qui sont plus grands. Par exemple juste après le plus grand des plus petits. on insère notre arc dans
+# la liste des ars triés. Problème en cas d'égalité avec notre arc. Où le postionner? C'est tranché par l'intersection elle-même.
+# l'autre algo c'est pas tanché. La confusion n'est pas grave car on recolle tout après et on reconstitue les arcs après.
+# pour faire plus simple on peut trier les arcs sur la base des intervalles d'intersection et pas des trous
+
 def insere_arc(droite, index_droite, arc, index_arc):
     def arc_neutre(dep,arr):
         return min(abs(dep),abs(arr)), max(abs(dep),abs(arr))
@@ -139,3 +145,14 @@ def insere_arc(droite, index_droite, arc, index_arc):
     
     return droite
 
+def par_deux(l):
+    r = []
+    for i in range(0,len(l)-1,2):
+        r.extend([(l[i] , l[i+1])]) 
+    return r
+
+def dedans_extrm(l,a,b,extrm,f_extrm):
+    for i in range(0,len(l)-1,2):
+        match l[i] , l[i+1]:
+            case x,y if x>a and x< b and y>a and y<b: extrm = f_extrm(extrm, x, y)
+    return extrm
