@@ -151,8 +151,10 @@ def par_deux(l):
         r.extend([(l[i] , l[i+1])]) 
     return r
 
-def dedans_extrm(l,a,b,extrm,f_extrm):
-    for i in range(0,len(l)-1,2):
+def dedans_extrm(l,start,a,b,extrm,f_extrm):
+    for i in range(start,len(l)-1,2):
         match l[i] , l[i+1]:
             case x,y if x>a and x< b and y>a and y<b: extrm = f_extrm(extrm, x, y)
     return extrm
+
+dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 0, 3, 6, 0, max)
