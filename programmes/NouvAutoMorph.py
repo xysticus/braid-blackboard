@@ -101,60 +101,18 @@ print(calcule_arcs(t[1]))
 
 print(calcule_arcs(t[2]))
 
-# le type pour une intersection (numéro du brin, numéro du trou, position sur le brin)
-# si le numéro du brin est nul, c'est un trou de numéro le numéro du trou
-# si le numéro du trou est nul c'est un brin de position le numéro du brin 
-# position sur le brin 0 est relié au clou en bas. position sur le brin
-# valant longueur du brin en arcs est relié au clou.
-# la parité de l'index indique si on insère en haut ou en bas. Pair en haut impair en bas.
-# algo : on part de l'intersection de départ. On se déplace à gauche ou à droite 
-# en fonction du signe de l'arc suivant vers le trou ciblé.  On stocke les arcs croisés qui sont 
-# du côté de notre arc (nord ou sud c'est la parité de la position sur le brin qui le dit).
-# On enlève du stock si on croise l'autre extrémité.
-# Une fois le trou cible dépassé si le stock est vide, on a trouvé l'intersection d'arrivée.
-# la parité de la position sur le brin indique quelle moitié on considère.
-# on sait par le pied de départ de l'arc autour de quoi on a tourné par le 
-# pied d'arrivée autour du quel on tourne à l'arrivée
-# A la fin on a un tableau d'intersections.
-# Pour finalement parcourir un brin il faut retrouver chacune des intersections et noter son index
-# on fait un dictionnaire avec comme clées les triplet no bnrin, no trou, position et comme valeur l'index
-
-# on pourrait aussi reprendre l'idée du tri d'arc. On position le nouvelle arc entre tous ceux qui sont plus petits
-# et tous ceux qui sont plus grands. Par exemple juste après le plus grand des plus petits. on insère notre arc dans
-# la liste des ars triés. Problème en cas d'égalité avec notre arc. Où le postionner? C'est tranché par l'intersection elle-même.
-# l'autre algo c'est pas tanché. La confusion n'est pas grave car on recolle tout après et on reconstitue les arcs après.
-# pour faire plus simple on peut trier les arcs sur la base des intervalles d'intersection et pas des trous
-
-def insere_arc(droite, index_droite, arc, index_arc):
-    def arc_neutre(dep,arr):
-        return min(abs(dep),abs(arr)), max(abs(dep),abs(arr))
-
-    (depart, arrivee) = arc
-    sens = 1 if depart > 0 else -1 # On se déplace à gauche ou à droite 
-                                    # en fonction du signe de l'arc suivant vers le trou ciblé.
-    i = abs(depart)  # on part de l'intersection de départ.
-    ensemble = set()
-    trou_atteind = False
-
-    while True:
-        (brin, trou, position) = droite[index_droite]
-        trou_atteind = trou == abs(arrivee)
-
-        if len(ensemble) == 0: break 
-        i += sens
-    
-    return droite
-
-def par_deux(l):
-    r = []
-    for i in range(0,len(l)-1,2):
-        r.extend([(l[i] , l[i+1])]) 
-    return r
-
 def dedans_extrm(l,start,a,b,extrm,f_extrm):
     for i in range(start,len(l)-1,2):
         match l[i] , l[i+1]:
             case x,y if x>a and x< b and y>a and y<b: extrm = f_extrm(extrm, x, y)
     return extrm
 
-dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 0, 3, 6, 0, max)
+assert dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 0, 1, 6, 0, max) == 5
+
+assert dedans_extrm([4, 6, 1, 4, 4, 7, 4, 4], 0, 1, 6, 0, max) == 4
+
+assert dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 1, 1, 6, 0, max) == 5
+
+assert dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 0, 1, 6, 1, min) == 1
+
+assert dedans_extrm([4, 6, 1, 5, 4, 7, 3, 5], 0, 1, 6, 10, min) == 3
