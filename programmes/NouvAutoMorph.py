@@ -116,3 +116,20 @@ assert dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 1, 1, 6, 0, max) == 5
 assert dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 0, 1, 6, 1, min) == 1
 
 assert dedans_extrm([4, 6, 1, 5, 4, 7, 3, 5], 0, 1, 6, 10, min) == 3
+
+def decale(liste, index):
+    return list(map(lambda x: x+1 if x >= index else x, liste))
+
+decale([1,2,5,2,2,5,5,3],3)
+
+def continue_trace(arc, brin, liste_intersections):
+    ''' Poursuit le tracé d'un brin donné connaissant les arcs des autres brins.
+        Effet de bord sur la liste des listes d'intersections
+    
+        Parameters:
+
+        arc (int,int): donné en terme classique de trous contournés
+        brin (int): brin concerné en index dans le tableau liste_intersections
+        liste_intersections (int)list list: liste des listes d'intersection pour chaque brin et pour les trous en zéro'''
+    extremite = liste_intersections[brin][-1]
+    pass
