@@ -30,11 +30,51 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   Liens Binder dans le README, ne pas casser leurs chemins.
 - `programmes/AutoMorphPNG.py` : version script complète (pycairo → PNG) de l'algorithme de dessin
   des automorphismes. Sert de référence fonctionnelle.
-- `programmes/NouvAutoMorph.py` : **réimplémentation en cours** (travail actif). Nouveau calcul des arcs
-  (`calcule_arcs`) et du positionnement des intersections (`dedans_extrm`, `decale`, `continue_trace` inachevé).
+- `programmes/NouvAutoMorph.py` : **réimplémentation en cours** (travail actif), avec un algorithme plus simple :
+  voir plus bas.
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas.
+
+## L'algorithme actuel du méandre (`AutoMorphPNG.py`)
+
+Il marche, mais il est compliqué. Les étapes :
+
+1. `calcule_autofn_de_tresse` : images réduites des générateurs x_i par la tresse (action d'Artin).
+2. `decoupeuse` + `generatrice_haut` / `generatrice_bas` : chaque mot est coupé en suites croissantes
+   consécutives (`[1,2,3]` = on passe au-dessus des trous 1, 2, 3). Chaque suite donne un arc du haut,
+   chaque transition entre deux suites donne un arc du bas.
+3. `trie_arcs` / `compare_arcs` : les arcs de *tous* les mots sont triés par emboîtement (le plus intérieur d'abord).
+4. `arc_exact` + `positiver` : on numérote les passages sur l'axe horizontal dans chaque intervalle entre trous
+   (compteurs gauche/droite, positions signées, puis renormalisées).
+5. `cherche_debuts` + `chemine` : on recolle les arcs en lacets en alternant nord et sud.
+6. `situe` : conversion en demi-cercles (centre, rayon, angles), puis tracé Cairo.
+
+Ce qui le rend fragile : l'ordre d'emboîtement (`compare_arcs`) n'est pas un ordre total quand des arcs se croisent ;
+les positions sont d'abord relatives, puis renormalisées ; on perd l'information « quel arc vient de quel mot »
+et il faut la reconstruire. Surtout, le dessin est recalculé d'un bloc pour un mot : il n'y a pas d'état
+intermédiaire à animer.
+
+## Le nouvel algorithme, plus simple (`NouvAutoMorph.py`)
+
+Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG.py`.
+
+1. `calcule_arcs(mot)` puis `intervalles(mot)` : chaque lacet devient la suite des intervalles où il coupe l'axe
+   (l'intervalle k est entre le trou k et le trou k+1). De l'indice 2i à 2i+1 c'est un arc du haut, de 2i+1 à 2i+2
+   un arc du bas ; le premier et le dernier point sont reliés au clou par le bas.
+2. `compare_points` / `suit_en_parallele` : ordre gauche-droite de deux points du même intervalle. On suit les deux
+   courbes côte à côte jusqu'à ce qu'elles se séparent ; chaque arc parcouru en parallèle inverse l'ordre (arcs emboîtés).
+   Le clou est sous tous les arcs du bas. Si les deux courbes arrivent ensemble au clou, on repart dans l'autre sens.
+3. `abscisses` : tri de chaque intervalle avec cette comparaison, puis rang global sur l'axe des points et des trous.
+4. `dessine_auto_de_tresse(tresse, fichier)` : demi-ellipses entre points consécutifs, alternativement en haut
+   et en bas ; descente verticale vers le clou sous tous les arcs.
+5. `croisements` / `verifie` : contrôle qu'aucun arc n'en croise un autre. Les `assert verifie(...)` servent de tests.
+
+`decale` et `dedans_extrm` viennent de l'ancienne idée d'insertion point par point (description dans
+`git show f2fdb1c` et `git show 4b2d4f4`). Ils ne sont plus utilisés.
+
+Prochaine étape, le film : l'état « lacets + ordre des points sur l'axe » est celui sur lequel σ_i devra agir
+continûment. Les images de chaque préfixe de la tresse sont les images clés.
 
 ## Conventions
 
@@ -64,7 +104,7 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
-python programmes/NouvAutoMorph.py   # imprime les arcs et vérifie les assert
+python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```

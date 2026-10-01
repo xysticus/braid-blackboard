@@ -122,14 +122,164 @@ def decale(liste, index):
 
 decale([1,2,5,2,2,5,5,3],3)
 
-def continue_trace(arc, brin, liste_intersections):
-    ''' Poursuit le tracé d'un brin donné connaissant les arcs des autres brins.
-        Effet de bord sur la liste des listes d'intersections
-    
-        Parameters:
+# Positionnement des intersections par comparaison de deux points.
+# Deux points dans le même intervalle : on suit les deux courbes côte à côte jusqu'à ce qu'elles
+# se séparent. Là où elles se séparent on sait laquelle est à gauche. Chaque arc parcouru
+# en parallèle inverse l'ordre (les arcs sont emboîtés). Il suffit ensuite de trier chaque intervalle.
 
-        arc (int,int): donné en terme classique de trous contournés
-        brin (int): brin concerné en index dans le tableau liste_intersections
-        liste_intersections (int)list list: liste des listes d'intersection pour chaque brin et pour les trous en zéro'''
-    extremite = liste_intersections[brin][-1]
-    pass
+def intervalles(mot):
+    '''Suite des intervalles où le lacet d'un mot de fn coupe l'axe.
+    L'intervalle k est entre le trou k et le trou k+1 (l'intervalle 0 est à gauche du trou 1).
+    De l'indice 2i à 2i+1 c'est un arc du haut, de 2i+1 à 2i+2 un arc du bas.
+    Le premier et le dernier point sont reliés au clou par le bas.'''
+    def bouts(arc_du_haut):
+        debut, fin = arc_du_haut
+        return (debut - 1, fin) if debut > 0 else (-debut, -fin - 1)
+    return list(applatir(bouts(arc) for arc in calcule_arcs(mot)[::2]))
+
+assert intervalles([1]) == [0, 1]
+assert intervalles([-2]) == [2, 1]
+assert intervalles([1, 2, 3, 2, -3, -2, -1]) == [0, 3, 1, 2, 3, 0]
+
+def voisin(lacet, j, en_haut):
+    '''Indice du point relié au point j du lacet par l'arc du haut (ou du bas).
+    None si c'est le clou.'''
+    if en_haut: return j ^ 1
+    k = j + 1 if j % 2 else j - 1
+    return k if 0 <= k < len(lacet) else None
+
+def suit_en_parallele(lacets, p, q, en_haut):
+    '''Compare p et q en partant vers le haut (ou vers le bas).
+    -1 si p est à gauche de q, 1 à droite, 0 si les deux courbes arrivent ensemble au clou.'''
+    signe = 1
+    while True:
+        k = lacets[p[0]][p[1]]
+        jp = voisin(lacets[p[0]], p[1], en_haut)
+        jq = voisin(lacets[q[0]], q[1], en_haut)
+        if jp is None and jq is None: return 0
+        # le clou est en dessous de tous les arcs du bas : un point relié au clou n'est jamais englobé
+        if jp is None: return -signe if lacets[q[0]][jq] > k else signe
+        if jq is None: return signe if lacets[p[0]][jp] > k else -signe
+        a, b = lacets[p[0]][jp], lacets[q[0]][jq]
+        if a != b:
+            meme_cote = (a > k) == (b > k)
+            # du même côté, l'arc qui va le plus loin englobe l'autre ;
+            # de côtés opposés, celui qui part à gauche est à gauche
+            p_a_gauche = a > b if meme_cote else a < b
+            return -signe if p_a_gauche else signe
+        p, q = (p[0], jp), (q[0], jq)
+        signe = -signe
+        en_haut = not en_haut
+
+def compare_points(lacets, p, q):
+    '''Ordre gauche-droite de deux points d'un même intervalle.
+    Un point est un couple (numéro du lacet, indice dans le lacet).'''
+    if p == q: return 0
+    for en_haut in (True, False):
+        r = suit_en_parallele(lacets, p, q, en_haut)
+        if r: return r
+    raise ValueError(f'points indiscernables {p} {q}')
+
+def abscisses(lacets, nb_trous):
+    '''Rang sur l'axe de chaque point et de chaque trou, de gauche à droite.
+    Renvoie (rang des points, rang des trous, nombre total de rangs).'''
+    par_intervalle = {}
+    for i, lacet in enumerate(lacets):
+        for j, k in enumerate(lacet):
+            par_intervalle.setdefault(k, []).append((i, j))
+    cle = functools.cmp_to_key(functools.partial(compare_points, lacets))
+    rang_point, rang_trou, r = {}, {}, 0
+    for k in range(nb_trous + 1):
+        for p in sorted(par_intervalle.get(k, []), key=cle):
+            rang_point[p] = r
+            r += 1
+        if k < nb_trous:
+            rang_trou[k + 1] = r
+            r += 1
+    return rang_point, rang_trou, r
+
+def croisements(lacets, rang_point):
+    '''Liste des paires d'arcs qui se croisent. Vide si le dessin est correct.'''
+    def corde(i, j, k): return tuple(sorted((rang_point[(i, j)], rang_point[(i, k)])))
+    haut, bas, au_clou = [], [], []
+    for i, lacet in enumerate(lacets):
+        for j in range(len(lacet) - 1):
+            (haut if j % 2 == 0 else bas).append(corde(i, j, j + 1))
+        au_clou += [rang_point[(i, 0)], rang_point[(i, len(lacet) - 1)]]
+    resultat = []
+    for cordes in (haut, bas):
+        resultat += [(c1, c2) for c1, c2 in itertools.combinations(cordes, 2)
+                     if c1[0] < c2[0] < c1[1] < c2[1] or c2[0] < c1[0] < c2[1] < c1[1]]
+    resultat += [(c, x) for c in bas for x in au_clou if c[0] < x < c[1]]
+    return resultat
+
+def verifie(tresse):
+    lacets = [intervalles(mot) for mot in calcule_autofn_de_tresse(tresse)]
+    rang_point, _, _ = abscisses(lacets, len(lacets))
+    return croisements(lacets, rang_point) == []
+
+assert verifie([])
+assert verifie([1, 1, 2, 2])
+assert verifie([4, 3, -1, -1, 2, -4, 1])
+assert verifie([1, -2, 1, -2, 1, -2, 3, -1, 2])
+
+def dessine_auto_de_tresse(tresse, fichier, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True):
+    '''Dessine en PNG les images des générateurs de fn par l'automorphisme de la tresse.'''
+    auto = calcule_autofn_de_tresse(tresse)
+    lacets = [intervalles(mot) for mot in auto]
+    rang_point, rang_trou, nb_rangs = abscisses(lacets, len(lacets))
+
+    pas = (largeur - 40) / (nb_rangs - 1)
+    def x(rang): return 20 + rang * pas
+    y_axe = 0.4 * hauteur
+    x_clou, y_clou = largeur / 2, hauteur - 10
+    y_sous_arcs = hauteur - 40 # le chemin vers le clou passe sous tous les arcs du bas
+
+    # on aplatit les arcs pour qu'ils tiennent en hauteur
+    rayon_max = max(abs(x(rang_point[(i, j)]) - x(rang_point[(i, j + 1)])) / 2
+                    for i, lacet in enumerate(lacets) for j in range(len(lacet) - 1))
+    aplati = min(1, (y_axe - 10) / rayon_max, (y_sous_arcs - y_axe - 5) / rayon_max)
+
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, largeur, hauteur)
+    ctx = cairo.Context(surface)
+    ctx.set_source_rgb(1, 1, 1)
+    ctx.paint()
+    ctx.set_line_width(largeur_brin)
+    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+
+    couleurs = [(1, 0, 0), (0, .7, 0), (0, 0, 1), (.7, .7, 0), (.7, 0, .7), (0, .7, .7)]
+    if not en_couleur: couleurs = [(0, 0, 0)]
+
+    def demi_ellipse(x1, x2, en_haut):
+        ctx.save()
+        ctx.translate((x1 + x2) / 2, y_axe)
+        ctx.scale(abs(x2 - x1) / 2, abs(x2 - x1) / 2 * aplati)
+        depart = math.pi if x1 < x2 else 0
+        if en_haut == (x1 < x2): ctx.arc(0, 0, 1, depart, depart + math.pi)
+        else: ctx.arc_negative(0, 0, 1, depart, depart - math.pi)
+        ctx.restore()
+
+    for i, lacet in enumerate(lacets):
+        xs = [x(rang_point[(i, j)]) for j in range(len(lacet))]
+        ctx.set_source_rgb(*couleurs[i % len(couleurs)])
+        ctx.move_to(x_clou, y_clou)
+        ctx.curve_to(xs[0], y_clou, xs[0], y_clou, xs[0], y_sous_arcs)
+        ctx.line_to(xs[0], y_axe)
+        for j in range(len(lacet) - 1):
+            demi_ellipse(xs[j], xs[j + 1], j % 2 == 0)
+        ctx.line_to(xs[-1], y_sous_arcs)
+        ctx.curve_to(xs[-1], y_clou, xs[-1], y_clou, x_clou, y_clou)
+        ctx.stroke()
+
+    ctx.set_source_rgb(0, 0, 0)
+    for rang in rang_trou.values():
+        ctx.arc(x(rang), y_axe, largeur_brin, 0, 2 * math.pi)
+        ctx.fill()
+    ctx.arc(x_clou, y_clou, largeur_brin, 0, 2 * math.pi)
+    ctx.fill()
+
+    surface.write_to_png(fichier)
+
+dessine_auto_de_tresse([1, 1, 2, 2], './imgs/nouv_1122.png')
+dessine_auto_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/nouv_43m1m12m41.png', largeur_brin=3)
