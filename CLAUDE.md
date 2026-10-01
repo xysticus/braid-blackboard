@@ -76,6 +76,26 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
 Prochaine étape, le film : l'état « lacets + ordre des points sur l'axe » est celui sur lequel σ_i devra agir
 continûment. Les images de chaque préfixe de la tresse sont les images clés.
 
+## Prochaines étapes
+
+Objectif : le film (b), où σ_i fait tourner continûment les trous i et i+1 l'un autour de l'autre
+et entraîne les lacets.
+
+1. **Film image par image.** Dessiner le méandre de chaque préfixe de la tresse (`tresse[:k]`) et assembler
+   en GIF ou MP4 (ajouter `imageio` ou `ffmpeg` à `environment.yml`). Ce sont les images clés du film.
+   Attention : `calcule_autofn_de_tresse` déduit le nombre de trous du préfixe. Il faut le fixer pour toute
+   la tresse, sinon le cadre change d'une image à l'autre.
+2. **Mouvement continu d'un σ_i.** Partir du dessin du préfixe, le convertir en polylignes, appliquer une rotation
+   d'angle t ∈ [0, π] aux points proches des trous i et i+1 (amortie en douceur vers l'extérieur du disque),
+   puis interpoler vers le dessin normal du préfixe suivant. Vérifier le sens de rotation de σ_i
+   en comparant l'image à t = π avec l'image clé suivante.
+3. **À plus long terme.** Faire agir σ_i directement sur l'état « lacets + ordre des points sur l'axe »,
+   sans repasser par les mots de F_n. Le dessin calculé depuis le mot sert alors de test.
+4. **Ménage.** Supprimer `decale` et `dedans_extrm` (inutilisés) ; éventuellement passer les `assert` en tests pytest.
+
+Sur un nouvel ordinateur : `git pull`, puis `conda env create -f environment.yml` (ou `conda env update -f
+environment.yml --prune` si l'environnement existe déjà).
+
 ## Conventions
 
 - Code, identifiants, commentaires et messages de commit **en français**. Garder ce style.
