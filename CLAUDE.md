@@ -163,7 +163,7 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
-python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif et imgs/film_continu_*.gif (film algébrique)
+python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif et imgs/film_continu_*.gif (film algébrique), plus leurs .mp4
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```
