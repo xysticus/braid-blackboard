@@ -106,27 +106,6 @@ print(calcule_arcs(t[1]))
 
 print(calcule_arcs(t[2]))
 
-def dedans_extrm(l,start,a,b,extrm,f_extrm):
-    for i in range(start,len(l)-1,2):
-        match l[i] , l[i+1]:
-            case x,y if x>a and x< b and y>a and y<b: extrm = f_extrm(extrm, x, y)
-    return extrm
-
-assert dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 0, 1, 6, 0, max) == 5
-
-assert dedans_extrm([4, 6, 1, 4, 4, 7, 4, 4], 0, 1, 6, 0, max) == 4
-
-assert dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 1, 1, 6, 0, max) == 5
-
-assert dedans_extrm([4, 6, 1, 5, 4, 7, 4, 5], 0, 1, 6, 1, min) == 1
-
-assert dedans_extrm([4, 6, 1, 5, 4, 7, 3, 5], 0, 1, 6, 10, min) == 3
-
-def decale(liste, index):
-    return list(map(lambda x: x+1 if x >= index else x, liste))
-
-decale([1,2,5,2,2,5,5,3],3)
-
 # Positionnement des intersections par comparaison de deux points.
 # Deux points dans le même intervalle : on suit les deux courbes côte à côte jusqu'à ce qu'elles
 # se séparent. Là où elles se séparent on sait laquelle est à gauche. Chaque arc parcouru
@@ -335,87 +314,6 @@ assert verifie_action([4, 3, -1, -1, 2, -4, 1])
 assert verifie_action([1, -2, 1, -2, 1, -2, 3, -1, 2])
 
 
-def subdivise(points, pas=2):
-    '''Ajoute des points sur les segments trop longs, pour que la torsion les courbe bien.'''
-    resultat = [points[:1]]
-    for p, q in zip(points[:-1], points[1:]):
-        n = max(1, math.ceil(np.hypot(*(q - p)) / pas))
-        resultat.append(p + np.outer(np.arange(1, n + 1) / n, q - p))
-    return np.concatenate(resultat)
-
-def geometrie_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400):
-    '''Dessin des images des générateurs de fn par l'automorphisme de la tresse, en polylignes.
-    Renvoie (polylignes des lacets, positions des trous de gauche à droite, position du clou).
-    Chaque polyligne part du clou et y revient.'''
-    auto = calcule_autofn_de_tresse(tresse, nb_trous)
-    lacets = [intervalles(mot) for mot in auto]
-    rang_point, rang_trou, nb_rangs = abscisses(lacets, len(lacets))
-
-    pas = (largeur - 40) / (nb_rangs - 1)
-    def x(rang): return 20 + rang * pas
-    y_axe = 0.4 * hauteur
-    x_clou, y_clou = largeur / 2, hauteur - 10
-
-    # on aplatit les arcs pour qu'ils tiennent en hauteur, en laissant de la place à l'éventail vers le clou
-    def rayons(parite): return [abs(x(rang_point[(i, j)]) - x(rang_point[(i, j + 1)])) / 2
-                                for i, lacet in enumerate(lacets) for j in range(parite, len(lacet) - 1, 2)]
-    rayon_haut, rayon_bas = max(rayons(0)), max(rayons(1), default=0)
-    aplati = min(1, (y_axe - 10) / rayon_haut, (hauteur - 70 - y_axe) / max(rayon_bas, 1))
-    y_sous_arcs = y_axe + rayon_bas * aplati + 8 # le chemin vers le clou passe sous tous les arcs du bas
-
-    # Cairo sert seulement à construire les chemins, que l'on récupère aplatis en polylignes
-    ctx = cairo.Context(cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1))
-    ctx.set_tolerance(0.05)
-
-    def demi_ellipse(x1, x2, en_haut):
-        ctx.save()
-        ctx.translate((x1 + x2) / 2, y_axe)
-        ctx.scale(abs(x2 - x1) / 2, abs(x2 - x1) / 2 * aplati)
-        depart = math.pi if x1 < x2 else 0
-        if en_haut == (x1 < x2): ctx.arc(0, 0, 1, depart, depart + math.pi)
-        else: ctx.arc_negative(0, 0, 1, depart, depart - math.pi)
-        ctx.restore()
-
-    def arc_du_clou(xp, vers_le_clou):
-        '''Arc de cercle entre le clou et le point (xp, y_sous_arcs), vertical en ce point.
-        Les centres sont tous sur l'horizontale y_sous_arcs : deux de ces cercles ne se recoupent
-        qu'au clou et en son symétrique au-dessus, donc les arcs ne se croisent pas.
-        Si le point est trop loin, le cercle passerait sous le clou : on étire alors un quart de cercle
-        en quart d'ellipse (quarts d'ellipse emboîtés de même centre).'''
-        d, h = xp - x_clou, y_clou - y_sous_arcs
-        if abs(d) < 1e-6:
-            ctx.line_to(x_clou, y_clou if vers_le_clou else y_sous_arcs)
-            return
-        etire = max(1, abs(d) / h)
-        d = d / etire
-        centre = (d * d - h * h) / (2 * d) # abscisse relative au clou, dans le repère étiré
-        rayon = abs(d - centre)
-        a_point = 0 if d > centre else math.pi
-        a_clou = math.atan2(h, -centre)
-        ctx.save()
-        ctx.translate(x_clou, y_sous_arcs)
-        ctx.scale(etire, 1)
-        if vers_le_clou: (ctx.arc if a_point == 0 else ctx.arc_negative)(centre, 0, rayon, a_point, a_clou)
-        else: (ctx.arc_negative if a_point == 0 else ctx.arc)(centre, 0, rayon, a_clou, a_point)
-        ctx.restore()
-
-    polylignes = []
-    for i, lacet in enumerate(lacets):
-        xs = [x(rang_point[(i, j)]) for j in range(len(lacet))]
-        ctx.move_to(x_clou, y_clou)
-        arc_du_clou(xs[0], False)
-        ctx.line_to(xs[0], y_axe)
-        for j in range(len(lacet) - 1):
-            demi_ellipse(xs[j], xs[j + 1], j % 2 == 0)
-        ctx.line_to(xs[-1], y_sous_arcs)
-        arc_du_clou(xs[-1], True)
-        points = np.array([p for genre, p in ctx.copy_path_flat() if genre != cairo.PATH_CLOSE_PATH])
-        ctx.new_path()
-        polylignes.append(subdivise(points))
-
-    trous = np.array(sorted((x(rang), y_axe) for rang in rang_trou.values()))
-    return polylignes, trous, np.array((x_clou, y_clou))
-
 def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True, axe=None):
     '''Surface Cairo du dessin donné en polylignes ; axe : polyligne de l'axe (ou liste de morceaux),
     tracée en gris sous les lacets.'''
@@ -452,92 +350,12 @@ def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_
 
 def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True):
     '''Surface Cairo des images des générateurs de fn par l'automorphisme de la tresse.'''
-    return peint(*geometrie_auto_de_tresse(tresse, nb_trous, hauteur, largeur),
-                 hauteur, largeur, largeur_brin, en_couleur)
+    morceaux, trous, clou, _ = dessin_etat(etat_de_tresse(tresse, nb_trous), hauteur, largeur)
+    return peint(polylignes(morceaux), trous, clou, hauteur, largeur, largeur_brin, en_couleur)
 
 def dessine_auto_de_tresse(tresse, fichier, **options):
     '''Dessine en PNG les images des générateurs de fn par l'automorphisme de la tresse.'''
     image_auto_de_tresse(tresse, **options).write_to_png(fichier)
-
-# Le mouvement continu d'un σ_i : une région autour des trous i et i+1 tourne d'un demi-tour.
-# Les points tournent le long d'ellipses emboîtées : en dedans de l'ellipse intérieure tout tourne d'un bloc,
-# entre les deux ellipses la rotation s'amortit en douceur, au-delà de l'extérieure rien ne bouge.
-# L'ellipse extérieure s'arrête avant les autres trous mais descend loin sous l'axe, pour que les brins
-# qui vont au clou aient de la place pour s'enrouler. Les ellipses étant emboîtées, c'est un homéomorphisme.
-
-SENS_DE_SIGMA = 1 # signe de l'angle (dans le repère de Cairo, y vers le bas) pour σ_i positif
-
-def ellipses_de_torsion(trous, i, clou):
-    '''Centre et demi-axes (horizontal, vertical) des ellipses intérieure et extérieure pour σ_i.'''
-    xs = trous[:, 0]
-    a, b = xs[i - 1], xs[i]
-    r = (b - a) / 2
-    ecarts = ([a - xs[i - 2]] if i >= 2 else []) + ([xs[i + 1] - b] if i + 1 < len(xs) else [])
-    marge = min(ecarts, default=2 * r)
-    centre = np.array(((a + b) / 2, trous[0, 1]))
-    h = clou[1] - centre[1] # le clou doit rester dehors
-    interieure = np.array((r + 0.15 * marge, min(r + 0.15 * marge, 0.6 * h)))
-    exterieure = np.array((r + 0.9 * marge, 0.9 * h))
-    return centre, interieure, exterieure
-
-def tourne(points, centre, interieure, exterieure, angle):
-    '''Rotation d'angle « angle » le long des ellipses, entière dans l'ellipse intérieure,
-    amortie jusqu'à 0 sur l'ellipse extérieure.'''
-    d = points - centre
-    # u : indice de l'ellipse intermédiaire (de demi-axes interpolés) qui passe par le point, par dichotomie
-    def dehors(u): return ((d / (interieure + np.outer(u, exterieure - interieure))) ** 2).sum(axis=1) > 1
-    bas, haut = np.zeros(len(d)), np.ones(len(d))
-    for _ in range(30):
-        milieu = (bas + haut) / 2
-        plus_loin = dehors(milieu)
-        bas, haut = np.where(plus_loin, milieu, bas), np.where(plus_loin, haut, milieu)
-    u = np.where(dehors(np.zeros(len(d))), (bas + haut) / 2, 0)
-    axes = np.where((u > 0)[:, None], interieure + np.outer(u, exterieure - interieure), interieure)
-    v = 1 - u
-    theta = angle * v * v * (3 - 2 * v) * ~dehors(np.ones(len(d)))
-    c, s = np.cos(theta), np.sin(theta)
-    e = d / axes # coordonnées où l'ellipse devient un cercle
-    return centre + axes * np.column_stack((c * e[:, 0] - s * e[:, 1], s * e[:, 0] + c * e[:, 1]))
-
-def tord(geometrie, sigma, t):
-    '''Dessin tordu par σ_sigma au temps t ∈ [0, 1] (t = 1 : demi-tour complet).'''
-    polylignes, trous, clou = geometrie
-    ellipses = ellipses_de_torsion(trous, abs(sigma), clou)
-    angle = SENS_DE_SIGMA * (1 if sigma > 0 else -1) * math.pi * t
-    return [tourne(p, *ellipses, angle) for p in polylignes], tourne(trous, *ellipses, angle), clou
-
-def lit_mot(points, trous):
-    '''Mot de fn d'une polyligne : on note x_j (ou x_j⁻¹) à chaque traversée de gauche à droite
-    (ou de droite à gauche) de la demi-droite qui monte du trou j.'''
-    mot = []
-    for p, q in zip(points[:-1], points[1:]):
-        for j, (xt, yt) in enumerate(trous, 1):
-            if (p[0] < xt) != (q[0] < xt):
-                y = p[1] + (q[1] - p[1]) * (xt - p[0]) / (q[0] - p[0])
-                if y < yt: mot.append(j if q[0] >= xt else -j)
-    simplifie(mot)
-    return mot
-
-def verifie_torsion(tresse):
-    '''Le dessin de chaque préfixe, tordu d'un demi-tour par la lettre suivante,
-    doit se lire comme l'automorphisme du préfixe suivant.'''
-    nb_trous = max(map(operator.abs, tresse)) + 1
-    for k, sigma in enumerate(tresse):
-        geometrie = geometrie_auto_de_tresse(tresse[:k], nb_trous)
-        polylignes, _, _ = tord(geometrie, sigma, 1)
-        # au demi-tour les trous i et i+1 ont échangé leurs places : on lit avec les positions de départ
-        mots = [lit_mot(p, geometrie[1]) for p in polylignes]
-        if mots != calcule_autofn_de_tresse(tresse[:k + 1], nb_trous): return False
-    return True
-
-assert all(lit_mot(p, t) == m for p, t, m in
-           zip(geometrie_auto_de_tresse([4, 3, -1, -1, 2, -4, 1])[0],
-               [geometrie_auto_de_tresse([4, 3, -1, -1, 2, -4, 1])[1]] * 5,
-               calcule_autofn_de_tresse([4, 3, -1, -1, 2, -4, 1])))
-assert verifie_torsion([1])
-assert verifie_torsion([-1])
-assert verifie_torsion([4, 3, -1, -1, 2, -4, 1])
-assert verifie_torsion([1, -2, 1, -2, 1, -2, 3, -1, 2])
 
 # Le film algébrique : chaque lettre est une suite de mouvements élémentaires sur l'état, chacun continu.
 # 1. réespacement (les abscisses changent, leur ordre non : les demi-cercles ne se croisent jamais) pour vider
@@ -685,6 +503,26 @@ def dessin_etat(etat, hauteur=400, largeur=400, disque=None, fusions=None, s=0, 
 def polylignes(morceaux):
     return [np.concatenate(m) for m in morceaux]
 
+def lit_mot(points, trous):
+    '''Mot de fn d'une polyligne : on note x_j (ou x_j⁻¹) à chaque traversée de gauche à droite
+    (ou de droite à gauche) de la demi-droite qui monte du trou j.'''
+    mot = []
+    for p, q in zip(points[:-1], points[1:]):
+        for j, (xt, yt) in enumerate(trous, 1):
+            if (p[0] < xt) != (q[0] < xt):
+                y = p[1] + (q[1] - p[1]) * (xt - p[0]) / (q[0] - p[0])
+                if y < yt: mot.append(j if q[0] >= xt else -j)
+    simplifie(mot)
+    return mot
+
+def verifie_dessin(tresse):
+    '''Le dessin de la tresse, relu par les demi-droites qui montent des trous, redonne les mots de fn.'''
+    morceaux, trous, _, _ = dessin_etat(etat_de_tresse(tresse))
+    return [lit_mot(p, trous) for p in polylignes(morceaux)] == calcule_autofn_de_tresse(tresse)
+
+assert verifie_dessin([4, 3, -1, -1, 2, -4, 1])
+assert verifie_dessin([1, -2, 1, -2, 1, -2, 3, -1, 2])
+
 def mise_en_page_avec_marge(etat, sigma):
     '''Abscisses (même ordre) laissant autour du bloc des trous i et i+1 une couronne vide, assez large pour
     les arcs qui sortent du bloc. Renvoie (état, disque du demi-tour (centre, rayon intérieur, rayon extérieur)).'''
@@ -707,6 +545,17 @@ def interpole(etat1, etat2, t):
     return ([(1 - t) * x + t * y for x, y in zip(etat1[0], etat2[0])],
             [[(1 - t) * x + t * y for x, y in zip(l1, l2)] for l1, l2 in zip(etat1[1], etat2[1])])
 
+SENS_DE_SIGMA = 1 # signe de l'angle (dans le repère de Cairo, y vers le bas) pour σ_i positif
+
+def tourne(points, centre, r_int, r_ext, angle):
+    '''Rotation d'angle « angle » autour du centre, entière jusqu'au rayon r_int, amortie en douceur jusqu'à 0
+    au rayon r_ext. L'angle ne dépend que de la distance au centre : c'est un homéomorphisme.'''
+    d = points - centre
+    u = np.clip((r_ext - np.hypot(d[:, 0], d[:, 1])) / (r_ext - r_int), 0, 1)
+    theta = angle * u * u * (3 - 2 * u)
+    c, s = np.cos(theta), np.sin(theta)
+    return centre + np.column_stack((c * d[:, 0] - s * d[:, 1], s * d[:, 0] + c * d[:, 1]))
+
 def demi_tour(morceaux, trous, geo, disque, sigma, t):
     '''Les morceaux et les trous après rotation de t demi-tour du bloc (disque en unités d'abscisse).
     La rotation se fait avant aplatissement : un demi-cercle du bloc reste un demi-cercle.'''
@@ -717,7 +566,7 @@ def demi_tour(morceaux, trous, geo, disque, sigma, t):
     def f(points):
         p = points.copy()
         p[:, 1] = c[1] + (p[:, 1] - c[1]) / aplati
-        p = tourne(p, c, np.array((r_int * pas,) * 2), np.array((r_ext * pas,) * 2), angle)
+        p = tourne(p, c, r_int * pas, r_ext * pas, angle)
         p[:, 1] = c[1] + (p[:, 1] - c[1]) * aplati
         return p
     return [[f(m) for m in lacet] for lacet in morceaux], f(trous)

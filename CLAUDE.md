@@ -72,8 +72,9 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
 6. `film_de_tresse(tresse, fichier)` : GIF (Pillow) des images de chaque préfixe `tresse[:k]`, avec un nombre
    de trous fixé par la tresse entière (`calcule_autofn_de_tresse(tresse, nb_trous)`). `image_auto_de_tresse`
    renvoie la surface Cairo ; `dessine_auto_de_tresse` l'écrit en PNG.
-   Le dessin passe par `geometrie_auto_de_tresse` (polylignes numpy : chemins Cairo aplatis par `copy_path_flat`
-   puis subdivisés, positions des trous et du clou) et `peint` (trace les polylignes).
+   Le dessin passe par `dessin_etat(etat_de_tresse(...))` (polylignes numpy, positions des trous et du clou) et
+   `peint` (trace les polylignes). `lit_mot` relit le mot d'un lacet dessiné (traversées des demi-droites qui montent
+   des trous) ; `verifie_dessin` contrôle ainsi le dessin contre les mots.
 7. **Action algébrique de σ_i sur l'état** (`agit`, `reduit`) : l'état est fait des abscisses des trous et, pour chaque
    lacet, des abscisses de ses points sur l'axe (seul l'ordre compte ; `etat_de_tresse` le calcule depuis les mots,
    `normalise` le ramène aux rangs). σ_i fait tourner d'un demi-tour le bloc (trous i, i+1 et intervalle i) :
@@ -104,15 +105,15 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
    Les segments ne peuvent pas non plus faire le demi-tour : σ_i échange les trous i et i+1, le segment i-1
    devrait changer d'extrémité.
    Réespacer ne crée jamais de croisement : deux demi-cercles se croisent ssi leurs extrémités s'entrelacent.
-   `tord`, `lit_mot`, `verifie_torsion` (ancienne torsion d'une image clé, relue par les demi-droites au-dessus
-   des trous) fixent le sens : σ_i positif = demi-tour horaire à l'écran (`SENS_DE_SIGMA = 1`, y vers le bas).
+   Sens : σ_i positif = demi-tour horaire à l'écran (`SENS_DE_SIGMA = 1`, y vers le bas) ; l'`assert` sur l'ordre
+   des points nouveaux échoue avec l'autre sens.
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
 de l'image k : le dessin du préfixe suivant est bien l'image du dessin courant par la torsion.
 
-`decale` et `dedans_extrm` viennent de l'ancienne idée d'insertion point par point (description dans
-`git show f2fdb1c` et `git show 4b2d4f4`). Ils ne sont plus utilisés.
+L'ancienne idée d'insertion point par point (`decale`, `dedans_extrm`) est décrite dans `git show f2fdb1c` et
+`git show 4b2d4f4` ; le code a été retiré.
 
 ## Prochaines étapes
 
@@ -128,7 +129,8 @@ et entraîne les lacets.
    Limites : quand il y a beaucoup de points sur l'axe les brins sont très serrés ; la retouche (3) est un mélange
    linéaire (pas de preuve d'absence de croisement, mais les deux dessins sont proches) ; les fusions de plusieurs
    bigones à la suite dans un même lacet sont aussi un mélange linéaire.
-4. **Ménage.** Supprimer `decale` et `dedans_extrm` (inutilisés) ; éventuellement passer les `assert` en tests pytest.
+4. **Ménage.** Fait (code mort retiré : `decale`, `dedans_extrm`, `geometrie_auto_de_tresse`, ancienne torsion par
+   ellipses). Reste éventuellement : passer les `assert` en tests pytest.
 
 Sur un nouvel ordinateur : `git pull`, puis `conda env create -f environment.yml` (ou `conda env update -f
 environment.yml --prune` si l'environnement existe déjà).
