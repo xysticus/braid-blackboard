@@ -77,7 +77,12 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
 7. `film_continu_de_tresse(tresse, fichier)` : le film continu. Pour chaque lettre, `tord` fait tourner d'un
    demi-tour la région autour des trous i et i+1 (`ellipses_de_torsion` / `tourne` : rotation le long d'ellipses
    emboîtées, entière dans l'ellipse intérieure, amortie jusqu'à l'extérieure, qui évite les autres trous et le clou),
-   puis `fond` passe du dessin tordu à l'image clé suivante (lacets rééchantillonnés par abscisse curviligne).
+   et `glisse` (déformation horizontale monotone, amortie vers le clou) amène en même temps tous les trous à leur
+   place dans l'image suivante : sur les 70 % premiers du temps (`mouvement`), deux homéomorphismes, pas de croisement.
+   Ensuite fondu linéaire vers l'image clé suivante. Les points se correspondent grâce à `correspondance` :
+   les passages sur l'axe (`passages`, simplifiés en annulant deux passages consécutifs dans le même intervalle)
+   du dessin tordu d'un demi-tour sont exactement ceux de l'image suivante ; ce sont des repères,
+   entre lesquels on rééchantillonne par abscisse curviligne (`entre_reperes`).
    `lit_mot` relit le mot d'une polyligne (traversées des demi-droites qui montent des trous) ;
    `verifie_torsion` contrôle que chaque image clé tordue d'un demi-tour se lit comme le préfixe suivant.
    Sens : σ_i positif = demi-tour horaire à l'écran (`SENS_DE_SIGMA = 1`, repère Cairo y vers le bas) ;
@@ -101,8 +106,12 @@ et entraîne les lacets.
 1. ~~**Film image par image.**~~ Fait : `film_de_tresse` → `imgs/film_*.gif`. Les trous gardent leur nombre mais
    bougent horizontalement d'une image à l'autre (l'espacement dépend du nombre de points sur l'axe).
 2. ~~**Mouvement continu d'un σ_i.**~~ Fait : `film_continu_de_tresse` → `imgs/film_continu_*.gif`.
-   Limites : quand les trous i et i+1 sont loin l'un de l'autre et qu'un voisin est proche, l'anneau d'amortissement
-   est étroit de ce côté et les brins y passent en faisceau serré ; le fondu linéaire n'est pas garanti sans croisement.
+   Limites : le fondu final crée des croisements quand le demi-tour a beaucoup enroulé les brins
+   (σ_2 et σ_1 de [4, 3, -1, -1, 2, -4, 1]) ; les lacets voisins sont entraînés par la torsion puis relâchés
+   par le fondu. Essais écartés : mélanger image tordue de t et image suivante détordue de 1 - t (cartésien
+   ou polaire), mélanger puis détordre ; tous font des croisements.
+   Piste : remplacer le fondu par une détente physique (raccourcissement et lissage des brins, répulsion
+   entre brins et par les trous, petits pas), qui garde la topologie par construction (scipy `cKDTree`).
 3. **À plus long terme.** Faire agir σ_i directement sur l'état « lacets + ordre des points sur l'axe »,
    sans repasser par les mots de F_n. Le dessin calculé depuis le mot sert alors de test.
 4. **Ménage.** Supprimer `decale` et `dedans_extrm` (inutilisés) ; éventuellement passer les `assert` en tests pytest.
