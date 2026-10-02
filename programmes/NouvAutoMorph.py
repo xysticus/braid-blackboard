@@ -236,12 +236,13 @@ def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeu
     def x(rang): return 20 + rang * pas
     y_axe = 0.4 * hauteur
     x_clou, y_clou = largeur / 2, hauteur - 10
-    y_sous_arcs = hauteur - 40 # le chemin vers le clou passe sous tous les arcs du bas
 
-    # on aplatit les arcs pour qu'ils tiennent en hauteur
-    rayon_max = max(abs(x(rang_point[(i, j)]) - x(rang_point[(i, j + 1)])) / 2
-                    for i, lacet in enumerate(lacets) for j in range(len(lacet) - 1))
-    aplati = min(1, (y_axe - 10) / rayon_max, (y_sous_arcs - y_axe - 5) / rayon_max)
+    # on aplatit les arcs pour qu'ils tiennent en hauteur, en laissant de la place à l'éventail vers le clou
+    def rayons(parite): return [abs(x(rang_point[(i, j)]) - x(rang_point[(i, j + 1)])) / 2
+                                for i, lacet in enumerate(lacets) for j in range(parite, len(lacet) - 1, 2)]
+    rayon_haut, rayon_bas = max(rayons(0)), max(rayons(1), default=0)
+    aplati = min(1, (y_axe - 10) / rayon_haut, (hauteur - 70 - y_axe) / max(rayon_bas, 1))
+    y_sous_arcs = y_axe + rayon_bas * aplati + 8 # le chemin vers le clou passe sous tous les arcs du bas
 
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, largeur, hauteur)
     ctx = cairo.Context(surface)
@@ -263,16 +264,39 @@ def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeu
         else: ctx.arc_negative(0, 0, 1, depart, depart - math.pi)
         ctx.restore()
 
+    def arc_du_clou(xp, vers_le_clou):
+        '''Arc de cercle entre le clou et le point (xp, y_sous_arcs), vertical en ce point.
+        Les centres sont tous sur l'horizontale y_sous_arcs : deux de ces cercles ne se recoupent
+        qu'au clou et en son symétrique au-dessus, donc les arcs ne se croisent pas.
+        Si le point est trop loin, le cercle passerait sous le clou : on étire alors un quart de cercle
+        en quart d'ellipse (quarts d'ellipse emboîtés de même centre).'''
+        d, h = xp - x_clou, y_clou - y_sous_arcs
+        if abs(d) < 1e-6:
+            ctx.line_to(x_clou, y_clou if vers_le_clou else y_sous_arcs)
+            return
+        etire = max(1, abs(d) / h)
+        d = d / etire
+        centre = (d * d - h * h) / (2 * d) # abscisse relative au clou, dans le repère étiré
+        rayon = abs(d - centre)
+        a_point = 0 if d > centre else math.pi
+        a_clou = math.atan2(h, -centre)
+        ctx.save()
+        ctx.translate(x_clou, y_sous_arcs)
+        ctx.scale(etire, 1)
+        if vers_le_clou: (ctx.arc if a_point == 0 else ctx.arc_negative)(centre, 0, rayon, a_point, a_clou)
+        else: (ctx.arc_negative if a_point == 0 else ctx.arc)(centre, 0, rayon, a_clou, a_point)
+        ctx.restore()
+
     for i, lacet in enumerate(lacets):
         xs = [x(rang_point[(i, j)]) for j in range(len(lacet))]
         ctx.set_source_rgb(*couleurs[i % len(couleurs)])
         ctx.move_to(x_clou, y_clou)
-        ctx.curve_to(xs[0], y_clou, xs[0], y_clou, xs[0], y_sous_arcs)
+        arc_du_clou(xs[0], False)
         ctx.line_to(xs[0], y_axe)
         for j in range(len(lacet) - 1):
             demi_ellipse(xs[j], xs[j + 1], j % 2 == 0)
         ctx.line_to(xs[-1], y_sous_arcs)
-        ctx.curve_to(xs[-1], y_clou, xs[-1], y_clou, x_clou, y_clou)
+        arc_du_clou(xs[-1], True)
         ctx.stroke()
 
     ctx.set_source_rgb(0, 0, 0)
