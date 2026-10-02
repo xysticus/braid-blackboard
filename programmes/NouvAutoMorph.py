@@ -3,6 +3,8 @@ import functools
 import itertools
 import operator
 import math
+import shutil
+import subprocess
 import cairo
 import numpy as np
 from PIL import Image
@@ -762,7 +764,24 @@ def film_de_tresse(tresse, fichier, duree=700, **options):
     durees = [duree] * len(tresse) + [2 * duree]
     images[0].save(fichier, save_all=True, append_images=images[1:], duration=durees, loop=0)
 
+def gif_en_mp4(fichier_gif):
+    '''Convertit un GIF en MP4 (VP9) à côté de lui avec ffmpeg, à 25 images/s (les durées des images
+    du GIF sont gardées, pause finale comprise). VP9 plutôt que H.264 : codec libre, lu par le VLC
+    de Fedora qui n'a pas H.264. Réglage rapide de l'encodeur (sinon VP9 est très lent).
+    Les dimensions sont arrondies au pair (exigé par yuv420p). Ne fait rien si ffmpeg est absent.'''
+    if shutil.which('ffmpeg') is None:
+        print("ffmpeg introuvable :", fichier_gif, "n'est pas converti en MP4")
+        return
+    fichier_mp4 = fichier_gif.removesuffix('.gif') + '.mp4'
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', fichier_gif,
+                    '-vf', 'fps=25,scale=trunc(iw/2)*2:trunc(ih/2)*2', '-pix_fmt', 'yuv420p',
+                    '-c:v', 'libvpx-vp9', '-crf', '24', '-b:v', '0',
+                    '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1',
+                    '-movflags', '+faststart', fichier_mp4], check=True)
+
 dessine_auto_de_tresse([1, 1, 2, 2], './imgs/nouv_1122.png')
 dessine_auto_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/nouv_43m1m12m41.png', largeur_brin=3)
 film_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_43m1m12m41.gif', largeur_brin=3)
 film_de_tresse_algebrique([4, 3, -1, -1, 2, -4, 1], './imgs/film_continu_43m1m12m41.gif', largeur_brin=3)
+gif_en_mp4('./imgs/film_43m1m12m41.gif')
+gif_en_mp4('./imgs/film_continu_43m1m12m41.gif')
