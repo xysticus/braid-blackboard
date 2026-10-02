@@ -69,6 +69,13 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
 4. `dessine_auto_de_tresse(tresse, fichier)` : demi-ellipses entre points consécutifs, alternativement en haut
    et en bas ; descente verticale vers le clou sous tous les arcs.
 5. `croisements` / `verifie` : contrôle qu'aucun arc n'en croise un autre. Les `assert verifie(...)` servent de tests.
+6. `film_de_tresse(tresse, fichier)` : GIF (Pillow) des images de chaque préfixe `tresse[:k]`, avec un nombre
+   de trous fixé par la tresse entière (`calcule_autofn_de_tresse(tresse, nb_trous)`). `image_auto_de_tresse`
+   renvoie la surface Cairo ; `dessine_auto_de_tresse` l'écrit en PNG.
+
+Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
+auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
+de l'image k : le dessin du préfixe suivant est bien l'image du dessin courant par la torsion.
 
 `decale` et `dedans_extrm` viennent de l'ancienne idée d'insertion point par point (description dans
 `git show f2fdb1c` et `git show 4b2d4f4`). Ils ne sont plus utilisés.
@@ -81,10 +88,8 @@ continûment. Les images de chaque préfixe de la tresse sont les images clés.
 Objectif : le film (b), où σ_i fait tourner continûment les trous i et i+1 l'un autour de l'autre
 et entraîne les lacets.
 
-1. **Film image par image.** Dessiner le méandre de chaque préfixe de la tresse (`tresse[:k]`) et assembler
-   en GIF ou MP4 (ajouter `imageio` ou `ffmpeg` à `environment.yml`). Ce sont les images clés du film.
-   Attention : `calcule_autofn_de_tresse` déduit le nombre de trous du préfixe. Il faut le fixer pour toute
-   la tresse, sinon le cadre change d'une image à l'autre.
+1. ~~**Film image par image.**~~ Fait : `film_de_tresse` → `imgs/film_*.gif`. Les trous gardent leur nombre mais
+   bougent horizontalement d'une image à l'autre (l'espacement dépend du nombre de points sur l'axe).
 2. **Mouvement continu d'un σ_i.** Partir du dessin du préfixe, le convertir en polylignes, appliquer une rotation
    d'angle t ∈ [0, π] aux points proches des trous i et i+1 (amortie en douceur vers l'extérieur du disque),
    puis interpoler vers le dessin normal du préfixe suivant. Vérifier le sens de rotation de σ_i
@@ -124,7 +129,7 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
-python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png
+python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png et imgs/film_*.gif
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```
