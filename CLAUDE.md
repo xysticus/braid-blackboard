@@ -89,7 +89,8 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
    autour du bloc) ; (2) `demi_tour` : rotation rigide du bloc, amortie dans la couronne, faite avant aplatissement ;
    seuls les arcs qui sortent du bloc s'enroulent, les autres lacets ne bougent pas ; hors de la couronne l'axe
    ne bouge pas, le segment i tourne avec les trous, les morceaux des segments voisins accrochés aux deux trous
-   (voués à disparaître) tournent et rétrécissent pendant que les nouveaux poussent depuis le bord de la couronne
+   (voués à disparaître) sont emportés par le centre de rotation : ils tournent et glissent vers lui en rétrécissant,
+   pendant que les nouveaux poussent depuis le bord de la couronne
    (`axe_pendant_demi_tour`) ; (3) retouche morceau par morceau
    vers le dessin de l'état non réduit, dont les points nouveaux sont là où les arcs tordus coupent l'axe
    (`coupe_sur_l_axe` ; un `assert` vérifie que cet ordre est celui de `agit`) ; (4) vagues de bigones

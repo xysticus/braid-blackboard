@@ -725,14 +725,15 @@ def demi_tour(morceaux, trous, geo, disque, sigma, t):
 def axe_pendant_demi_tour(geo, disque, avec_marge, trous_tournes, i, t, largeur):
     '''Morceaux de l'axe au temps t du demi-tour. Hors de la couronne l'axe ne bouge pas. Le segment i tourne,
     rigide entre les trous i et i+1. Les morceaux des segments i-1 et i+1 accrochés à ces trous (jusqu'au bord de la
-    couronne) sont voués à disparaître : ils tournent avec leur trou et rétrécissent ; les nouveaux morceaux poussent
-    depuis le bord de la couronne et rejoignent les trous quand ils se reposent sur l'axe.'''
+    couronne) sont voués à disparaître : le centre de rotation les emporte, ils tournent avec lui et glissent vers lui
+    en rétrécissant (distances au centre multipliées par 1 - t) ; les nouveaux morceaux poussent depuis le bord de la
+    couronne et rejoignent les trous quand ils se reposent sur l'axe.'''
     centre, _, r_ext = disque
     X, y = geo['X'], geo['y_axe']
     c = np.array((X(centre), y))
     r = (avec_marge[0][i] - avec_marge[0][i - 1]) / 2
     a, b = trous_tournes[i - 1], trous_tournes[i]
-    def vieux(trou): return np.array((trou, trou + (c + (trou - c) * r_ext / r - trou) * (1 - t)))
+    def vieux(trou): return np.array((c + (trou - c) * (1 - t), c + (trou - c) * r_ext / r * (1 - t)))
     pousse = (r_ext - r) * geo['pas'] * t
     return [np.array(((5, y), (X(centre - r_ext), y))), np.array(((X(centre + r_ext), y), (largeur - 5, y))),
             np.array((a, b)), vieux(a), vieux(b),
