@@ -72,6 +72,16 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
 6. `film_de_tresse(tresse, fichier)` : GIF (Pillow) des images de chaque préfixe `tresse[:k]`, avec un nombre
    de trous fixé par la tresse entière (`calcule_autofn_de_tresse(tresse, nb_trous)`). `image_auto_de_tresse`
    renvoie la surface Cairo ; `dessine_auto_de_tresse` l'écrit en PNG.
+   Le dessin passe par `geometrie_auto_de_tresse` (polylignes numpy : chemins Cairo aplatis par `copy_path_flat`
+   puis subdivisés, positions des trous et du clou) et `peint` (trace les polylignes).
+7. `film_continu_de_tresse(tresse, fichier)` : le film continu. Pour chaque lettre, `tord` fait tourner d'un
+   demi-tour la région autour des trous i et i+1 (`ellipses_de_torsion` / `tourne` : rotation le long d'ellipses
+   emboîtées, entière dans l'ellipse intérieure, amortie jusqu'à l'extérieure, qui évite les autres trous et le clou),
+   puis `fond` passe du dessin tordu à l'image clé suivante (lacets rééchantillonnés par abscisse curviligne).
+   `lit_mot` relit le mot d'une polyligne (traversées des demi-droites qui montent des trous) ;
+   `verifie_torsion` contrôle que chaque image clé tordue d'un demi-tour se lit comme le préfixe suivant.
+   Sens : σ_i positif = demi-tour horaire à l'écran (`SENS_DE_SIGMA = 1`, repère Cairo y vers le bas) ;
+   le test échoue avec l'autre sens.
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
@@ -90,10 +100,9 @@ et entraîne les lacets.
 
 1. ~~**Film image par image.**~~ Fait : `film_de_tresse` → `imgs/film_*.gif`. Les trous gardent leur nombre mais
    bougent horizontalement d'une image à l'autre (l'espacement dépend du nombre de points sur l'axe).
-2. **Mouvement continu d'un σ_i.** Partir du dessin du préfixe, le convertir en polylignes, appliquer une rotation
-   d'angle t ∈ [0, π] aux points proches des trous i et i+1 (amortie en douceur vers l'extérieur du disque),
-   puis interpoler vers le dessin normal du préfixe suivant. Vérifier le sens de rotation de σ_i
-   en comparant l'image à t = π avec l'image clé suivante.
+2. ~~**Mouvement continu d'un σ_i.**~~ Fait : `film_continu_de_tresse` → `imgs/film_continu_*.gif`.
+   Limites : quand les trous i et i+1 sont loin l'un de l'autre et qu'un voisin est proche, l'anneau d'amortissement
+   est étroit de ce côté et les brins y passent en faisceau serré ; le fondu linéaire n'est pas garanti sans croisement.
 3. **À plus long terme.** Faire agir σ_i directement sur l'état « lacets + ordre des points sur l'axe »,
    sans repasser par les mots de F_n. Le dessin calculé depuis le mot sert alors de test.
 4. **Ménage.** Supprimer `decale` et `dedans_extrm` (inutilisés) ; éventuellement passer les `assert` en tests pytest.
@@ -129,7 +138,7 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
-python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png et imgs/film_*.gif
+python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif et imgs/film_continu_*.gif
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```

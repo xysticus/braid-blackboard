@@ -3,6 +3,7 @@ import itertools
 import operator
 import math
 import cairo
+import numpy as np
 from PIL import Image
 
 
@@ -226,8 +227,18 @@ assert verifie([1, 1, 2, 2])
 assert verifie([4, 3, -1, -1, 2, -4, 1])
 assert verifie([1, -2, 1, -2, 1, -2, 3, -1, 2])
 
-def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True):
-    '''Surface Cairo des images des générateurs de fn par l'automorphisme de la tresse.'''
+def subdivise(points, pas=2):
+    '''Ajoute des points sur les segments trop longs, pour que la torsion les courbe bien.'''
+    resultat = [points[:1]]
+    for p, q in zip(points[:-1], points[1:]):
+        n = max(1, math.ceil(np.hypot(*(q - p)) / pas))
+        resultat.append(p + np.outer(np.arange(1, n + 1) / n, q - p))
+    return np.concatenate(resultat)
+
+def geometrie_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400):
+    '''Dessin des images des générateurs de fn par l'automorphisme de la tresse, en polylignes.
+    Renvoie (polylignes des lacets, positions des trous de gauche à droite, position du clou).
+    Chaque polyligne part du clou et y revient.'''
     auto = calcule_autofn_de_tresse(tresse, nb_trous)
     lacets = [intervalles(mot) for mot in auto]
     rang_point, rang_trou, nb_rangs = abscisses(lacets, len(lacets))
@@ -244,16 +255,9 @@ def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeu
     aplati = min(1, (y_axe - 10) / rayon_haut, (hauteur - 70 - y_axe) / max(rayon_bas, 1))
     y_sous_arcs = y_axe + rayon_bas * aplati + 8 # le chemin vers le clou passe sous tous les arcs du bas
 
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, largeur, hauteur)
-    ctx = cairo.Context(surface)
-    ctx.set_source_rgb(1, 1, 1)
-    ctx.paint()
-    ctx.set_line_width(largeur_brin)
-    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
-
-    couleurs = [(1, 0, 0), (0, .7, 0), (0, 0, 1), (.7, .7, 0), (.7, 0, .7), (0, .7, .7)]
-    if not en_couleur: couleurs = [(0, 0, 0)]
+    # Cairo sert seulement à construire les chemins, que l'on récupère aplatis en polylignes
+    ctx = cairo.Context(cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1))
+    ctx.set_tolerance(0.05)
 
     def demi_ellipse(x1, x2, en_haut):
         ctx.save()
@@ -287,9 +291,9 @@ def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeu
         else: (ctx.arc_negative if a_point == 0 else ctx.arc)(centre, 0, rayon, a_clou, a_point)
         ctx.restore()
 
+    polylignes = []
     for i, lacet in enumerate(lacets):
         xs = [x(rang_point[(i, j)]) for j in range(len(lacet))]
-        ctx.set_source_rgb(*couleurs[i % len(couleurs)])
         ctx.move_to(x_clou, y_clou)
         arc_du_clou(xs[0], False)
         ctx.line_to(xs[0], y_axe)
@@ -297,20 +301,143 @@ def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeu
             demi_ellipse(xs[j], xs[j + 1], j % 2 == 0)
         ctx.line_to(xs[-1], y_sous_arcs)
         arc_du_clou(xs[-1], True)
+        points = np.array([p for genre, p in ctx.copy_path_flat() if genre != cairo.PATH_CLOSE_PATH])
+        ctx.new_path()
+        polylignes.append(subdivise(points))
+
+    trous = np.array(sorted((x(rang), y_axe) for rang in rang_trou.values()))
+    return polylignes, trous, np.array((x_clou, y_clou))
+
+def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True):
+    '''Surface Cairo du dessin donné en polylignes.'''
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, largeur, hauteur)
+    ctx = cairo.Context(surface)
+    ctx.set_source_rgb(1, 1, 1)
+    ctx.paint()
+    ctx.set_line_width(largeur_brin)
+    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+
+    couleurs = [(1, 0, 0), (0, .7, 0), (0, 0, 1), (.7, .7, 0), (.7, 0, .7), (0, .7, .7)]
+    if not en_couleur: couleurs = [(0, 0, 0)]
+
+    for i, points in enumerate(polylignes):
+        ctx.set_source_rgb(*couleurs[i % len(couleurs)])
+        ctx.move_to(*points[0])
+        for p in points[1:]: ctx.line_to(*p)
         ctx.stroke()
 
     ctx.set_source_rgb(0, 0, 0)
-    for rang in rang_trou.values():
-        ctx.arc(x(rang), y_axe, largeur_brin, 0, 2 * math.pi)
+    for p in list(trous) + [clou]:
+        ctx.arc(*p, largeur_brin, 0, 2 * math.pi)
         ctx.fill()
-    ctx.arc(x_clou, y_clou, largeur_brin, 0, 2 * math.pi)
-    ctx.fill()
 
     return surface
+
+def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True):
+    '''Surface Cairo des images des générateurs de fn par l'automorphisme de la tresse.'''
+    return peint(*geometrie_auto_de_tresse(tresse, nb_trous, hauteur, largeur),
+                 hauteur, largeur, largeur_brin, en_couleur)
 
 def dessine_auto_de_tresse(tresse, fichier, **options):
     '''Dessine en PNG les images des générateurs de fn par l'automorphisme de la tresse.'''
     image_auto_de_tresse(tresse, **options).write_to_png(fichier)
+
+# Le mouvement continu d'un σ_i : une région autour des trous i et i+1 tourne d'un demi-tour.
+# Les points tournent le long d'ellipses emboîtées : en dedans de l'ellipse intérieure tout tourne d'un bloc,
+# entre les deux ellipses la rotation s'amortit en douceur, au-delà de l'extérieure rien ne bouge.
+# L'ellipse extérieure s'arrête avant les autres trous mais descend loin sous l'axe, pour que les brins
+# qui vont au clou aient de la place pour s'enrouler. Les ellipses étant emboîtées, c'est un homéomorphisme.
+
+SENS_DE_SIGMA = 1 # signe de l'angle (dans le repère de Cairo, y vers le bas) pour σ_i positif
+
+def ellipses_de_torsion(trous, i, clou):
+    '''Centre et demi-axes (horizontal, vertical) des ellipses intérieure et extérieure pour σ_i.'''
+    xs = trous[:, 0]
+    a, b = xs[i - 1], xs[i]
+    r = (b - a) / 2
+    ecarts = ([a - xs[i - 2]] if i >= 2 else []) + ([xs[i + 1] - b] if i + 1 < len(xs) else [])
+    marge = min(ecarts, default=2 * r)
+    centre = np.array(((a + b) / 2, trous[0, 1]))
+    h = clou[1] - centre[1] # le clou doit rester dehors
+    interieure = np.array((r + 0.15 * marge, min(r + 0.15 * marge, 0.6 * h)))
+    exterieure = np.array((r + 0.9 * marge, 0.9 * h))
+    return centre, interieure, exterieure
+
+def tourne(points, centre, interieure, exterieure, angle):
+    '''Rotation d'angle « angle » le long des ellipses, entière dans l'ellipse intérieure,
+    amortie jusqu'à 0 sur l'ellipse extérieure.'''
+    d = points - centre
+    # u : indice de l'ellipse intermédiaire (de demi-axes interpolés) qui passe par le point, par dichotomie
+    def dehors(u): return ((d / (interieure + np.outer(u, exterieure - interieure))) ** 2).sum(axis=1) > 1
+    bas, haut = np.zeros(len(d)), np.ones(len(d))
+    for _ in range(30):
+        milieu = (bas + haut) / 2
+        plus_loin = dehors(milieu)
+        bas, haut = np.where(plus_loin, milieu, bas), np.where(plus_loin, haut, milieu)
+    u = np.where(dehors(np.zeros(len(d))), (bas + haut) / 2, 0)
+    axes = np.where((u > 0)[:, None], interieure + np.outer(u, exterieure - interieure), interieure)
+    v = 1 - u
+    theta = angle * v * v * (3 - 2 * v) * ~dehors(np.ones(len(d)))
+    c, s = np.cos(theta), np.sin(theta)
+    e = d / axes # coordonnées où l'ellipse devient un cercle
+    return centre + axes * np.column_stack((c * e[:, 0] - s * e[:, 1], s * e[:, 0] + c * e[:, 1]))
+
+def tord(geometrie, sigma, t):
+    '''Dessin tordu par σ_sigma au temps t ∈ [0, 1] (t = 1 : demi-tour complet).'''
+    polylignes, trous, clou = geometrie
+    ellipses = ellipses_de_torsion(trous, abs(sigma), clou)
+    angle = SENS_DE_SIGMA * (1 if sigma > 0 else -1) * math.pi * t
+    return [tourne(p, *ellipses, angle) for p in polylignes], tourne(trous, *ellipses, angle), clou
+
+def lit_mot(points, trous):
+    '''Mot de fn d'une polyligne : on note x_j (ou x_j⁻¹) à chaque traversée de gauche à droite
+    (ou de droite à gauche) de la demi-droite qui monte du trou j.'''
+    mot = []
+    for p, q in zip(points[:-1], points[1:]):
+        for j, (xt, yt) in enumerate(trous, 1):
+            if (p[0] < xt) != (q[0] < xt):
+                y = p[1] + (q[1] - p[1]) * (xt - p[0]) / (q[0] - p[0])
+                if y < yt: mot.append(j if q[0] >= xt else -j)
+    simplifie(mot)
+    return mot
+
+def verifie_torsion(tresse):
+    '''Le dessin de chaque préfixe, tordu d'un demi-tour par la lettre suivante,
+    doit se lire comme l'automorphisme du préfixe suivant.'''
+    nb_trous = max(map(operator.abs, tresse)) + 1
+    for k, sigma in enumerate(tresse):
+        geometrie = geometrie_auto_de_tresse(tresse[:k], nb_trous)
+        polylignes, _, _ = tord(geometrie, sigma, 1)
+        # au demi-tour les trous i et i+1 ont échangé leurs places : on lit avec les positions de départ
+        mots = [lit_mot(p, geometrie[1]) for p in polylignes]
+        if mots != calcule_autofn_de_tresse(tresse[:k + 1], nb_trous): return False
+    return True
+
+assert all(lit_mot(p, t) == m for p, t, m in
+           zip(geometrie_auto_de_tresse([4, 3, -1, -1, 2, -4, 1])[0],
+               [geometrie_auto_de_tresse([4, 3, -1, -1, 2, -4, 1])[1]] * 5,
+               calcule_autofn_de_tresse([4, 3, -1, -1, 2, -4, 1])))
+assert verifie_torsion([1])
+assert verifie_torsion([-1])
+assert verifie_torsion([4, 3, -1, -1, 2, -4, 1])
+assert verifie_torsion([1, -2, 1, -2, 1, -2, 3, -1, 2])
+
+def reechantillonne(points, n):
+    '''n points régulièrement espacés le long de la polyligne.'''
+    longueurs = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
+    s = np.linspace(0, longueurs[-1], n)
+    return np.column_stack((np.interp(s, longueurs, points[:, 0]), np.interp(s, longueurs, points[:, 1])))
+
+def fond(depart, arrivee, t):
+    '''Interpolation au temps t ∈ [0, 1] entre deux dessins : chaque lacet est rééchantillonné
+    à la même longueur, les trous sont pris de gauche à droite.'''
+    polylignes = []
+    for p, q in zip(depart[0], arrivee[0]):
+        n = max(len(p), len(q))
+        polylignes.append((1 - t) * reechantillonne(p, n) + t * reechantillonne(q, n))
+    trous = (1 - t) * depart[1][np.argsort(depart[1][:, 0])] + t * arrivee[1]
+    return polylignes, trous, depart[2]
 
 def en_image_pil(surface):
     '''Convertit une surface Cairo ARGB32 en image PIL (Cairo range les pixels en BGRA).'''
@@ -327,6 +454,33 @@ def film_de_tresse(tresse, fichier, duree=700, **options):
     durees = [duree] * len(tresse) + [2 * duree]
     images[0].save(fichier, save_all=True, append_images=images[1:], duration=durees, loop=0)
 
+def film_continu_de_tresse(tresse, fichier, images_torsion=24, images_fondu=12, duree=40, pause=800,
+                           hauteur=400, largeur=400, **options):
+    '''GIF animé où chaque σ_i fait tourner les trous i et i+1 l'un autour de l'autre et entraîne les lacets,
+    puis le dessin tordu se fond dans l'image clé du préfixe suivant.
+    duree : millisecondes par image ; pause : arrêt sur chaque image clé.'''
+    nb_trous = max(map(operator.abs, tresse), default=5) + 1
+    cles = [geometrie_auto_de_tresse(tresse[:k], nb_trous, hauteur, largeur) for k in range(len(tresse) + 1)]
+    def lisse(t): return (1 - math.cos(math.pi * t)) / 2
+
+    dessins, durees = [], []
+    for k, sigma in enumerate(tresse):
+        dessins.append(cles[k])
+        durees.append(pause)
+        for n in range(1, images_torsion + 1):
+            dessins.append(tord(cles[k], sigma, lisse(n / images_torsion)))
+            durees.append(duree)
+        tordu = dessins[-1]
+        for n in range(1, images_fondu):
+            dessins.append(fond(tordu, cles[k + 1], lisse(n / images_fondu)))
+            durees.append(duree)
+    dessins.append(cles[-1])
+    durees.append(3 * pause)
+
+    images = [en_image_pil(peint(*d, hauteur, largeur, **options)) for d in dessins]
+    images[0].save(fichier, save_all=True, append_images=images[1:], duration=durees, loop=0)
+
 dessine_auto_de_tresse([1, 1, 2, 2], './imgs/nouv_1122.png')
 dessine_auto_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/nouv_43m1m12m41.png', largeur_brin=3)
 film_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_43m1m12m41.gif', largeur_brin=3)
+film_continu_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_continu_43m1m12m41.gif', largeur_brin=3)
