@@ -3,6 +3,7 @@ import itertools
 import operator
 import math
 import cairo
+from PIL import Image
 
 
 def morphisme_identite(abs_max_de_tresse):
@@ -41,10 +42,12 @@ def simplifie(mot_de_fn):
             
 applatir = itertools.chain.from_iterable
 
-def calcule_autofn_de_tresse(tresse):
+def calcule_autofn_de_tresse(tresse, nb_trous=None):
     '''Calcule l'automorphisme du groupe libre associé à une tresse.
-    La tresse est donnée par la liste de ses générateurs.'''
-    auto = morphisme_identite(5 if not(tresse) else max(map(operator.abs, tresse)))
+    La tresse est donnée par la liste de ses générateurs.
+    Par défaut le nombre de trous est déduit de la tresse.'''
+    if nb_trous is None: nb_trous = 6 if not(tresse) else max(map(operator.abs, tresse)) + 1
+    auto = morphisme_identite(nb_trous - 1)
     # on avance sur la tresse par composition (donc à l'envers)
     for sigma in reversed(tresse): conjugaison_locale(sigma, auto) 
     for a in auto: simplifie(a)
@@ -223,9 +226,9 @@ assert verifie([1, 1, 2, 2])
 assert verifie([4, 3, -1, -1, 2, -4, 1])
 assert verifie([1, -2, 1, -2, 1, -2, 3, -1, 2])
 
-def dessine_auto_de_tresse(tresse, fichier, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True):
-    '''Dessine en PNG les images des générateurs de fn par l'automorphisme de la tresse.'''
-    auto = calcule_autofn_de_tresse(tresse)
+def image_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True):
+    '''Surface Cairo des images des générateurs de fn par l'automorphisme de la tresse.'''
+    auto = calcule_autofn_de_tresse(tresse, nb_trous)
     lacets = [intervalles(mot) for mot in auto]
     rang_point, rang_trou, nb_rangs = abscisses(lacets, len(lacets))
 
@@ -279,7 +282,27 @@ def dessine_auto_de_tresse(tresse, fichier, hauteur=400, largeur=400, largeur_br
     ctx.arc(x_clou, y_clou, largeur_brin, 0, 2 * math.pi)
     ctx.fill()
 
-    surface.write_to_png(fichier)
+    return surface
+
+def dessine_auto_de_tresse(tresse, fichier, **options):
+    '''Dessine en PNG les images des générateurs de fn par l'automorphisme de la tresse.'''
+    image_auto_de_tresse(tresse, **options).write_to_png(fichier)
+
+def en_image_pil(surface):
+    '''Convertit une surface Cairo ARGB32 en image PIL (Cairo range les pixels en BGRA).'''
+    return Image.frombuffer('RGBA', (surface.get_width(), surface.get_height()), bytes(surface.get_data()),
+                            'raw', 'BGRA', surface.get_stride()).convert('RGB')
+
+def film_de_tresse(tresse, fichier, duree=700, **options):
+    '''GIF animé : une image par préfixe de la tresse (images clés du film).
+    Le nombre de trous est fixé par la tresse entière pour garder le même cadre.
+    duree : temps d'affichage de chaque image en millisecondes, la dernière reste deux fois plus.'''
+    nb_trous = max(map(operator.abs, tresse), default=5) + 1
+    images = [en_image_pil(image_auto_de_tresse(tresse[:k], nb_trous, **options))
+              for k in range(len(tresse) + 1)]
+    durees = [duree] * len(tresse) + [2 * duree]
+    images[0].save(fichier, save_all=True, append_images=images[1:], duration=durees, loop=0)
 
 dessine_auto_de_tresse([1, 1, 2, 2], './imgs/nouv_1122.png')
 dessine_auto_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/nouv_43m1m12m41.png', largeur_brin=3)
+film_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_43m1m12m41.gif', largeur_brin=3)
