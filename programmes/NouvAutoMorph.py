@@ -1,3 +1,4 @@
+import bisect
 import functools
 import itertools
 import operator
@@ -227,6 +228,113 @@ assert verifie([1, 1, 2, 2])
 assert verifie([4, 3, -1, -1, 2, -4, 1])
 assert verifie([1, -2, 1, -2, 1, -2, 3, -1, 2])
 
+# Action algébrique de σ_i sur l'état, sans repasser par les mots de fn.
+# L'état : les abscisses des trous (croissantes) et, pour chaque lacet, les abscisses de ses points sur l'axe
+# dans l'ordre du lacet. L'arc du point j au point j+1 est en haut si j est pair (le lacet part du clou par en
+# dessous) ; le premier et le dernier point descendent au clou. Seul l'ordre des abscisses compte.
+#
+# σ_i fait tourner d'un demi-tour un disque qui contient les trous i et i+1 et ce qui est entre eux (le bloc) ;
+# dans une couronne mince autour du bloc, les arcs qui sortent du bloc s'enroulent d'un demi-tour.
+# Combinatoirement :
+# - les points du bloc (intervalle i) sont réfléchis par rapport au centre du bloc ;
+# - chaque arc qui sort du bloc (une extrémité dans le bloc, l'autre dehors ou au clou) reçoit un point nouveau,
+#   là où son enroulement coupe l'axe : pour σ_i positif (demi-tour horaire à l'écran), à droite du bloc
+#   pour un arc du haut, à gauche pour un arc du bas ou une descente au clou ; l'inverse pour σ_i⁻¹ ;
+# - d'un même côté, les points nouveaux sont dans l'ordre des extrémités intérieures de leurs arcs
+#   (les arcs sortent du disque dans l'ordre de leur emboîtement, la couronne transforme cet ordre de sortie
+#   en ordre sur l'axe).
+# On obtient un état non réduit : deux points consécutifs d'un lacet dans le même intervalle forment un bigone,
+# que l'on supprime (au-dessus comme au-dessous de l'axe le plan est simplement connexe).
+
+def etat_de_tresse(tresse, nb_trous=None):
+    '''État calculé depuis les mots de fn : rangs des trous et des points des lacets.'''
+    lacets = [intervalles(mot) for mot in calcule_autofn_de_tresse(tresse, nb_trous)]
+    rang_point, rang_trou, _ = abscisses(lacets, len(lacets))
+    return ([rang_trou[k] for k in range(1, len(lacets) + 1)],
+            [[rang_point[(i, j)] for j in range(len(lacet))] for i, lacet in enumerate(lacets)])
+
+def intervalle(x, trous):
+    '''Indice de l'intervalle de l'abscisse x : nombre de trous à sa gauche.'''
+    return bisect.bisect(trous, x)
+
+def normalise(etat):
+    '''Remplace les abscisses par leurs rangs (même ordre).'''
+    trous, lacets = etat
+    rang = {x: r for r, x in enumerate(sorted(trous + [x for lacet in lacets for x in lacet]))}
+    return [rang[x] for x in trous], [[rang[x] for x in lacet] for lacet in lacets]
+
+def agit(etat, sigma, detail=False):
+    '''État non réduit après le demi-tour du bloc des trous i et i+1 (voir plus haut).
+    detail : renvoie aussi, pour chaque lacet, {indice d'un point nouveau : indice de l'arc qui l'a reçu}.'''
+    trous, lacets = etat
+    i = abs(sigma)
+    a, b = trous[i - 1], trous[i]
+    def dedans(x): return x is not None and a < x < b
+
+    # les arcs qui sortent du bloc, rangés par côté : (extrémité intérieure, lacet, indice de l'arc)
+    # l'arc d'indice j va du point j au point j+1 ; j = -1 et j = len - 1 sont les descentes au clou
+    sorties = {'droite': [], 'gauche': []}
+    for l, lacet in enumerate(lacets):
+        points = [None] + lacet + [None] # None : le clou
+        for j in range(-1, len(lacet)):
+            p, q = points[j + 1], points[j + 2]
+            if dedans(p) == dedans(q): continue
+            en_haut = j % 2 == 0 and 0 <= j < len(lacet) - 1
+            cote = 'droite' if en_haut == (sigma > 0) else 'gauche'
+            sorties[cote].append((p if dedans(p) else q, l, j))
+
+    # abscisses des points nouveaux, juste à droite du trou i+1 ou juste à gauche du trou i
+    tous = trous + [x for lacet in lacets for x in lacet]
+    voisin_droit = min([x for x in tous if x > b], default=b + 1)
+    voisin_gauche = max([x for x in tous if x < a], default=a - 1)
+    nouveau = {}
+    for cote, debut, fin in (('droite', b, voisin_droit), ('gauche', voisin_gauche, a)):
+        arcs = sorted(sorties[cote])
+        for r, (_, l, j) in enumerate(arcs):
+            nouveau[(l, j)] = debut + (fin - debut) * (r + 1) / (len(arcs) + 1)
+
+    centre = (a + b) / 2
+    resultat, origines = [], []
+    for l, lacet in enumerate(lacets):
+        nouveau_lacet, origine = [], {}
+        for j in range(-1, len(lacet)):
+            if j >= 0: nouveau_lacet.append(2 * centre - lacet[j] if dedans(lacet[j]) else lacet[j])
+            if (l, j) in nouveau:
+                origine[len(nouveau_lacet)] = j
+                nouveau_lacet.append(nouveau[(l, j)])
+        resultat.append(nouveau_lacet)
+        origines.append(origine)
+    return ((trous, resultat), origines) if detail else (trous, resultat)
+
+def reduit(etat):
+    '''Supprime les bigones : deux points consécutifs d'un lacet dans le même intervalle s'annulent.'''
+    trous, lacets = etat
+    resultat = []
+    for lacet in lacets:
+        pile = []
+        for x in lacet:
+            if pile and intervalle(pile[-1], trous) == intervalle(x, trous): pile.pop()
+            else: pile.append(x)
+        resultat.append(pile)
+    return trous, resultat
+
+def verifie_action(tresse):
+    '''En partant de la tresse vide et en appliquant les lettres une à une, sans les mots de fn,
+    on doit retrouver à chaque pas l'état calculé depuis les mots.'''
+    nb_trous = max(map(operator.abs, tresse)) + 1
+    etat = etat_de_tresse([], nb_trous)
+    for k, sigma in enumerate(tresse):
+        etat = normalise(reduit(agit(etat, sigma)))
+        if etat != etat_de_tresse(tresse[:k + 1], nb_trous): return False
+    return True
+
+assert verifie_action([1])
+assert verifie_action([-1])
+assert verifie_action([1, 1, 2, 2])
+assert verifie_action([4, 3, -1, -1, 2, -4, 1])
+assert verifie_action([1, -2, 1, -2, 1, -2, 3, -1, 2])
+
+
 def subdivise(points, pas=2):
     '''Ajoute des points sur les segments trop longs, pour que la torsion les courbe bien.'''
     resultat = [points[:1]]
@@ -423,78 +531,311 @@ assert verifie_torsion([-1])
 assert verifie_torsion([4, 3, -1, -1, 2, -4, 1])
 assert verifie_torsion([1, -2, 1, -2, 1, -2, 3, -1, 2])
 
-def passages(points, trous):
-    '''Passages d'une polyligne sur l'axe des trous, simplifiés : deux passages consécutifs dans le même
-    intervalle s'annulent (au-dessus comme au-dessous de l'axe le plan est simplement connexe).
-    Renvoie la liste des (indice fractionnaire dans la polyligne, intervalle) qui restent.'''
-    y_axe = trous[0, 1]
-    dessus = points[:, 1] < y_axe
-    pile = []
-    for j in np.nonzero(dessus[:-1] != dessus[1:])[0]:
-        p, q = points[j], points[j + 1]
-        f = (y_axe - p[1]) / (q[1] - p[1])
-        intervalle = np.searchsorted(trous[:, 0], p[0] + f * (q[0] - p[0]))
-        if pile and pile[-1][1] == intervalle: pile.pop()
-        else: pile.append((j + f, intervalle))
-    return pile
+# Le film algébrique : chaque lettre est une suite de mouvements élémentaires sur l'état, chacun continu.
+# 1. réespacement (les abscisses changent, leur ordre non : les demi-cercles ne se croisent jamais) pour vider
+#    une marge autour du bloc des trous i et i+1 ;
+# 2. demi-tour du bloc ; dans la marge, une couronne où seuls les arcs qui sortent du bloc s'enroulent ;
+# 3. retouche du dessin tordu vers le dessin de l'état non réduit (agit), morceau par morceau ;
+# 4. suppression des bigones par vagues : les deux points d'un bigone le plus intérieur glissent l'un vers l'autre,
+#    puis les arcs qui les entouraient se fondent en un seul ;
+# 5. réespacement vers la mise en page de l'image clé suivante.
 
-def entre_reperes(points, reperes, longueurs_morceaux):
-    '''Rééchantillonne la polyligne : entre deux repères consécutifs (indices fractionnaires),
-    le nombre de points donné, régulièrement espacés.'''
-    cumul = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
-    abscisse = np.interp(reperes, np.arange(len(points)), cumul)
-    s = np.concatenate([np.linspace(a, b, m, endpoint=False)
-                        for a, b, m in zip(abscisse[:-1], abscisse[1:], longueurs_morceaux)] + [abscisse[-1:]])
-    return np.column_stack((np.interp(s, cumul, points[:, 0]), np.interp(s, cumul, points[:, 1])))
+def demi_ellipse(x1, x2, en_haut, y_axe, aplati, pas=1.5):
+    '''Polyligne de la demi-ellipse de x1 à x2, au-dessus ou au-dessous de l'axe.'''
+    r = abs(x2 - x1) / 2
+    phi = np.linspace(0, math.pi, max(6, math.ceil(math.pi * r / pas)))
+    milieu = (x1 + x2) / 2
+    return np.column_stack((milieu + (x1 - milieu) * np.cos(phi),
+                            y_axe + (-1 if en_haut else 1) * aplati * r * np.sin(phi)))
 
-def correspondance(cle, cle_suivante, sigma, pas=1.5):
-    '''Met en correspondance point à point les lacets de deux images clés consécutives.
-    Les passages sur l'axe du dessin tordu d'un demi-tour, une fois simplifiés, sont exactement ceux de l'image
-    suivante : ce sont des repères communs. Entre deux repères on répartit les points à la même vitesse.
-    Renvoie les deux listes de polylignes rééchantillonnées (même nombre de points lacet par lacet).'''
-    tordus, _, _ = tord(cle, sigma, 1)
-    avant, apres = [], []
-    for p, p_tordu, q in zip(cle[0], tordus, cle_suivante[0]):
-        rp, rq = passages(p_tordu, cle[1]), passages(q, cle_suivante[1])
-        if [i for _, i in rp] != [i for _, i in rq]:
-            raise ValueError(f'passages différents {rp} {rq}')
-        rp = [0] + [f for f, _ in rp] + [len(p) - 1]
-        rq = [0] + [f for f, _ in rq] + [len(q) - 1]
-        def longueurs(points, reperes):
-            cumul = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
-            return np.diff(np.interp(reperes, np.arange(len(points)), cumul))
-        m = [max(2, math.ceil(max(a, b) / pas)) for a, b in zip(longueurs(p, rp), longueurs(q, rq))]
-        avant.append(entre_reperes(p, rp, m))
-        apres.append(entre_reperes(q, rq, m))
-    return avant, apres
+def a_la_meme_longueur(p, q, n=None):
+    '''Les deux polylignes rééchantillonnées par abscisse curviligne avec le même nombre de points.'''
+    def longueurs(points): return np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
+    lp, lq = longueurs(p), longueurs(q)
+    n = n or max(len(p), len(q), 2)
+    def reechantillonne(points, cumul):
+        s = np.linspace(0, cumul[-1], n)
+        return np.column_stack((np.interp(s, cumul, points[:, 0]), np.interp(s, cumul, points[:, 1])))
+    return reechantillonne(p, lp), reechantillonne(q, lq)
 
-def glisse(points, trous, trous_arrivee, clou, t):
-    '''Déformation horizontale du plan qui amène au temps t ∈ [0, 1] chaque trou vers sa place d'arrivée
-    (affine par morceaux entre les trous, fixe au bord du cadre, amortie jusqu'à rien au niveau du clou).
-    À hauteur fixée, x ↦ x' est croissante : c'est un homéomorphisme, il ne crée aucun croisement.'''
-    depart = np.concatenate(([-1e4], np.sort(trous[:, 0]), [1e4]))
-    arrivee = np.concatenate(([-1e4], np.sort(trous_arrivee[:, 0]), [1e4]))
-    x = points[:, 0]
-    nouveau_x = np.interp(x, depart, (1 - t) * depart + t * arrivee)
-    y_axe = trous[0, 1]
-    u = np.clip((clou[1] - points[:, 1]) / (clou[1] - y_axe), 0, 1)
-    poids = u * u * (3 - 2 * u)
-    return np.column_stack((x + poids * (nouveau_x - x), points[:, 1]))
+def melange(p, q, s):
+    p, q = a_la_meme_longueur(p, q)
+    return (1 - s) * p + s * q
 
-def mouvement(cle, cle_suivante, sigma, t, lacets=None, part_torsion=0.7):
-    '''Dessin au temps t ∈ [0, 1] du passage d'une image clé à la suivante par σ_sigma.
-    Jusqu'à part_torsion, les trous i et i+1 tournent d'un demi-tour (tord) et en même temps tous les trous
-    glissent vers leur place dans l'image suivante (glisse) : deux homéomorphismes, donc pas de croisement.
-    Ensuite le dessin tordu se fond dans l'image suivante (correspondance par les passages sur l'axe).
-    lacets : la correspondance des points (calculée si absente).'''
-    avant, apres = lacets or correspondance(cle, cle_suivante, sigma)
+def dessin_etat(etat, hauteur=400, largeur=400, disque=None, fusions=None, s=0):
+    '''Dessin d'un état aux abscisses quelconques (seul leur ordre compte pour la topologie).
+    disque : (centre, rayon) en unités d'abscisse, place réservée au demi-tour d'un bloc (le cadre, l'aplatissement
+    et l'éventail vers le clou en tiennent compte).
+    fusions : pour chaque lacet, {indice d'arc : abscisses des points fusionnés sur cet arc,
+    'debut' / 'fin' : abscisses des points fusionnés avant le premier / après le dernier point}, dessinés au temps s
+    du passage de la chaîne d'arcs à l'arc unique.
+    Renvoie (morceaux : pour chaque lacet la liste des polylignes de ses arcs bout à bout, descentes comprises,
+    positions des trous, clou, géométrie).'''
+    trous, lacets = etat
+    tous = list(trous) + [x for lacet in lacets for x in lacet]
+    pmin, pmax = min(tous), max(tous)
+    if disque: pmin, pmax = min(pmin, disque[0] - disque[1]), max(pmax, disque[0] + disque[1])
+    pas = (largeur - 40) / (pmax - pmin)
+    def X(p): return 20 + (p - pmin) * pas
+    y_axe = 0.4 * hauteur
+    x_clou, y_clou = largeur / 2, hauteur - 10
+    fusions = fusions or [{} for _ in lacets]
+
+    # on aplatit les arcs pour qu'ils tiennent en hauteur, en laissant de la place à l'éventail vers le clou
+    rayons = ([], [])
+    for l, lacet in enumerate(lacets):
+        for j in range(len(lacet) - 1):
+            rayons[j % 2].append(abs(lacet[j + 1] - lacet[j]) / 2 * pas)
+            rayons[j % 2].extend(abs(x - lacet[j]) / 2 * pas for x in fusions[l].get(j, []))
+    if disque:
+        for r in rayons: r.append(disque[1] * pas)
+    rayon_haut, rayon_bas = max(rayons[0]), max(rayons[1], default=0)
+    aplati = min(1, (y_axe - 10) / rayon_haut, (hauteur - 70 - y_axe) / max(rayon_bas, 1))
+    y_sous = y_axe + rayon_bas * aplati + 8 # le chemin vers le clou passe sous tous les arcs du bas
+
+    def demi(x1, x2, en_haut): return demi_ellipse(x1, x2, en_haut, y_axe, aplati)
+
+    def descente(xp, y_haut=y_axe):
+        '''Du clou au point (xp, y_haut) : arc de cercle (ou quart d'ellipse étiré) vers (xp, y_sous), vertical
+        en ce point, puis segment vertical. Les centres sont sur l'horizontale y_sous : pas de croisement.'''
+        d, h = xp - x_clou, y_clou - y_sous
+        if abs(d) < 1e-6: bas = np.array([(x_clou, y_clou)])
+        else:
+            etire = max(1, abs(d) / h)
+            d = d / etire
+            centre = (d * d - h * h) / (2 * d)
+            rayon = abs(d - centre)
+            alpha = np.linspace(math.atan2(h, -centre), 0 if d > centre else math.pi, 40)
+            bas = np.column_stack((x_clou + etire * (centre + rayon * np.cos(alpha)), y_sous + rayon * np.sin(alpha)))
+        n = max(2, math.ceil((y_sous - y_haut) / 2))
+        return np.concatenate((bas, np.column_stack((np.full(n, xp), np.linspace(y_sous, y_haut, n)))))
+
+    def chaine(points, en_haut):
+        return np.concatenate([demi(x1, x2, en_haut) for x1, x2 in zip(points[:-1], points[1:])])
+
+    def fusion_arcs(x1, m, x2, en_haut, s):
+        '''Passage au temps s des arcs x1 → m → x2 (du même côté, se touchant en m) à l'arc x1 → x2,
+        en balayant la région entre eux, qui est vide.'''
+        if min(x1, x2) < m < max(x1, x2):
+            # arcs côte à côte : on mélange les profondeurs, la plus grande demi-ellipse les contient
+            p = demi(x1, x2, en_haut)
+            c1, r1, c2, r2 = (x1 + m) / 2, abs(m - x1) / 2, (m + x2) / 2, abs(x2 - m) / 2
+            x = p[:, 0]
+            petit = np.where((x - m) * (x1 - m) > 0, np.sqrt(np.clip(r1 * r1 - (x - c1) ** 2, 0, None)),
+                             np.sqrt(np.clip(r2 * r2 - (x - c2) ** 2, 0, None)))
+            grand = np.abs(p[:, 1] - y_axe) / aplati
+            p[:, 1] = y_axe + (-1 if en_haut else 1) * aplati * ((1 - s) * petit + s * grand)
+            return p
+        # arcs emboîtés : le point de contact glisse vers l'extrémité la plus proche
+        bout = x1 if abs(x1 - m) < abs(x2 - m) else x2
+        xs = m + s * (bout - m)
+        return np.concatenate((demi(x1, xs, en_haut), demi(xs, x2, en_haut)))
+
+    def fusion_descente(m, b, s):
+        '''Passage au temps s de « descente en m puis arc du bas de m à b » à « descente en b » : le pied de la
+        descente glisse de m vers b, remonte jusqu'à l'arc puis le suit ; on reste sous l'arc, dans une région vide.'''
+        c, r = (m + b) / 2, abs(b - m) / 2
+        if r < 1e-9: return descente(b)
+        xs = m + s * (b - m)
+        phi_s = math.acos(np.clip((xs - c) / (m - c), -1, 1))
+        phi = np.linspace(phi_s, math.pi, max(2, math.ceil(math.pi * r / 1.5)))
+        arc = np.column_stack((c + (m - c) * np.cos(phi), y_axe + aplati * r * np.sin(phi)))
+        return np.concatenate((descente(xs, arc[0, 1]), arc))
+
+    morceaux = []
+    for l, lacet in enumerate(lacets):
+        xs = [X(p) for p in lacet]
+        f = {k: [X(x) for x in v] for k, v in fusions[l].items()}
+        m = []
+        # une seule fusion à un endroit : balayage exact ; plusieurs à la suite : mélange simple
+        if 'debut' in f and len(f['debut']) == 1: m.append(fusion_descente(f['debut'][0], xs[0], s))
+        elif 'debut' in f: m.append(melange(np.concatenate((descente(f['debut'][0]), chaine(f['debut'] + xs[:1], False))),
+                                            descente(xs[0]), s))
+        else: m.append(descente(xs[0]))
+        for j in range(len(lacet) - 1):
+            if j in f and len(f[j]) == 1: m.append(fusion_arcs(xs[j], f[j][0], xs[j + 1], j % 2 == 0, s))
+            elif j in f: m.append(melange(chaine([xs[j]] + f[j] + [xs[j + 1]], j % 2 == 0),
+                                          demi(xs[j], xs[j + 1], j % 2 == 0), s))
+            else: m.append(demi(xs[j], xs[j + 1], j % 2 == 0))
+        if 'fin' in f and len(f['fin']) == 1: m.append(fusion_descente(f['fin'][0], xs[-1], s)[::-1])
+        elif 'fin' in f: m.append(melange(np.concatenate((chaine(xs[-1:] + f['fin'], False), descente(f['fin'][-1])[::-1])),
+                                          descente(xs[-1])[::-1], s))
+        else: m.append(descente(xs[-1])[::-1])
+        morceaux.append(m)
+
+    geo = {'X': X, 'pmin': pmin, 'pas': pas, 'y_axe': y_axe, 'aplati': aplati}
+    return morceaux, np.array([(X(p), y_axe) for p in trous]), np.array((x_clou, y_clou)), geo
+
+def polylignes(morceaux):
+    return [np.concatenate(m) for m in morceaux]
+
+def mise_en_page_avec_marge(etat, sigma):
+    '''Abscisses (même ordre) laissant autour du bloc des trous i et i+1 une couronne vide, assez large pour
+    les arcs qui sortent du bloc. Renvoie (état, disque du demi-tour (centre, rayon intérieur, rayon extérieur)).'''
+    trous, lacets = etat
+    i = abs(sigma)
+    a, b = trous[i - 1], trous[i]
+    centre, r = (a + b) / 2, (b - a) / 2
+    _, origines = agit(etat, sigma, detail=True)
+    nb_sorties = sum(len(o) for o in origines)
+    r_int, r_ext = r + 0.5, r + 1.5 + nb_sorties
+    gauche = max([x for x in trous + [x for l in lacets for x in l] if x < a], default=None)
+    droite = min([x for x in trous + [x for l in lacets for x in l] if x > b], default=None)
+    dg = max(0, gauche - (centre - r_ext - 0.5)) if gauche is not None else 0
+    dd = max(0, (centre + r_ext + 0.5) - droite) if droite is not None else 0
+    def decale(x): return x - dg if x < a else x + dd if x > b else x
+    return ([decale(x) for x in trous], [[decale(x) for x in l] for l in lacets]), (centre, r_int, r_ext)
+
+def interpole(etat1, etat2, t):
+    '''Réespacement : abscisses interpolées entre deux états de même structure.'''
+    return ([(1 - t) * x + t * y for x, y in zip(etat1[0], etat2[0])],
+            [[(1 - t) * x + t * y for x, y in zip(l1, l2)] for l1, l2 in zip(etat1[1], etat2[1])])
+
+def demi_tour(morceaux, trous, geo, disque, sigma, t):
+    '''Les morceaux et les trous après rotation de t demi-tour du bloc (disque en unités d'abscisse).
+    La rotation se fait avant aplatissement : un demi-cercle du bloc reste un demi-cercle.'''
+    centre, r_int, r_ext = disque
+    c = np.array((geo['X'](centre), geo['y_axe']))
+    pas, aplati = geo['pas'], geo['aplati']
+    angle = SENS_DE_SIGMA * (1 if sigma > 0 else -1) * math.pi * t
+    def f(points):
+        p = points.copy()
+        p[:, 1] = c[1] + (p[:, 1] - c[1]) / aplati
+        p = tourne(p, c, np.array((r_int * pas,) * 2), np.array((r_ext * pas,) * 2), angle)
+        p[:, 1] = c[1] + (p[:, 1] - c[1]) * aplati
+        return p
+    return [[f(m) for m in lacet] for lacet in morceaux], f(trous)
+
+def coupe_sur_l_axe(points, geo, disque):
+    '''Point où la polyligne tordue traverse l'axe dans la couronne : (indice où couper, abscisse en unités).'''
+    centre, r_int, r_ext = disque
+    y = points[:, 1] - geo['y_axe']
+    for k in range(1, len(points) - 2):
+        if (y[k] < 0) != (y[k + 1] < 0):
+            x = points[k, 0] + (points[k + 1, 0] - points[k, 0]) * y[k] / (y[k] - y[k + 1])
+            u = geo['pmin'] + (x - 20) / geo['pas']
+            if r_int - 0.25 <= abs(u - centre) <= r_ext + 0.25: return k + 1, u
+    raise ValueError("l'arc tordu ne traverse pas l'axe dans la couronne")
+
+def bigones_interieurs(etat):
+    '''Bigones les plus intérieurs (deux points consécutifs d'un lacet dans le même intervalle, voisins sur l'axe),
+    sans point commun : {lacet : liste d'indices j (le bigone est j, j+1)}.'''
+    trous, lacets = etat
+    axe = sorted(trous + [x for l in lacets for x in l])
+    rang = {x: r for r, x in enumerate(axe)}
+    resultat = {}
+    for l, lacet in enumerate(lacets):
+        j = 0
+        while j < len(lacet) - 1:
+            u, v = lacet[j], lacet[j + 1]
+            if intervalle(u, trous) == intervalle(v, trous) and abs(rang[u] - rang[v]) == 1:
+                resultat.setdefault(l, []).append(j)
+                j += 2
+            else: j += 1
+    return resultat
+
+def retire_bigones(etat, bigones):
+    '''État sans les bigones (déjà rétrécis : leurs deux points ont la même abscisse) et fusions pour le dessin.'''
+    trous, lacets = etat
+    nouveaux, fusions = [], []
+    for l, lacet in enumerate(lacets):
+        retires = set(bigones.get(l, []))
+        garde, fusion, en_attente = [], {}, []
+        j = 0
+        while j < len(lacet):
+            if j in retires:
+                en_attente.append(lacet[j])
+                j += 2
+                continue
+            if en_attente: fusion['debut' if not garde else len(garde) - 1] = en_attente
+            en_attente = []
+            garde.append(lacet[j])
+            j += 1
+        if en_attente: fusion['fin'] = en_attente
+        nouveaux.append(garde)
+        fusions.append(fusion)
+    return (trous, nouveaux), fusions
+
+def film_de_tresse_algebrique(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400,
+                              images=None, **options):
+    '''GIF animé : chaque σ_i agit sur l'état par mouvements élémentaires continus (voir plus haut).
+    images : nombre d'images par phase.'''
+    images = {'marge': 10, 'demi_tour': 24, 'retouche': 8, 'retrecit': 6, 'fusion': 6, 'final': 12} | (images or {})
+    nb_trous = max(map(operator.abs, tresse), default=5) + 1
+    cadre = {'hauteur': hauteur, 'largeur': largeur}
     def lisse(u): return u * u * (3 - 2 * u)
-    torsion = lisse(min(1, t / part_torsion))
-    polylignes, trous, clou = tord((avant, cle[1], cle[2]), sigma, torsion)
-    polylignes = [glisse(p, cle[1], cle_suivante[1], clou, torsion) for p in polylignes]
-    trous = glisse(trous, cle[1], cle_suivante[1], clou, torsion)
-    w = lisse(max(0, (t - part_torsion) / (1 - part_torsion)))
-    return [(1 - w) * p + w * q for p, q in zip(polylignes, apres)], trous, clou
+    dessins, durees = [], []
+    def ajoute(morceaux, trous, clou, d=duree):
+        dessins.append((polylignes(morceaux), trous, clou))
+        durees.append(d)
+
+    etat = etat_de_tresse([], nb_trous)
+    m, t, c, _ = dessin_etat(etat, **cadre)
+    ajoute(m, t, c, pause)
+    for k, sigma in enumerate(tresse):
+        # 1. marge autour du bloc
+        avec_marge, disque = mise_en_page_avec_marge(etat, sigma)
+        for n in range(1, images['marge'] + 1):
+            u = lisse(n / images['marge'])
+            m, t, c, _ = dessin_etat(interpole(etat, avec_marge, u), disque=(disque[0], u * disque[2]), **cadre)
+            ajoute(m, t, c)
+        # 2. demi-tour du bloc
+        morceaux, trous, clou, geo = dessin_etat(avec_marge, disque=(disque[0], disque[2]), **cadre)
+        for n in range(1, images['demi_tour'] + 1):
+            m, t = demi_tour(morceaux, trous, geo, disque, sigma, lisse(n / images['demi_tour']))
+            ajoute(m, t, clou)
+        tordus, trous_tordus = m, t
+        # 3. retouche vers l'état non réduit, dont les points nouveaux sont là où les arcs tordus coupent l'axe
+        non_reduit, origines = agit(avec_marge, sigma, detail=True)
+        coupes = {}
+        for l, origine in enumerate(origines):
+            for indice, j in origine.items():
+                coupes[(l, j + 1)] = coupe_sur_l_axe(tordus[l][j + 1], geo, disque)
+                non_reduit[1][l][indice] = coupes[(l, j + 1)][1]
+        assert normalise(non_reduit) == normalise(agit(avec_marge, sigma)), "l'ordre des points nouveaux"
+        depart = []
+        for l, lacet in enumerate(tordus):
+            morceaux_l = []
+            for j, morceau in enumerate(lacet):
+                if (l, j) in coupes:
+                    k_coupe = coupes[(l, j)][0]
+                    morceaux_l += [morceau[:k_coupe + 1], morceau[k_coupe:]]
+                else: morceaux_l.append(morceau)
+            depart.append(morceaux_l)
+        arrivee, _, _, _ = dessin_etat(non_reduit, disque=(disque[0], disque[2]), **cadre)
+        for n in range(1, images['retouche'] + 1):
+            u = lisse(n / images['retouche'])
+            ajoute([[melange(p, q, u) for p, q in zip(dl, al)] for dl, al in zip(depart, arrivee)], trous_tordus, clou)
+        # 4. suppression des bigones par vagues
+        etat = non_reduit
+        while bigones := bigones_interieurs(etat):
+            retreci = (etat[0], [list(l) for l in etat[1]])
+            for l, js in bigones.items():
+                for j in js:
+                    milieu = (etat[1][l][j] + etat[1][l][j + 1]) / 2
+                    retreci[1][l][j] = retreci[1][l][j + 1] = milieu
+            for n in range(1, images['retrecit'] + 1):
+                m, t, c, _ = dessin_etat(interpole(etat, retreci, lisse(n / images['retrecit'])),
+                                         disque=(disque[0], disque[2]), **cadre)
+                ajoute(m, t, c)
+            etat, fusions = retire_bigones(retreci, bigones)
+            for n in range(1, images['fusion'] + 1):
+                m, t, c, _ = dessin_etat(etat, disque=(disque[0], disque[2]), fusions=fusions,
+                                         s=lisse(n / images['fusion']), **cadre)
+                ajoute(m, t, c)
+        # 5. mise en page de l'image clé suivante
+        cle = etat_de_tresse(tresse[:k + 1], nb_trous)
+        assert normalise(etat) == cle, "l'état réduit doit être celui de l'image clé"
+        for n in range(1, images['final'] + 1):
+            u = lisse(n / images['final'])
+            m, t, c, _ = dessin_etat(interpole(etat, cle, u), disque=(disque[0], (1 - u) * disque[2]), **cadre)
+            ajoute(m, t, c)
+        etat = cle
+        durees[-1] = pause
+    durees[-1] = 3 * pause
+
+    images_pil = [en_image_pil(peint(*d, hauteur, largeur, **options)) for d in dessins]
+    images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
 
 def en_image_pil(surface):
     '''Convertit une surface Cairo ARGB32 en image PIL (Cairo range les pixels en BGRA).'''
@@ -511,29 +852,7 @@ def film_de_tresse(tresse, fichier, duree=700, **options):
     durees = [duree] * len(tresse) + [2 * duree]
     images[0].save(fichier, save_all=True, append_images=images[1:], duration=durees, loop=0)
 
-def film_continu_de_tresse(tresse, fichier, images_par_lettre=36, duree=40, pause=500,
-                           hauteur=400, largeur=400, **options):
-    '''GIF animé où chaque σ_i fait tourner les trous i et i+1 l'un autour de l'autre et entraîne les lacets,
-    d'une image clé à la suivante en un seul mouvement (voir mouvement).
-    duree : millisecondes par image ; pause : arrêt sur chaque image clé.'''
-    nb_trous = max(map(operator.abs, tresse), default=5) + 1
-    cles = [geometrie_auto_de_tresse(tresse[:k], nb_trous, hauteur, largeur) for k in range(len(tresse) + 1)]
-
-    dessins, durees = [], []
-    for k, sigma in enumerate(tresse):
-        dessins.append(cles[k])
-        durees.append(pause)
-        lacets = correspondance(cles[k], cles[k + 1], sigma)
-        for n in range(1, images_par_lettre):
-            dessins.append(mouvement(cles[k], cles[k + 1], sigma, n / images_par_lettre, lacets))
-            durees.append(duree)
-    dessins.append(cles[-1])
-    durees.append(3 * pause)
-
-    images = [en_image_pil(peint(*d, hauteur, largeur, **options)) for d in dessins]
-    images[0].save(fichier, save_all=True, append_images=images[1:], duration=durees, loop=0)
-
 dessine_auto_de_tresse([1, 1, 2, 2], './imgs/nouv_1122.png')
 dessine_auto_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/nouv_43m1m12m41.png', largeur_brin=3)
 film_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_43m1m12m41.gif', largeur_brin=3)
-film_continu_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_continu_43m1m12m41.gif', largeur_brin=3)
+film_de_tresse_algebrique([4, 3, -1, -1, 2, -4, 1], './imgs/film_continu_43m1m12m41.gif', largeur_brin=3)

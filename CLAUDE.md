@@ -74,19 +74,27 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
    renvoie la surface Cairo ; `dessine_auto_de_tresse` l'écrit en PNG.
    Le dessin passe par `geometrie_auto_de_tresse` (polylignes numpy : chemins Cairo aplatis par `copy_path_flat`
    puis subdivisés, positions des trous et du clou) et `peint` (trace les polylignes).
-7. `film_continu_de_tresse(tresse, fichier)` : le film continu. Pour chaque lettre, `tord` fait tourner d'un
-   demi-tour la région autour des trous i et i+1 (`ellipses_de_torsion` / `tourne` : rotation le long d'ellipses
-   emboîtées, entière dans l'ellipse intérieure, amortie jusqu'à l'extérieure, qui évite les autres trous et le clou),
-   et `glisse` (déformation horizontale monotone, amortie vers le clou) amène en même temps tous les trous à leur
-   place dans l'image suivante : sur les 70 % premiers du temps (`mouvement`), deux homéomorphismes, pas de croisement.
-   Ensuite fondu linéaire vers l'image clé suivante. Les points se correspondent grâce à `correspondance` :
-   les passages sur l'axe (`passages`, simplifiés en annulant deux passages consécutifs dans le même intervalle)
-   du dessin tordu d'un demi-tour sont exactement ceux de l'image suivante ; ce sont des repères,
-   entre lesquels on rééchantillonne par abscisse curviligne (`entre_reperes`).
-   `lit_mot` relit le mot d'une polyligne (traversées des demi-droites qui montent des trous) ;
-   `verifie_torsion` contrôle que chaque image clé tordue d'un demi-tour se lit comme le préfixe suivant.
-   Sens : σ_i positif = demi-tour horaire à l'écran (`SENS_DE_SIGMA = 1`, repère Cairo y vers le bas) ;
-   le test échoue avec l'autre sens.
+7. **Action algébrique de σ_i sur l'état** (`agit`, `reduit`) : l'état est fait des abscisses des trous et, pour chaque
+   lacet, des abscisses de ses points sur l'axe (seul l'ordre compte ; `etat_de_tresse` le calcule depuis les mots,
+   `normalise` le ramène aux rangs). σ_i fait tourner d'un demi-tour le bloc (trous i, i+1 et intervalle i) :
+   les points du bloc sont réfléchis ; chaque arc qui sort du bloc (ou descente au clou) reçoit un point nouveau,
+   pour σ_i positif à droite du bloc si c'est un arc du haut, à gauche sinon (l'inverse pour σ_i⁻¹) ; d'un même côté,
+   les points nouveaux sont dans l'ordre des extrémités intérieures de leurs arcs. Puis `reduit` supprime les bigones
+   (deux points consécutifs d'un lacet dans le même intervalle). `verifie_action` part de la tresse vide et applique
+   les lettres sans les mots : on retrouve l'état des mots à chaque pas (testé aussi sur 300 tresses aléatoires ;
+   le test échoue si l'on inverse la règle du côté ou de l'ordre).
+8. `film_de_tresse_algebrique(tresse, fichier)` → `imgs/film_continu_*.gif` : chaque lettre est une suite de
+   mouvements élémentaires sur l'état, dessinés par `dessin_etat` (demi-ellipses entre abscisses réelles, place
+   réservée au disque du demi-tour, fusions en cours) : (1) réespacement vers `mise_en_page_avec_marge` (couronne vide
+   autour du bloc) ; (2) `demi_tour` : rotation rigide du bloc, amortie dans la couronne, faite avant aplatissement ;
+   seuls les arcs qui sortent du bloc s'enroulent, les autres lacets ne bougent pas ; (3) retouche morceau par morceau
+   vers le dessin de l'état non réduit, dont les points nouveaux sont là où les arcs tordus coupent l'axe
+   (`coupe_sur_l_axe` ; un `assert` vérifie que cet ordre est celui de `agit`) ; (4) vagues de bigones
+   (`bigones_interieurs`, `retire_bigones`) : les deux points glissent l'un vers l'autre, puis balayage exact de la
+   région vide (`fusion_arcs`, `fusion_descente`) ; (5) réespacement vers l'image clé (un `assert` vérifie l'état).
+   Réespacer ne crée jamais de croisement : deux demi-cercles se croisent ssi leurs extrémités s'entrelacent.
+   `tord`, `lit_mot`, `verifie_torsion` (ancienne torsion d'une image clé, relue par les demi-droites au-dessus
+   des trous) fixent le sens : σ_i positif = demi-tour horaire à l'écran (`SENS_DE_SIGMA = 1`, y vers le bas).
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
@@ -95,9 +103,6 @@ de l'image k : le dessin du préfixe suivant est bien l'image du dessin courant 
 `decale` et `dedans_extrm` viennent de l'ancienne idée d'insertion point par point (description dans
 `git show f2fdb1c` et `git show 4b2d4f4`). Ils ne sont plus utilisés.
 
-Prochaine étape, le film : l'état « lacets + ordre des points sur l'axe » est celui sur lequel σ_i devra agir
-continûment. Les images de chaque préfixe de la tresse sont les images clés.
-
 ## Prochaines étapes
 
 Objectif : le film (b), où σ_i fait tourner continûment les trous i et i+1 l'un autour de l'autre
@@ -105,15 +110,13 @@ et entraîne les lacets.
 
 1. ~~**Film image par image.**~~ Fait : `film_de_tresse` → `imgs/film_*.gif`. Les trous gardent leur nombre mais
    bougent horizontalement d'une image à l'autre (l'espacement dépend du nombre de points sur l'axe).
-2. ~~**Mouvement continu d'un σ_i.**~~ Fait : `film_continu_de_tresse` → `imgs/film_continu_*.gif`.
-   Limites : le fondu final crée des croisements quand le demi-tour a beaucoup enroulé les brins
-   (σ_2 et σ_1 de [4, 3, -1, -1, 2, -4, 1]) ; les lacets voisins sont entraînés par la torsion puis relâchés
-   par le fondu. Essais écartés : mélanger image tordue de t et image suivante détordue de 1 - t (cartésien
-   ou polaire), mélanger puis détordre ; tous font des croisements.
-   Piste : remplacer le fondu par une détente physique (raccourcissement et lissage des brins, répulsion
-   entre brins et par les trous, petits pas), qui garde la topologie par construction (scipy `cKDTree`).
-3. **À plus long terme.** Faire agir σ_i directement sur l'état « lacets + ordre des points sur l'axe »,
-   sans repasser par les mots de F_n. Le dessin calculé depuis le mot sert alors de test.
+2. ~~**Mouvement continu d'un σ_i.**~~ Fait, puis remplacé par la version algébrique (3).
+3. ~~**Faire agir σ_i directement sur l'état.**~~ Fait : `agit` / `reduit` et `film_de_tresse_algebrique`.
+   Les essais géométriques précédents (torsion puis fondu linéaire, mélanges) sont dans l'historique git
+   (`505776e`, `cba60c8`) : le fondu créait des croisements, il est remplacé par les vagues de bigones.
+   Limites : quand il y a beaucoup de points sur l'axe les brins sont très serrés ; la retouche (3) est un mélange
+   linéaire (pas de preuve d'absence de croisement, mais les deux dessins sont proches) ; les fusions de plusieurs
+   bigones à la suite dans un même lacet sont aussi un mélange linéaire.
 4. **Ménage.** Supprimer `decale` et `dedans_extrm` (inutilisés) ; éventuellement passer les `assert` en tests pytest.
 
 Sur un nouvel ordinateur : `git pull`, puis `conda env create -f environment.yml` (ou `conda env update -f
@@ -147,7 +150,7 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
-python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif et imgs/film_continu_*.gif
+python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif et imgs/film_continu_*.gif (film algébrique)
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```
