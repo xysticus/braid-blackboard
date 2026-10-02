@@ -417,7 +417,8 @@ def geometrie_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400):
     return polylignes, trous, np.array((x_clou, y_clou))
 
 def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True, axe=None):
-    '''Surface Cairo du dessin donné en polylignes ; axe : polyligne de l'axe, tracée en gris sous les lacets.'''
+    '''Surface Cairo du dessin donné en polylignes ; axe : polyligne de l'axe (ou liste de morceaux),
+    tracée en gris sous les lacets.'''
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, largeur, hauteur)
     ctx = cairo.Context(surface)
     ctx.set_source_rgb(1, 1, 1)
@@ -427,9 +428,10 @@ def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_
     if axe is not None:
         ctx.set_line_width(max(1.5, 0.8 * largeur_brin))
         ctx.set_source_rgb(.45, .45, .45)
-        ctx.move_to(*axe[0])
-        for p in axe[1:]: ctx.line_to(*p)
-        ctx.stroke()
+        for morceau in (axe if isinstance(axe, list) else [axe]):
+            ctx.move_to(*morceau[0])
+            for p in morceau[1:]: ctx.line_to(*p)
+            ctx.stroke()
     ctx.set_line_width(largeur_brin)
 
     couleurs = [(1, 0, 0), (0, .7, 0), (0, 0, 1), (.7, .7, 0), (.7, 0, .7), (0, .7, .7)]
@@ -720,6 +722,23 @@ def demi_tour(morceaux, trous, geo, disque, sigma, t):
         return p
     return [[f(m) for m in lacet] for lacet in morceaux], f(trous)
 
+def axe_pendant_demi_tour(geo, disque, avec_marge, trous_tournes, i, t, largeur):
+    '''Morceaux de l'axe au temps t du demi-tour. Hors de la couronne l'axe ne bouge pas. Le segment i tourne,
+    rigide entre les trous i et i+1. Les morceaux des segments i-1 et i+1 accrochés à ces trous (jusqu'au bord de la
+    couronne) sont voués à disparaître : ils tournent avec leur trou et rétrécissent ; les nouveaux morceaux poussent
+    depuis le bord de la couronne et rejoignent les trous quand ils se reposent sur l'axe.'''
+    centre, _, r_ext = disque
+    X, y = geo['X'], geo['y_axe']
+    c = np.array((X(centre), y))
+    r = (avec_marge[0][i] - avec_marge[0][i - 1]) / 2
+    a, b = trous_tournes[i - 1], trous_tournes[i]
+    def vieux(trou): return np.array((trou, trou + (c + (trou - c) * r_ext / r - trou) * (1 - t)))
+    pousse = (r_ext - r) * geo['pas'] * t
+    return [np.array(((5, y), (X(centre - r_ext), y))), np.array(((X(centre + r_ext), y), (largeur - 5, y))),
+            np.array((a, b)), vieux(a), vieux(b),
+            np.array(((X(centre - r_ext), y), (X(centre - r_ext) + pousse, y))),
+            np.array(((X(centre + r_ext), y), (X(centre + r_ext) - pousse, y)))]
+
 def coupe_sur_l_axe(points, geo, disque):
     '''Point où la polyligne tordue traverse l'axe dans la couronne : (indice où couper, abscisse en unités).'''
     centre, r_int, r_ext = disque
@@ -788,7 +807,8 @@ def marges_des_bigones(etat, bigones):
 def film_de_tresse_algebrique(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400,
                               images=None, **options):
     '''GIF animé : chaque σ_i agit sur l'état par mouvements élémentaires continus (voir plus haut).
-    L'axe est dessiné : pendant le demi-tour, les trous i et i+1 le quittent et s'y reposent échangés ;
+    L'axe est dessiné : pendant le demi-tour, le segment i tourne avec les trous i et i+1, les morceaux des
+    segments voisins accrochés à ces trous tournent et rétrécissent, les nouveaux poussent (axe_pendant_demi_tour) ;
     pour chaque vague de bigones, le segment se bombe par-dessus (ou par-dessous) chaque capuchon,
     lacets immobiles, puis redescend en l'écrasant ; les arcs restés de l'autre côté fusionnent.
     images : nombre d'images par phase.'''
@@ -813,11 +833,12 @@ def film_de_tresse_algebrique(tresse, fichier, duree=40, pause=500, hauteur=400,
             u = lisse(n / images['marge'])
             ajoute_etat(interpole(etat, avec_marge, u), disque=(disque[0], u * disque[2]))
         reserve = (disque[0], disque[2])
-        # 2. demi-tour du bloc ; l'axe ne bouge pas
+        # 2. demi-tour du bloc ; le segment i tourne avec les trous, les morceaux voués à disparaître aussi
         morceaux, trous, clou, geo = dessin_etat(avec_marge, disque=reserve, **cadre)
         for n in range(1, images['demi_tour'] + 1):
-            m, t = demi_tour(morceaux, trous, geo, disque, sigma, lisse(n / images['demi_tour']))
-            ajoute(m, t, clou, geo['axe'])
+            u = lisse(n / images['demi_tour'])
+            m, t = demi_tour(morceaux, trous, geo, disque, sigma, u)
+            ajoute(m, t, clou, axe_pendant_demi_tour(geo, disque, avec_marge, t, abs(sigma), u, largeur))
         tordus, trous_tordus = m, t
         # 3. retouche vers l'état non réduit, dont les points nouveaux sont là où les arcs tordus coupent l'axe
         non_reduit, origines = agit(avec_marge, sigma, detail=True)
