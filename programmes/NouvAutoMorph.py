@@ -423,21 +423,78 @@ assert verifie_torsion([-1])
 assert verifie_torsion([4, 3, -1, -1, 2, -4, 1])
 assert verifie_torsion([1, -2, 1, -2, 1, -2, 3, -1, 2])
 
-def reechantillonne(points, n):
-    '''n points régulièrement espacés le long de la polyligne.'''
-    longueurs = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
-    s = np.linspace(0, longueurs[-1], n)
-    return np.column_stack((np.interp(s, longueurs, points[:, 0]), np.interp(s, longueurs, points[:, 1])))
+def passages(points, trous):
+    '''Passages d'une polyligne sur l'axe des trous, simplifiés : deux passages consécutifs dans le même
+    intervalle s'annulent (au-dessus comme au-dessous de l'axe le plan est simplement connexe).
+    Renvoie la liste des (indice fractionnaire dans la polyligne, intervalle) qui restent.'''
+    y_axe = trous[0, 1]
+    dessus = points[:, 1] < y_axe
+    pile = []
+    for j in np.nonzero(dessus[:-1] != dessus[1:])[0]:
+        p, q = points[j], points[j + 1]
+        f = (y_axe - p[1]) / (q[1] - p[1])
+        intervalle = np.searchsorted(trous[:, 0], p[0] + f * (q[0] - p[0]))
+        if pile and pile[-1][1] == intervalle: pile.pop()
+        else: pile.append((j + f, intervalle))
+    return pile
 
-def fond(depart, arrivee, t):
-    '''Interpolation au temps t ∈ [0, 1] entre deux dessins : chaque lacet est rééchantillonné
-    à la même longueur, les trous sont pris de gauche à droite.'''
-    polylignes = []
-    for p, q in zip(depart[0], arrivee[0]):
-        n = max(len(p), len(q))
-        polylignes.append((1 - t) * reechantillonne(p, n) + t * reechantillonne(q, n))
-    trous = (1 - t) * depart[1][np.argsort(depart[1][:, 0])] + t * arrivee[1]
-    return polylignes, trous, depart[2]
+def entre_reperes(points, reperes, longueurs_morceaux):
+    '''Rééchantillonne la polyligne : entre deux repères consécutifs (indices fractionnaires),
+    le nombre de points donné, régulièrement espacés.'''
+    cumul = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
+    abscisse = np.interp(reperes, np.arange(len(points)), cumul)
+    s = np.concatenate([np.linspace(a, b, m, endpoint=False)
+                        for a, b, m in zip(abscisse[:-1], abscisse[1:], longueurs_morceaux)] + [abscisse[-1:]])
+    return np.column_stack((np.interp(s, cumul, points[:, 0]), np.interp(s, cumul, points[:, 1])))
+
+def correspondance(cle, cle_suivante, sigma, pas=1.5):
+    '''Met en correspondance point à point les lacets de deux images clés consécutives.
+    Les passages sur l'axe du dessin tordu d'un demi-tour, une fois simplifiés, sont exactement ceux de l'image
+    suivante : ce sont des repères communs. Entre deux repères on répartit les points à la même vitesse.
+    Renvoie les deux listes de polylignes rééchantillonnées (même nombre de points lacet par lacet).'''
+    tordus, _, _ = tord(cle, sigma, 1)
+    avant, apres = [], []
+    for p, p_tordu, q in zip(cle[0], tordus, cle_suivante[0]):
+        rp, rq = passages(p_tordu, cle[1]), passages(q, cle_suivante[1])
+        if [i for _, i in rp] != [i for _, i in rq]:
+            raise ValueError(f'passages différents {rp} {rq}')
+        rp = [0] + [f for f, _ in rp] + [len(p) - 1]
+        rq = [0] + [f for f, _ in rq] + [len(q) - 1]
+        def longueurs(points, reperes):
+            cumul = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
+            return np.diff(np.interp(reperes, np.arange(len(points)), cumul))
+        m = [max(2, math.ceil(max(a, b) / pas)) for a, b in zip(longueurs(p, rp), longueurs(q, rq))]
+        avant.append(entre_reperes(p, rp, m))
+        apres.append(entre_reperes(q, rq, m))
+    return avant, apres
+
+def glisse(points, trous, trous_arrivee, clou, t):
+    '''Déformation horizontale du plan qui amène au temps t ∈ [0, 1] chaque trou vers sa place d'arrivée
+    (affine par morceaux entre les trous, fixe au bord du cadre, amortie jusqu'à rien au niveau du clou).
+    À hauteur fixée, x ↦ x' est croissante : c'est un homéomorphisme, il ne crée aucun croisement.'''
+    depart = np.concatenate(([-1e4], np.sort(trous[:, 0]), [1e4]))
+    arrivee = np.concatenate(([-1e4], np.sort(trous_arrivee[:, 0]), [1e4]))
+    x = points[:, 0]
+    nouveau_x = np.interp(x, depart, (1 - t) * depart + t * arrivee)
+    y_axe = trous[0, 1]
+    u = np.clip((clou[1] - points[:, 1]) / (clou[1] - y_axe), 0, 1)
+    poids = u * u * (3 - 2 * u)
+    return np.column_stack((x + poids * (nouveau_x - x), points[:, 1]))
+
+def mouvement(cle, cle_suivante, sigma, t, lacets=None, part_torsion=0.7):
+    '''Dessin au temps t ∈ [0, 1] du passage d'une image clé à la suivante par σ_sigma.
+    Jusqu'à part_torsion, les trous i et i+1 tournent d'un demi-tour (tord) et en même temps tous les trous
+    glissent vers leur place dans l'image suivante (glisse) : deux homéomorphismes, donc pas de croisement.
+    Ensuite le dessin tordu se fond dans l'image suivante (correspondance par les passages sur l'axe).
+    lacets : la correspondance des points (calculée si absente).'''
+    avant, apres = lacets or correspondance(cle, cle_suivante, sigma)
+    def lisse(u): return u * u * (3 - 2 * u)
+    torsion = lisse(min(1, t / part_torsion))
+    polylignes, trous, clou = tord((avant, cle[1], cle[2]), sigma, torsion)
+    polylignes = [glisse(p, cle[1], cle_suivante[1], clou, torsion) for p in polylignes]
+    trous = glisse(trous, cle[1], cle_suivante[1], clou, torsion)
+    w = lisse(max(0, (t - part_torsion) / (1 - part_torsion)))
+    return [(1 - w) * p + w * q for p, q in zip(polylignes, apres)], trous, clou
 
 def en_image_pil(surface):
     '''Convertit une surface Cairo ARGB32 en image PIL (Cairo range les pixels en BGRA).'''
@@ -454,25 +511,21 @@ def film_de_tresse(tresse, fichier, duree=700, **options):
     durees = [duree] * len(tresse) + [2 * duree]
     images[0].save(fichier, save_all=True, append_images=images[1:], duration=durees, loop=0)
 
-def film_continu_de_tresse(tresse, fichier, images_torsion=24, images_fondu=12, duree=40, pause=800,
+def film_continu_de_tresse(tresse, fichier, images_par_lettre=36, duree=40, pause=500,
                            hauteur=400, largeur=400, **options):
     '''GIF animé où chaque σ_i fait tourner les trous i et i+1 l'un autour de l'autre et entraîne les lacets,
-    puis le dessin tordu se fond dans l'image clé du préfixe suivant.
+    d'une image clé à la suivante en un seul mouvement (voir mouvement).
     duree : millisecondes par image ; pause : arrêt sur chaque image clé.'''
     nb_trous = max(map(operator.abs, tresse), default=5) + 1
     cles = [geometrie_auto_de_tresse(tresse[:k], nb_trous, hauteur, largeur) for k in range(len(tresse) + 1)]
-    def lisse(t): return (1 - math.cos(math.pi * t)) / 2
 
     dessins, durees = [], []
     for k, sigma in enumerate(tresse):
         dessins.append(cles[k])
         durees.append(pause)
-        for n in range(1, images_torsion + 1):
-            dessins.append(tord(cles[k], sigma, lisse(n / images_torsion)))
-            durees.append(duree)
-        tordu = dessins[-1]
-        for n in range(1, images_fondu):
-            dessins.append(fond(tordu, cles[k + 1], lisse(n / images_fondu)))
+        lacets = correspondance(cles[k], cles[k + 1], sigma)
+        for n in range(1, images_par_lettre):
+            dessins.append(mouvement(cles[k], cles[k + 1], sigma, n / images_par_lettre, lacets))
             durees.append(duree)
     dessins.append(cles[-1])
     durees.append(3 * pause)
