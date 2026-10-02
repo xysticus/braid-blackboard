@@ -87,8 +87,10 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
    mouvements élémentaires sur l'état, dessinés par `dessin_etat` (demi-ellipses entre abscisses réelles, place
    réservée au disque du demi-tour, fusions en cours) : (1) réespacement vers `mise_en_page_avec_marge` (couronne vide
    autour du bloc) ; (2) `demi_tour` : rotation rigide du bloc, amortie dans la couronne, faite avant aplatissement ;
-   seuls les arcs qui sortent du bloc s'enroulent, les autres lacets ne bougent pas, l'axe reste immobile (les trous
-   le quittent et s'y reposent échangés) ; (3) retouche morceau par morceau
+   seuls les arcs qui sortent du bloc s'enroulent, les autres lacets ne bougent pas ; hors de la couronne l'axe
+   ne bouge pas, le segment i tourne avec les trous, les morceaux des segments voisins accrochés aux deux trous
+   (voués à disparaître) tournent et rétrécissent pendant que les nouveaux poussent depuis le bord de la couronne
+   (`axe_pendant_demi_tour`) ; (3) retouche morceau par morceau
    vers le dessin de l'état non réduit, dont les points nouveaux sont là où les arcs tordus coupent l'axe
    (`coupe_sur_l_axe` ; un `assert` vérifie que cet ordre est celui de `agit`) ; (4) vagues de bigones
    (`bigones_interieurs`, `retire_bigones`) : ce sont les segments de l'axe qui travaillent ; le segment se bombe
