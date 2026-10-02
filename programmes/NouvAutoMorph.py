@@ -416,15 +416,21 @@ def geometrie_auto_de_tresse(tresse, nb_trous=None, hauteur=400, largeur=400):
     trous = np.array(sorted((x(rang), y_axe) for rang in rang_trou.values()))
     return polylignes, trous, np.array((x_clou, y_clou))
 
-def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True):
-    '''Surface Cairo du dessin donné en polylignes.'''
+def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True, axe=None):
+    '''Surface Cairo du dessin donné en polylignes ; axe : polyligne de l'axe, tracée en gris sous les lacets.'''
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, largeur, hauteur)
     ctx = cairo.Context(surface)
     ctx.set_source_rgb(1, 1, 1)
     ctx.paint()
-    ctx.set_line_width(largeur_brin)
     ctx.set_line_cap(cairo.LINE_CAP_ROUND)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    if axe is not None:
+        ctx.set_line_width(max(1.5, 0.8 * largeur_brin))
+        ctx.set_source_rgb(.45, .45, .45)
+        ctx.move_to(*axe[0])
+        for p in axe[1:]: ctx.line_to(*p)
+        ctx.stroke()
+    ctx.set_line_width(largeur_brin)
 
     couleurs = [(1, 0, 0), (0, .7, 0), (0, 0, 1), (.7, .7, 0), (.7, 0, .7), (0, .7, .7)]
     if not en_couleur: couleurs = [(0, 0, 0)]
@@ -562,13 +568,15 @@ def melange(p, q, s):
     p, q = a_la_meme_longueur(p, q)
     return (1 - s) * p + s * q
 
-def dessin_etat(etat, hauteur=400, largeur=400, disque=None, fusions=None, s=0):
+def dessin_etat(etat, hauteur=400, largeur=400, disque=None, fusions=None, s=0, bosses=()):
     '''Dessin d'un état aux abscisses quelconques (seul leur ordre compte pour la topologie).
     disque : (centre, rayon) en unités d'abscisse, place réservée au demi-tour d'un bloc (le cadre, l'aplatissement
     et l'éventail vers le clou en tiennent compte).
     fusions : pour chaque lacet, {indice d'arc : abscisses des points fusionnés sur cet arc,
     'debut' / 'fin' : abscisses des points fusionnés avant le premier / après le dernier point}, dessinés au temps s
     du passage de la chaîne d'arcs à l'arc unique.
+    bosses : déformations de l'axe (x1, x2, en_haut, amplitude) en unités d'abscisse : demi-ellipse sur [x1, x2]
+    (aplatie comme les arcs), multipliée par l'amplitude. L'axe dessiné est dans geo['axe'].
     Renvoie (morceaux : pour chaque lacet la liste des polylignes de ses arcs bout à bout, descentes comprises,
     positions des trous, clou, géométrie).'''
     trous, lacets = etat
@@ -663,7 +671,13 @@ def dessin_etat(etat, hauteur=400, largeur=400, disque=None, fusions=None, s=0):
         else: m.append(descente(xs[-1])[::-1])
         morceaux.append(m)
 
-    geo = {'X': X, 'pmin': pmin, 'pas': pas, 'y_axe': y_axe, 'aplati': aplati}
+    axe = np.column_stack((np.linspace(5, largeur - 5, largeur), np.full(largeur, y_axe)))
+    for x1, x2, en_haut, amplitude in bosses:
+        x1, x2 = X(x1), X(x2)
+        c, r = (x1 + x2) / 2, abs(x2 - x1) / 2
+        hauteur_bosse = aplati * np.sqrt(np.clip(r * r - (axe[:, 0] - c) ** 2, 0, None))
+        axe[:, 1] += (-1 if en_haut else 1) * amplitude * hauteur_bosse
+    geo = {'X': X, 'pmin': pmin, 'pas': pas, 'y_axe': y_axe, 'aplati': aplati, 'axe': axe}
     return morceaux, np.array([(X(p), y_axe) for p in trous]), np.array((x_clou, y_clou)), geo
 
 def polylignes(morceaux):
@@ -756,34 +770,54 @@ def retire_bigones(etat, bigones):
         fusions.append(fusion)
     return (trous, nouveaux), fusions
 
+def marges_des_bigones(etat, bigones):
+    '''Pour chaque bigone (l, j), la marge que le segment peut prendre de chaque côté du capuchon :
+    un tiers de l'écart au voisin sur l'axe (point ou trou) le plus proche, donc la bosse ne touche aucun trou.'''
+    trous, lacets = etat
+    axe = sorted(trous + [x for l in lacets for x in l])
+    marges = {}
+    for l, js in bigones.items():
+        for j in js:
+            u, v = sorted((lacets[l][j], lacets[l][j + 1]))
+            k, m = axe.index(u), axe.index(v)
+            ecarts = [u - axe[k - 1]] if k > 0 else []
+            ecarts += [axe[m + 1] - v] if m + 1 < len(axe) else []
+            marges[(l, j)] = min(ecarts + [1]) / 3
+    return marges
+
 def film_de_tresse_algebrique(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400,
                               images=None, **options):
     '''GIF animé : chaque σ_i agit sur l'état par mouvements élémentaires continus (voir plus haut).
+    L'axe est dessiné : pendant le demi-tour, les trous i et i+1 le quittent et s'y reposent échangés ;
+    pour chaque vague de bigones, le segment se bombe par-dessus (ou par-dessous) chaque capuchon,
+    lacets immobiles, puis redescend en l'écrasant ; les arcs restés de l'autre côté fusionnent.
     images : nombre d'images par phase.'''
-    images = {'marge': 10, 'demi_tour': 24, 'retouche': 8, 'retrecit': 6, 'fusion': 6, 'final': 12} | (images or {})
+    images = {'marge': 10, 'demi_tour': 24, 'retouche': 8, 'bosse': 6, 'presse': 8, 'fusion': 6, 'final': 12}              | (images or {})
     nb_trous = max(map(operator.abs, tresse), default=5) + 1
     cadre = {'hauteur': hauteur, 'largeur': largeur}
     def lisse(u): return u * u * (3 - 2 * u)
     dessins, durees = [], []
-    def ajoute(morceaux, trous, clou, d=duree):
-        dessins.append((polylignes(morceaux), trous, clou))
+    def ajoute(morceaux, trous, clou, axe, d=duree):
+        dessins.append((polylignes(morceaux), trous, clou, axe))
         durees.append(d)
+    def ajoute_etat(etat, d=duree, **dessin):
+        m, t, c, geo = dessin_etat(etat, **dessin, **cadre)
+        ajoute(m, t, c, geo['axe'], d)
 
     etat = etat_de_tresse([], nb_trous)
-    m, t, c, _ = dessin_etat(etat, **cadre)
-    ajoute(m, t, c, pause)
+    ajoute_etat(etat, pause)
     for k, sigma in enumerate(tresse):
         # 1. marge autour du bloc
         avec_marge, disque = mise_en_page_avec_marge(etat, sigma)
         for n in range(1, images['marge'] + 1):
             u = lisse(n / images['marge'])
-            m, t, c, _ = dessin_etat(interpole(etat, avec_marge, u), disque=(disque[0], u * disque[2]), **cadre)
-            ajoute(m, t, c)
-        # 2. demi-tour du bloc
-        morceaux, trous, clou, geo = dessin_etat(avec_marge, disque=(disque[0], disque[2]), **cadre)
+            ajoute_etat(interpole(etat, avec_marge, u), disque=(disque[0], u * disque[2]))
+        reserve = (disque[0], disque[2])
+        # 2. demi-tour du bloc ; l'axe ne bouge pas
+        morceaux, trous, clou, geo = dessin_etat(avec_marge, disque=reserve, **cadre)
         for n in range(1, images['demi_tour'] + 1):
             m, t = demi_tour(morceaux, trous, geo, disque, sigma, lisse(n / images['demi_tour']))
-            ajoute(m, t, clou)
+            ajoute(m, t, clou, geo['axe'])
         tordus, trous_tordus = m, t
         # 3. retouche vers l'état non réduit, dont les points nouveaux sont là où les arcs tordus coupent l'axe
         non_reduit, origines = agit(avec_marge, sigma, detail=True)
@@ -802,39 +836,44 @@ def film_de_tresse_algebrique(tresse, fichier, duree=40, pause=500, hauteur=400,
                     morceaux_l += [morceau[:k_coupe + 1], morceau[k_coupe:]]
                 else: morceaux_l.append(morceau)
             depart.append(morceaux_l)
-        arrivee, _, _, _ = dessin_etat(non_reduit, disque=(disque[0], disque[2]), **cadre)
+        arrivee, _, _, geo = dessin_etat(non_reduit, disque=reserve, **cadre)
         for n in range(1, images['retouche'] + 1):
             u = lisse(n / images['retouche'])
-            ajoute([[melange(p, q, u) for p, q in zip(dl, al)] for dl, al in zip(depart, arrivee)], trous_tordus, clou)
-        # 4. suppression des bigones par vagues
+            ajoute([[melange(p, q, u) for p, q in zip(dl, al)] for dl, al in zip(depart, arrivee)],
+                   trous_tordus, clou, geo['axe'])
+        # 4. vagues de bigones : le segment monte par-dessus le capuchon, puis l'écrase en redescendant
         etat = non_reduit
         while bigones := bigones_interieurs(etat):
+            marges = marges_des_bigones(etat, bigones)
+            def bosses(etat_courant, amplitude, retrait):
+                return [(min(etat_courant[1][l][j], etat_courant[1][l][j + 1]) - retrait * marges[(l, j)],
+                         max(etat_courant[1][l][j], etat_courant[1][l][j + 1]) + retrait * marges[(l, j)],
+                         j % 2 == 0, amplitude) for l, js in bigones.items() for j in js]
+            for n in range(1, images['bosse'] + 1):
+                ajoute_etat(etat, disque=reserve, bosses=bosses(etat, lisse(n / images['bosse']), 1))
             retreci = (etat[0], [list(l) for l in etat[1]])
             for l, js in bigones.items():
                 for j in js:
                     milieu = (etat[1][l][j] + etat[1][l][j + 1]) / 2
                     retreci[1][l][j] = retreci[1][l][j + 1] = milieu
-            for n in range(1, images['retrecit'] + 1):
-                m, t, c, _ = dessin_etat(interpole(etat, retreci, lisse(n / images['retrecit'])),
-                                         disque=(disque[0], disque[2]), **cadre)
-                ajoute(m, t, c)
+            for n in range(1, images['presse'] + 1):
+                u = lisse(n / images['presse'])
+                courant = interpole(etat, retreci, u)
+                ajoute_etat(courant, disque=reserve, bosses=bosses(courant, 1, 1 - u))
             etat, fusions = retire_bigones(retreci, bigones)
             for n in range(1, images['fusion'] + 1):
-                m, t, c, _ = dessin_etat(etat, disque=(disque[0], disque[2]), fusions=fusions,
-                                         s=lisse(n / images['fusion']), **cadre)
-                ajoute(m, t, c)
-        # 5. mise en page de l'image clé suivante
+                ajoute_etat(etat, disque=reserve, fusions=fusions, s=lisse(n / images['fusion']))
+        # 5. mise en page de l'image clé suivante : les segments s'allongent ou raccourcissent
         cle = etat_de_tresse(tresse[:k + 1], nb_trous)
         assert normalise(etat) == cle, "l'état réduit doit être celui de l'image clé"
         for n in range(1, images['final'] + 1):
             u = lisse(n / images['final'])
-            m, t, c, _ = dessin_etat(interpole(etat, cle, u), disque=(disque[0], (1 - u) * disque[2]), **cadre)
-            ajoute(m, t, c)
+            ajoute_etat(interpole(etat, cle, u), disque=(disque[0], (1 - u) * disque[2]))
         etat = cle
         durees[-1] = pause
     durees[-1] = 3 * pause
 
-    images_pil = [en_image_pil(peint(*d, hauteur, largeur, **options)) for d in dessins]
+    images_pil = [en_image_pil(peint(m, t, c, hauteur, largeur, axe=a, **options)) for m, t, c, a in dessins]
     images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
 
 def en_image_pil(surface):

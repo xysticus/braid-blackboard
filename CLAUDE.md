@@ -87,11 +87,19 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
    mouvements élémentaires sur l'état, dessinés par `dessin_etat` (demi-ellipses entre abscisses réelles, place
    réservée au disque du demi-tour, fusions en cours) : (1) réespacement vers `mise_en_page_avec_marge` (couronne vide
    autour du bloc) ; (2) `demi_tour` : rotation rigide du bloc, amortie dans la couronne, faite avant aplatissement ;
-   seuls les arcs qui sortent du bloc s'enroulent, les autres lacets ne bougent pas ; (3) retouche morceau par morceau
+   seuls les arcs qui sortent du bloc s'enroulent, les autres lacets ne bougent pas, l'axe reste immobile (les trous
+   le quittent et s'y reposent échangés) ; (3) retouche morceau par morceau
    vers le dessin de l'état non réduit, dont les points nouveaux sont là où les arcs tordus coupent l'axe
    (`coupe_sur_l_axe` ; un `assert` vérifie que cet ordre est celui de `agit`) ; (4) vagues de bigones
-   (`bigones_interieurs`, `retire_bigones`) : les deux points glissent l'un vers l'autre, puis balayage exact de la
-   région vide (`fusion_arcs`, `fusion_descente`) ; (5) réespacement vers l'image clé (un `assert` vérifie l'état).
+   (`bigones_interieurs`, `retire_bigones`) : ce sont les segments de l'axe qui travaillent ; le segment se bombe
+   par-dessus (ou par-dessous) le capuchon, lacets immobiles (`bosses` de `dessin_etat`, demi-ellipse qui englobe le
+   capuchon et s'arrête avant les voisins sur l'axe : `marges_des_bigones`), puis redescend en l'écrasant (les deux
+   points glissent l'un vers l'autre) ; ensuite balayage exact de la région vide (`fusion_arcs`, `fusion_descente`) ;
+   (5) réespacement vers l'image clé (un `assert` vérifie l'état). L'axe est tracé en gris sous les lacets (`peint`).
+   Pourquoi pas « lacets figés, puis tout aplatir à la fin » : un bigone peut former un doigt qui passe sous un trou
+   voisin ; le segment, accroché à ce trou, ne peut pas le contourner en restant un graphe y = f(x).
+   Les segments ne peuvent pas non plus faire le demi-tour : σ_i échange les trous i et i+1, le segment i-1
+   devrait changer d'extrémité.
    Réespacer ne crée jamais de croisement : deux demi-cercles se croisent ssi leurs extrémités s'entrelacent.
    `tord`, `lit_mot`, `verifie_torsion` (ancienne torsion d'une image clé, relue par les demi-droites au-dessus
    des trous) fixent le sens : σ_i positif = demi-tour horaire à l'écran (`SENS_DE_SIGMA = 1`, y vers le bas).
