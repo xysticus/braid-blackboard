@@ -107,6 +107,26 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
    Réespacer ne crée jamais de croisement : deux demi-cercles se croisent ssi leurs extrémités s'entrelacent.
    Sens : σ_i positif = demi-tour horaire à l'écran (`SENS_DE_SIGMA = 1`, y vers le bas) ; l'`assert` sur l'ordre
    des points nouveaux échoue avec l'autre sens.
+9. `film_de_tresse_simultane(tresse, fichier)` → `imgs/film_simultane_*.gif` : **un seul mouvement par lettre**,
+   rien ne reste à régler une fois les trous en place (ni bigone à résorber, ni réespacement).
+   - Pas de mou : un bigone de l'état non réduit est toujours (point nouveau, bout extérieur Q de son arc), avec Q
+     dans l'intervalle voisin du bloc, du côté où l'arc s'enroule ; ces Q sont les points les plus proches du bloc
+     (un `assert` le vérifie). `mise_en_page_du_demi_tour` les range avant de tordre : les « doigts » (les deux arcs
+     de Q vont dans le bloc) entrent dans le disque rigide, les « passants » (un seul arc) dans la couronne, où ils
+     ne tournent qu'en partie et quittent l'axe. Tous les brins traversent la couronne en s'éloignant du centre :
+     la torsion les enroule sans créneaux.
+   - Deux dessins du même instant u : D_u = H_u(image clé k rangée pour σ), A_u = H_(u-1)(image clé k+1 rangée pour
+     σ⁻¹) (`dessin_pendant_demi_tour`). Les passants de l'un sont les points nouveaux de l'autre ; les points communs
+     ont les mêmes abscisses dans les deux rangements. L'image est leur mélange de poids u entre points communs
+     (`entre_points_communs`). Le rangement se fait pendant le premier tiers de la rotation, le retour aux
+     abscisses de l'image clé pendant le dernier (`part_du_rangement`).
+   - `verifie=True` relit le mot de chaque lacet sur chaque image (`lit_mot`, trous triés par abscisse : mots de
+     l'image clé k avant la verticale, k+1 après).
+   - À ne pas refaire : détordre un dessin en demi-cercles dont des points sont dans la couronne (H_(u-1) du dessin
+     de l'état non réduit) donne des brins crénelés.
+   - Limites : le mélange est linéaire, donc de légères ondulations en milieu de rotation, et pas de preuve
+     d'absence de croisement (aucun sur les tresses lisibles essayées ; deux images fautives sur
+     `[1,-2,1,-2,1,-2,3,-1,2]`, 140 points sur l'axe).
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
@@ -129,7 +149,10 @@ et entraîne les lacets.
    Limites : quand il y a beaucoup de points sur l'axe les brins sont très serrés ; la retouche (3) est un mélange
    linéaire (pas de preuve d'absence de croisement, mais les deux dessins sont proches) ; les fusions de plusieurs
    bigones à la suite dans un même lacet sont aussi un mélange linéaire.
-4. **Ménage.** Fait (code mort retiré : `decale`, `dedans_extrm`, `geometrie_auto_de_tresse`, ancienne torsion par
+4. ~~**Tout en un seul mouvement.**~~ Fait : `film_de_tresse_simultane` (point 9). Reste : lisser les ondulations
+   (mélange en coordonnées polaires dans la couronne ?), puis retirer `film_de_tresse_algebrique` si le film
+   simultané le remplace.
+5. **Ménage.** Fait (code mort retiré : `decale`, `dedans_extrm`, `geometrie_auto_de_tresse`, ancienne torsion par
    ellipses). Reste éventuellement : passer les `assert` en tests pytest.
 
 Sur un nouvel ordinateur : `git pull`, puis `conda env create -f environment.yml` (ou `conda env update -f
@@ -163,7 +186,7 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
-python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif et imgs/film_continu_*.gif (film algébrique), plus leurs .mp4
+python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif, imgs/film_continu_*.gif (film algébrique) et imgs/film_simultane_*.gif, plus leurs .mp4
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```
