@@ -127,6 +127,21 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
    - Limites : le mélange est linéaire, donc de légères ondulations en milieu de rotation, et pas de preuve
      d'absence de croisement (aucun sur les tresses lisibles essayées ; deux images fautives sur
      `[1,-2,1,-2,1,-2,3,-1,2]`, 140 points sur l'axe).
+10. **Essais en arcs de cercle** (demande : plus de courbes libres, uniquement des arcs de cercle qui partent et
+    arrivent sur les segments noirs — l'axe et le segment qui tourne — traversés à angle droit). Obstacle : un arc
+    perpendiculaire à deux droites sécantes est centré sur leur intersection, donc un brin qui va du segment
+    tournant à l'axe ne peut être un seul arc que si ses deux bouts sont à la même distance du centre. Choix
+    retenu : une paire d'arcs raccordés avec la même tangente (`deux_arcs`, `lieu_des_raccords`) pour ces brins.
+    Deux essais, ni l'un ni l'autre au point (lignes commentées en fin de script, sorties `imgs/essai_*.gif`) :
+    - `film_de_tresse_simultane(..., en_arcs=True)` (`lacet_en_arcs`, `segments_en_noeuds`) : on mélange les noeuds
+      des deux dessins D_u et A_u (position et direction) et on les relie par des paires d'arcs. Plus d'ondulations,
+      mots relus corrects, mais des croisements sur environ une image sur dix des lettres chargées : D_u et A_u
+      s'enroulent différemment autour du bloc, leurs noeuds se correspondent mal.
+    - `film_de_tresse_en_arcs` : construction directe, sans mélange ni couronne. Points du bloc et doigts sur le
+      segment tournant, les autres sur l'axe, demi-cercles entre points d'un même segment, une paire d'arcs par brin
+      qui sort du bloc ; le raccord part du passant (ou arrive au point nouveau). Propre en milieu de rotation,
+      mais près des images clés des arcs géants sortent du cadre, des brins se croisent, et `verifie` échoue :
+      la règle qui place le raccord est à revoir.
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
