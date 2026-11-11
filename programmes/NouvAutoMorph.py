@@ -390,6 +390,21 @@ def melange(p, q, s):
     p, q = a_la_meme_longueur(p, q)
     return (1 - s) * p + s * q
 
+def descente_au_clou(xp, y_haut, y_sous, x_clou, y_clou):
+    '''Du clou au point (xp, y_haut) : arc de cercle (ou quart d'ellipse étiré) vers (xp, y_sous), vertical
+    en ce point, puis segment vertical. Les centres sont sur l'horizontale y_sous : pas de croisement.'''
+    d, h = xp - x_clou, y_clou - y_sous
+    if abs(d) < 1e-6: bas = np.array([(x_clou, y_clou)])
+    else:
+        etire = max(1, abs(d) / h)
+        d = d / etire
+        centre = (d * d - h * h) / (2 * d)
+        rayon = abs(d - centre)
+        alpha = np.linspace(math.atan2(h, -centre), 0 if d > centre else math.pi, 40)
+        bas = np.column_stack((x_clou + etire * (centre + rayon * np.cos(alpha)), y_sous + rayon * np.sin(alpha)))
+    n = max(2, math.ceil((y_sous - y_haut) / 2))
+    return np.concatenate((bas, np.column_stack((np.full(n, xp), np.linspace(y_sous, y_haut, n)))))
+
 def dessin_etat(etat, hauteur=400, largeur=400, disque=None, fusions=None, s=0, bosses=()):
     '''Dessin d'un état aux abscisses quelconques (seul leur ordre compte pour la topologie).
     disque : (centre, rayon) en unités d'abscisse, place réservée au demi-tour d'un bloc (le cadre, l'aplatissement
@@ -425,20 +440,7 @@ def dessin_etat(etat, hauteur=400, largeur=400, disque=None, fusions=None, s=0, 
 
     def demi(x1, x2, en_haut): return demi_ellipse(x1, x2, en_haut, y_axe, aplati)
 
-    def descente(xp, y_haut=y_axe):
-        '''Du clou au point (xp, y_haut) : arc de cercle (ou quart d'ellipse étiré) vers (xp, y_sous), vertical
-        en ce point, puis segment vertical. Les centres sont sur l'horizontale y_sous : pas de croisement.'''
-        d, h = xp - x_clou, y_clou - y_sous
-        if abs(d) < 1e-6: bas = np.array([(x_clou, y_clou)])
-        else:
-            etire = max(1, abs(d) / h)
-            d = d / etire
-            centre = (d * d - h * h) / (2 * d)
-            rayon = abs(d - centre)
-            alpha = np.linspace(math.atan2(h, -centre), 0 if d > centre else math.pi, 40)
-            bas = np.column_stack((x_clou + etire * (centre + rayon * np.cos(alpha)), y_sous + rayon * np.sin(alpha)))
-        n = max(2, math.ceil((y_sous - y_haut) / 2))
-        return np.concatenate((bas, np.column_stack((np.full(n, xp), np.linspace(y_sous, y_haut, n)))))
+    def descente(xp, y_haut=y_axe): return descente_au_clou(xp, y_haut, y_sous, x_clou, y_clou)
 
     def chaine(points, en_haut):
         return np.concatenate([demi(x1, x2, en_haut) for x1, x2 in zip(points[:-1], points[1:])])
@@ -499,7 +501,8 @@ def dessin_etat(etat, hauteur=400, largeur=400, disque=None, fusions=None, s=0, 
         c, r = (x1 + x2) / 2, abs(x2 - x1) / 2
         hauteur_bosse = aplati * np.sqrt(np.clip(r * r - (axe[:, 0] - c) ** 2, 0, None))
         axe[:, 1] += (-1 if en_haut else 1) * amplitude * hauteur_bosse
-    geo = {'X': X, 'pmin': pmin, 'pas': pas, 'y_axe': y_axe, 'aplati': aplati, 'axe': axe}
+    geo = {'X': X, 'pmin': pmin, 'pas': pas, 'y_axe': y_axe, 'aplati': aplati, 'axe': axe,
+           'y_sous': y_sous, 'descente': descente}
     return morceaux, np.array([(X(p), y_axe) for p in trous]), np.array((x_clou, y_clou)), geo
 
 def polylignes(morceaux):
@@ -766,7 +769,7 @@ def film_de_tresse_algebrique(tresse, fichier, duree=40, pause=500, hauteur=400,
 def mise_en_page_du_demi_tour(etat, sigma):
     """Abscisses (même ordre) rangées pour le demi-tour du bloc des trous i et i+1 : doigts à côté des trous,
     passants dans la couronne, le reste au-delà. Renvoie (état, disque (centre, rayon intérieur, rayon extérieur),
-    ensemble des passants (lacet, indice du point))."""
+    ensemble des passants (lacet, indice du point), ensemble des points qui tournent avec le bloc)."""
     trous, lacets = etat
     i = abs(sigma)
     a, b = trous[i - 1], trous[i]
@@ -807,13 +810,14 @@ def mise_en_page_du_demi_tour(etat, sigma):
     dd = max([(centre + r_ext + 0.5) - x for x in dehors if x > b], default=0)
     def decale(x): return x - dg if x < a else x + dd if x > b else x
     return (([decale(x) for x in trous], [[place.get((l, j), decale(x)) for j, x in enumerate(lacet)] for l, lacet in enumerate(lacets)]),
-            (centre, r_int, r_ext), {(l, j) for cote in passants for _, l, j in passants[cote]})
+            (centre, r_int, r_ext), {(l, j) for cote in passants for _, l, j in passants[cote]}, rigides)
 
 def dessin_pendant_demi_tour(etat, sigma, rangement, t, **cadre):
     """Dessin de l'état (une image clé) rangé dans la proportion « rangement » pour le demi-tour, puis tourné de
     t demi-tour. Tant que le rangement n'est pas fini, la couronne s'arrête avant les autres trous.
-    Renvoie (morceaux, trous, clou, géométrie, disque, passants)."""
-    page, (centre, r_int, r_ext), passants = mise_en_page_du_demi_tour(etat, sigma)
+    Renvoie un dictionnaire : morceaux, trous, clou, geo, disque, passants, etat (abscisses dessinées),
+    tangente (fonction : sens de parcours d'un lacet à l'un de ses points)."""
+    page, (centre, r_int, r_ext), passants, _ = mise_en_page_du_demi_tour(etat, sigma)
     e = interpole(etat, page, rangement)
     i = abs(sigma)
     a, b = e[0][i - 1], e[0][i]
@@ -822,7 +826,160 @@ def dessin_pendant_demi_tour(etat, sigma, rangement, t, **cadre):
     disque = (centre, min(r_int, ext - 0.25), ext)
     morceaux, trous, clou, geo = dessin_etat(e, disque=(centre, rangement * r_ext), **cadre)
     morceaux, trous = demi_tour(morceaux, trous, geo, disque, sigma, t)
-    return morceaux, trous, clou, geo, disque, passants
+    angle = SENS_DE_SIGMA * (1 if sigma > 0 else -1) * math.pi * t
+    def tangente(l, j):
+        """Sens de parcours du lacet l à son point j, avant aplatissement : la verticale (vers le haut si l'arc
+        qui suit est en haut), tournée comme le point."""
+        u = min(1, max(0, (disque[2] - abs(e[1][l][j] - centre)) / (disque[2] - disque[1])))
+        theta = angle * u * u * (3 - 2 * u)
+        signe = -1 if j % 2 == 0 else 1
+        return np.array((-math.sin(theta) * signe, math.cos(theta) * signe))
+    return {'morceaux': morceaux, 'trous': trous, 'clou': clou, 'geo': geo, 'disque': disque, 'passants': passants,
+            'etat': e, 'tangente': tangente}
+
+def arc_de_cercle(p, t, m, pas=1.5):
+    """Polyligne de l'arc de cercle qui part de p dans la direction t (unitaire) et arrive en m."""
+    w = m - p
+    corde = math.hypot(*w)
+    phi = 2 * math.atan2(t[0] * w[1] - t[1] * w[0], t[0] * w[0] + t[1] * w[1]) # angle dont l'arc tourne
+    if corde < 1e-9 or abs(math.sin(phi / 2)) < 1e-9:
+        return np.array((p, m))
+    rayon = corde / (2 * math.sin(phi / 2))
+    centre = p + rayon * np.array((-t[1], t[0]))
+    a = np.linspace(0, phi, max(3, math.ceil(abs(rayon * phi) / pas)))
+    d = p - centre
+    return centre + np.column_stack((np.cos(a) * d[0] - np.sin(a) * d[1], np.sin(a) * d[0] + np.cos(a) * d[1]))
+
+def raccord_egal(p0, t0, p1, t1):
+    """Raccord de la paire d'arcs de p0 (direction t0) à p1 (direction t1) à égale distance des deux tangentes
+    extrêmes ; None si les données sont alignées."""
+    v, t = p1 - p0, t0 + t1
+    a = 2 * (1 - t0 @ t1)
+    if abs(a) > 1e-9: d = (-(v @ t) + math.sqrt((v @ t) ** 2 + a * (v @ v))) / a
+    elif abs(v @ t1) > 1e-9: d = (v @ v) / (4 * (v @ t1))
+    else: return None
+    return (p0 + d * t0 + p1 - d * t1) / 2
+
+def lieu_des_raccords(p0, t0, p1, t1):
+    """Les raccords possibles d'une paire d'arcs de p0 (direction t0) à p1 (direction t1) sont sur un cercle qui
+    passe par p0 et p1. Renvoie (place : point → fraction du chemin de p0 à p1 le long de ce cercle,
+    point : fraction → point)."""
+    j = raccord_egal(p0, t0, p1, t1)
+    v = p1 - p0
+    aire = 0 if j is None else (j[0] - p0[0]) * v[1] - (j[1] - p0[1]) * v[0]
+    if abs(aire) < 1e-7 * (v @ v): # données alignées : le lieu est la droite
+        return (lambda q: ((q - p0) @ v) / (v @ v)), (lambda f: p0 + f * v)
+    # centre du cercle par p0, j, p1
+    a, b = j - p0, v
+    centre = p0 + np.array((b[1] * (a @ a) - a[1] * (b @ b), a[0] * (b @ b) - b[0] * (a @ a))) / (2 * (a[0] * b[1] - a[1] * b[0]))
+    def angle(q): return math.atan2(q[1] - centre[1], q[0] - centre[0])
+    a0 = angle(p0)
+    tour = 2 * math.pi
+    total = (angle(p1) - a0) % tour
+    if (angle(j) - a0) % tour > total: total -= tour # on va de p0 à p1 en passant par j
+    def place(q):
+        d = (angle(q) - a0) % tour
+        return (d if total > 0 else d - tour) / total
+    rayon = math.hypot(*(p0 - centre))
+    return place, (lambda f: centre + rayon * np.array((math.cos(a0 + f * total), math.sin(a0 + f * total))))
+
+def deux_arcs(p0, t0, p1, t1, raccord=None):
+    """Polyligne de p0 (direction t0) à p1 (direction t1) : deux arcs de cercle raccordés avec la même tangente.
+    raccord : fraction du lieu_des_raccords où ils se rejoignent ; par défaut à égale distance des deux tangentes
+    extrêmes. C'est un seul arc de cercle quand il en existe un, par exemple un demi-cercle entre deux points
+    d'une même droite traversée à angle droit."""
+    j = raccord_egal(p0, t0, p1, t1) if raccord is None else lieu_des_raccords(p0, t0, p1, t1)[1](raccord)
+    if j is None: return np.array((p0, p1))
+    return np.concatenate((arc_de_cercle(p0, t0, j), arc_de_cercle(p1, -t1, j)[::-1]))
+
+def point_a_la_fraction(points, f):
+    """Point de la polyligne à la fraction f de sa longueur, et direction de la polyligne en ce point."""
+    cumul = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
+    k = min(max(int(np.searchsorted(cumul, f * cumul[-1])), 1), len(points) - 1)
+    q = (f * cumul[-1] - cumul[k - 1]) / max(cumul[k] - cumul[k - 1], 1e-12)
+    d = points[min(k + 1, len(points) - 1)] - points[max(k - 2, 0)]
+    return points[k - 1] + q * (points[k] - points[k - 1]), d / max(math.hypot(*d), 1e-12)
+
+def segments_en_noeuds(dessin, l):
+    """Le lacet l d'un dessin_pendant_demi_tour, découpé d'un point commun au suivant. Tout est donné avant
+    aplatissement. Pour chaque segment : 'points' (polyligne ; pour les deux descentes, seulement la partie au-dessus
+    du pied), 'bas' (du clou au pied, pour les descentes), 'noeuds' (passants du segment : fraction de la longueur,
+    position, direction), 'debut' et 'fin' (position, direction), 'bords' (fractions de la longueur où le segment
+    traverse le bord extérieur de la couronne)."""
+    geo, morceaux, tangente = dessin['geo'], dessin['morceaux'][l], dessin['tangente']
+    passants = {j for ll, j in dessin['passants'] if ll == l}
+    n = len(morceaux) - 1
+    centre = np.array((geo['X'](dessin['disque'][0]), geo['y_axe']))
+    rayon = dessin['disque'][2] * geo['pas']
+    def releve(points):
+        q = points.copy()
+        q[:, 1] = geo['y_axe'] + (q[:, 1] - geo['y_axe']) / geo['aplati']
+        return q
+    def segment(pieces, debut, fin, bas=None):
+        """pieces : (polyligne, point où elle finit, sens +1 ou -1 du parcours) ; debut, fin : None pour un pied."""
+        points = np.concatenate([q for q, _, _ in pieces])
+        longueurs = np.cumsum([np.hypot(*np.diff(q, axis=0).T).sum() for q, _, _ in pieces])
+        noeuds = [(longueurs[k] / longueurs[-1], q[-1], sens * tangente(l, j))
+                  for k, (q, j, sens) in enumerate(pieces[:-1])]
+        bouts = [(points[0 if k == 0 else -1], bout[1] * tangente(l, bout[0])) if bout is not None
+                 else point_a_la_fraction(points, k) for k, bout in enumerate((debut, fin))]
+        # là où le segment traverse le bord de la couronne : au-delà, il ne tourne pas
+        cumul = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
+        ecart = np.hypot(*(points - centre).T) - rayon
+        bords = [(cumul[k] + (cumul[k + 1] - cumul[k]) * ecart[k] / (ecart[k] - ecart[k + 1])) / cumul[-1]
+                 for k in np.nonzero(ecart[:-1] * ecart[1:] < 0)[0]]
+        return {'points': points, 'bas': bas, 'noeuds': noeuds, 'debut': bouts[0], 'fin': bouts[1], 'bords': bords}
+    def pied(j):
+        return len(geo['descente'](geo['X'](dessin['etat'][1][l][j]), geo['y_sous'])) - 2
+    communs = [j for j in range(n) if j not in passants]
+    segments = []
+    # du clou au premier point commun
+    k = pied(0)
+    pieces = [(releve(morceaux[0][k:]), 0, 1)] + [(releve(morceaux[j]), j, 1) for j in range(1, communs[0] + 1)]
+    segments.append(segment(pieces, None, (communs[0], 1), bas=morceaux[0][:k + 1]))
+    for j1, j2 in zip(communs[:-1], communs[1:]):
+        segments.append(segment([(releve(morceaux[j]), j, 1) for j in range(j1 + 1, j2 + 1)], (j1, 1), (j2, 1)))
+    # du dernier point commun au clou : on le parcourt à l'envers, comme la première descente
+    k = pied(n - 1)
+    pieces = [(releve(morceaux[n][::-1][k:]), n - 1, -1)] \
+             + [(releve(morceaux[j][::-1]), j - 1, -1) for j in range(n - 1, communs[-1], -1)]
+    segments.append(segment(pieces, None, (communs[-1], -1), bas=morceaux[n][::-1][:k + 1]) | {'a_l_envers': True})
+    return segments
+
+def lacet_en_arcs(depart, arrivee, l, s):
+    """Le lacet l, mélange de poids s des dessins depart et arrivee, tracé en arcs de cercle : les noeuds (points
+    communs, passants de l'un ou de l'autre, traversées du bord de la couronne, pieds des descentes) sont mélangés,
+    position et direction, puis reliés par deux_arcs. Les descentes sans passant (points qui ne tournent pas) restent des mélanges de polylignes."""
+    def mele(a, b):
+        (pa, ta), (pb, tb) = a, b
+        ecart = math.atan2(ta[0] * tb[1] - ta[1] * tb[0], ta @ tb)
+        c, d = math.cos(s * ecart), math.sin(s * ecart)
+        return (1 - s) * pa + s * pb, np.array((c * ta[0] - d * ta[1], d * ta[0] + c * ta[1]))
+    aplati = (1 - s) * depart['geo']['aplati'] + s * arrivee['geo']['aplati']
+    y_axe = depart['geo']['y_axe']
+    morceaux = []
+    for sd, sa in zip(segments_en_noeuds(depart, l), segments_en_noeuds(arrivee, l), strict=True):
+        if sd['bas'] is not None and not sd['noeuds'] and not sa['noeuds']:
+            def entier(seg, geo):
+                haut = seg['points'].copy()
+                haut[:, 1] = y_axe + (haut[:, 1] - y_axe) * geo['aplati']
+                return np.concatenate((seg['bas'], haut[1:]))
+            ligne = melange(entier(sd, depart['geo']), entier(sa, arrivee['geo']), s)
+        else:
+            noeuds = [mele(sd['debut'], sa['debut'])]
+            # les fractions de longueur des deux dessins se correspondent, bord de la couronne sur bord de la couronne
+            fd, fa = ([0] + seg['bords'] + [1] if len(sd['bords']) == len(sa['bords']) else [0, 1] for seg in (sd, sa))
+            vrais = [(f, mele((q, t), point_a_la_fraction(sa['points'], np.interp(f, fd, fa)))) for f, q, t in sd['noeuds']] \
+                    + [(np.interp(f, fa, fd), mele(point_a_la_fraction(sd['points'], np.interp(f, fa, fd)), (q, t)))
+                       for f, q, t in sa['noeuds']] \
+                    + [(f, mele(point_a_la_fraction(sd['points'], f), point_a_la_fraction(sa['points'], g)))
+                       for f, g in zip(fd[1:-1], fa[1:-1])]
+            noeuds += [noeud for _, noeud in sorted(vrais, key=lambda x: x[0])] + [mele(sd['fin'], sa['fin'])]
+            ligne = np.concatenate([deux_arcs(p0, t0, p1, t1) for (p0, t0), (p1, t1) in zip(noeuds[:-1], noeuds[1:])])
+            ligne[:, 1] = y_axe + (ligne[:, 1] - y_axe) * aplati
+            if sd['bas'] is not None: ligne = np.concatenate((melange(sd['bas'], sa['bas'], s), ligne))
+        morceaux.append(ligne[::-1] if sd.get('a_l_envers') else ligne)
+    return np.concatenate(morceaux)
 
 def entre_points_communs(morceaux, passants):
     """Les morceaux d'un lacet recollés en polylignes qui vont d'un point commun au suivant
@@ -836,12 +993,14 @@ def entre_points_communs(morceaux, passants):
     return segments + [np.concatenate(courant)]
 
 def film_de_tresse_simultane(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400,
-                             images=48, part_du_rangement=0.3, verifie=False, **options):
+                             images=48, part_du_rangement=0.3, verifie=False, en_arcs=False, **options):
     """GIF animé : pour chaque σ_i, un seul mouvement (voir plus haut). Pendant que les trous i et i+1 tournent,
     les lacets sont entraînés sans prendre de mou et les abscisses passent de celles de l'image clé à celles
     de la suivante. images : nombre d'images par lettre ; part_du_rangement : part du mouvement pendant laquelle
     les abscisses se rangent (au début) ou rejoignent l'image clé (à la fin).
-    verifie : relit le mot de chaque lacet sur chaque image (lent)."""
+    verifie : relit le mot de chaque lacet sur chaque image (lent).
+    en_arcs (essai) : au lieu de mélanger les courbes, mélange leurs noeuds et les relie par des arcs de cercle
+    (lacet_en_arcs) : plus d'ondulations, mais des croisements sur les lettres chargées."""
     nb_trous = max(map(operator.abs, tresse), default=5) + 1
     cadre = {'hauteur': hauteur, 'largeur': largeur}
     def lisse(u): return u * u * (3 - 2 * u)
@@ -858,16 +1017,19 @@ def film_de_tresse_simultane(tresse, fichier, duree=40, pause=500, hauteur=400, 
         for n in range(1, images + 1):
             u = n / images
             s = lisse(u)
-            md, td, clou, gd, dd, pd = dessin_pendant_demi_tour(cle, sigma, lisse(min(1, u / part_du_rangement)), s, **cadre)
-            ma, ta, _, ga, da, pa = dessin_pendant_demi_tour(suivante, -sigma, lisse(min(1, (1 - u) / part_du_rangement)),
-                                                             1 - s, **cadre)
+            depart = dessin_pendant_demi_tour(cle, sigma, lisse(min(1, u / part_du_rangement)), s, **cadre)
+            arrivee = dessin_pendant_demi_tour(suivante, -sigma, lisse(min(1, (1 - u) / part_du_rangement)), 1 - s, **cadre)
+            td, ta, clou, gd, ga, dd, da = (depart['trous'], arrivee['trous'], depart['clou'], depart['geo'],
+                                            arrivee['geo'], depart['disque'], arrivee['disque'])
             ta[[i - 1, i]] = ta[[i, i - 1]] # les deux trous ont échangé leurs places dans l'image clé suivante
-            lignes = []
-            for l in range(len(md)):
-                depart = entre_points_communs(md[l], {j for ll, j in pd if ll == l})
-                arrivee = entre_points_communs(ma[l], {j for ll, j in pa if ll == l})
-                assert len(depart) == len(arrivee), "les deux images clés ont les mêmes points communs"
-                lignes.append(np.concatenate([melange(p, q, s) for p, q in zip(depart, arrivee)]))
+            if en_arcs: lignes = [lacet_en_arcs(depart, arrivee, l, s) for l in range(len(cle[1]))]
+            else:
+                lignes = []
+                for l in range(len(cle[1])):
+                    bouts = [entre_points_communs(d['morceaux'][l], {j for ll, j in d['passants'] if ll == l})
+                             for d in (depart, arrivee)]
+                    assert len(bouts[0]) == len(bouts[1]), "les deux images clés ont les mêmes points communs"
+                    lignes.append(np.concatenate([melange(p, q, s) for p, q in zip(*bouts)]))
             trous = (1 - s) * td + s * ta
             if verifie:
                 en_ordre = sorted(trous.tolist())
@@ -892,6 +1054,150 @@ def film_de_tresse_simultane(tresse, fichier, duree=40, pause=500, hauteur=400, 
         durees[-1] = pause
     durees[-1] = 3 * pause
 
+    images_pil = [en_image_pil(peint(m, t, c, hauteur, largeur, axe=a, **options)) for m, t, c, a in dessins]
+    images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
+
+# Le film en arcs de cercle : plus de courbes libres. Les segments noirs sont l'axe horizontal et le segment qui
+# tourne (les trous i et i+1, les points du bloc et les doigts). Chaque point d'un lacet est sur un segment noir et
+# le traverse à angle droit. Entre deux points du même segment, un demi-cercle (qui tourne avec le segment, ou qui ne
+# bouge pas). Un brin qui sort du bloc, d'un point du segment tournant à un point de l'axe, est une paire d'arcs
+# de cercle raccordés avec la même tangente : au départ le raccord est le passant de l'image clé (qui quitte
+# l'axe), ou à l'arrivée le point nouveau de l'image clé suivante (qui s'y pose) ; entre-temps il garde sa place
+# sur le lieu des raccords. Les abscisses passent de celles de l'image clé à celles de la suivante pendant
+# la rotation. Aucune preuve d'absence de croisement : verifie relit les mots, à contrôler image par image.
+
+def film_de_tresse_en_arcs(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400,
+                           images=48, verifie=False, **options):
+    """GIF animé en arcs de cercle (voir plus haut). images : nombre d'images par lettre.
+    verifie : relit le mot de chaque lacet sur chaque image (lent)."""
+    nb_trous = max(map(operator.abs, tresse), default=5) + 1
+    cadre = {'hauteur': hauteur, 'largeur': largeur}
+    def lisse(u): return u * u * (3 - 2 * u)
+    dessins, durees = [], []
+    cle = etat_de_tresse([], nb_trous)
+    m, t, c, geo = dessin_etat(cle, **cadre)
+    dessins.append((polylignes(m), t, c, geo['axe']))
+    durees.append(pause)
+    for k, sigma in enumerate(tresse):
+        i = abs(sigma)
+        suivante = etat_de_tresse(tresse[:k + 1], nb_trous)
+        etats = (cle, suivante)
+        geos = [dessin_etat(e, **cadre)[3] for e in etats]
+        clou = np.array((largeur / 2, hauteur - 10))
+        y_axe = geos[0]['y_axe']
+        roles = [mise_en_page_du_demi_tour(e, sg) for e, sg in zip(etats, (sigma, -sigma))]
+        centres = [(e[0][i - 1] + e[0][i]) / 2 for e in etats]
+        nb_doigts = roles[0][1][1] - (cle[0][i] - cle[0][i - 1]) / 2 - 0.5
+        communs = [[[j for j in range(len(lacet)) if (l, j) not in role[2]] for l, lacet in enumerate(e[1])]
+                   for e, role in zip(etats, roles)]
+        assert [len(x) for x in communs[0]] == [len(x) for x in communs[1]], "mêmes points communs"
+        sens = SENS_DE_SIGMA * (1 if sigma > 0 else -1)
+
+        def cadre_a(s):
+            """Au temps s : (pixel du centre, angle, aplatissement, niveau sous les arcs du bas)."""
+            def mele(nom): return (1 - s) * geos[0][nom] + s * geos[1][nom]
+            return ((1 - s) * geos[0]['X'](centres[0]) + s * geos[1]['X'](centres[1]), sens * math.pi * s,
+                    mele('aplati'), mele('y_sous'))
+        def sur_le_segment(rayon, s):
+            """Point du segment tournant à la distance signée rayon (en pixels) du centre, avant aplatissement."""
+            x_centre, angle, _, _ = cadre_a(s)
+            return np.array((x_centre + rayon * math.cos(angle), y_axe + rayon * math.sin(angle)))
+        def abscisse(l, quel, j, s=None):
+            """Pixel sur l'axe du point j du lacet l dans l'image clé quel (0 ou 1) ; avec s, mélange des deux images
+            clés pour le point commun de rang j."""
+            if s is None: return geos[quel]['X'](etats[quel][1][l][j])
+            return (1 - s) * abscisse(l, 0, communs[0][l][j]) + s * abscisse(l, 1, communs[1][l][j])
+        def noeud(l, rang, s):
+            """Position (avant aplatissement) et sens de parcours du point commun de rang donné du lacet l."""
+            j0, j1 = communs[0][l][rang], communs[1][l][rang]
+            vers = np.array((0, -1 if j0 % 2 == 0 else 1))
+            if (l, j0) not in roles[0][3]: return np.array((abscisse(l, None, rang, s), y_axe)), vers
+            x0, x1 = cle[1][l][j0], suivante[1][l][j1]
+            rayon = (1 - s) * abs(x0 - centres[0]) * geos[0]['pas'] + s * abs(x1 - centres[1]) * geos[1]['pas']
+            angle = cadre_a(s)[1]
+            c_, s_ = math.cos(angle), math.sin(angle)
+            return (sur_le_segment(rayon * (1 if x0 > centres[0] else -1), s),
+                    np.array((c_ * vers[0] - s_ * vers[1], s_ * vers[0] + c_ * vers[1])))
+        def pied(l, bout, s):
+            """Pied (avant aplatissement) de la descente du bout (0 : début, -1 : fin) du lacet l, sous son
+            premier (dernier) point, commun ou non."""
+            x = (1 - s) * abscisse(l, 0, bout % len(cle[1][l])) + s * abscisse(l, 1, bout % len(suivante[1][l]))
+            _, _, aplati, y_sous = cadre_a(s)
+            return np.array((x, y_axe + (y_sous - y_axe) / aplati))
+        haut = np.array((0, -1))
+
+        # où se raccordent les deux arcs de chaque brin qui sort du bloc : au passant (image clé de départ, s = 0)
+        # ou au point nouveau (image clé d'arrivée, s = 1)
+        raccords = {}
+        for l in range(len(cle[1])):
+            nb = len(communs[0][l])
+            for rang in range(-1, nb):
+                # ecarts : nombre de points non communs entre ce point commun (ou le clou) et le suivant
+                bornes = [[-1] + c_[l] + [len(e[1][l])] for c_, e in zip(communs, etats)]
+                ecarts = [b[rang + 2] - b[rang + 1] - 1 for b in bornes]
+                assert sum(ecarts) <= 1, "au plus un passant ou un point nouveau par brin"
+                if sum(ecarts) == 0: continue
+                quel = ecarts.index(1)
+                s = float(quel)
+                j = bornes[quel][rang + 1] + 1
+                vrai = np.array((abscisse(l, quel, j), y_axe))
+                if rang == -1: bouts = (pied(l, 0, s), haut) + noeud(l, 0, s)
+                elif rang == nb - 1: bouts = noeud(l, rang, s) + (pied(l, -1, s), -haut)
+                else: bouts = noeud(l, rang, s) + noeud(l, rang + 1, s)
+                raccords[(l, rang)] = (min(0.98, max(0.02, lieu_des_raccords(*bouts)[0](vrai))), quel)
+
+        for n in range(1, images + 1):
+            s = lisse(n / images)
+            x_centre, angle, aplati, y_sous = cadre_a(s)
+            def aplatit(points):
+                q = np.array(points, dtype=float)
+                q[..., 1] = y_axe + (q[..., 1] - y_axe) * aplati
+                return q
+            def brin(p0, t0, p1, t1, raccord):
+                """Paire d'arcs dont le raccord glisse de sa place dans l'image clé (raccord = (place, image clé))
+                vers la place d'équilibre, atteinte au tiers du mouvement."""
+                if raccord is None: return deux_arcs(p0, t0, p1, t1)
+                j = raccord_egal(p0, t0, p1, t1)
+                if j is None: return deux_arcs(p0, t0, p1, t1, raccord[0])
+                poids = lisse(min(1, 3 * abs(s - raccord[1])))
+                return deux_arcs(p0, t0, p1, t1, (1 - poids) * raccord[0] + poids * lieu_des_raccords(p0, t0, p1, t1)[0](j))
+            lignes = []
+            for l in range(len(cle[1])):
+                nb = len(communs[0][l])
+                morceaux = []
+                for rang in range(-1, nb):
+                    if rang in (-1, nb - 1):
+                        bout = 0 if rang == -1 else -1
+                        p = pied(l, bout, s)
+                        bas = descente_au_clou(p[0], y_sous, y_sous, *clou)[:-1]
+                        if (l, rang) in raccords:
+                            q, t = noeud(l, rang + 1 if bout == 0 else rang, s)
+                            ligne = np.concatenate((bas, aplatit(brin(p, haut, q, t if bout == 0 else -t, raccords[(l, rang)]))))
+                        else:
+                            ligne = descente_au_clou(p[0], y_axe, y_sous, *clou)
+                        morceaux.append(ligne if bout == 0 else ligne[::-1])
+                    else:
+                        morceaux.append(aplatit(brin(*noeud(l, rang, s), *noeud(l, rang + 1, s), raccords.get((l, rang)))))
+                lignes.append(np.concatenate(morceaux))
+            # les trous : les deux du bloc sur le segment tournant, les autres sur l'axe
+            rayon = (1 - s) * (cle[0][i] - cle[0][i - 1]) / 2 * geos[0]['pas'] + s * (suivante[0][i] - suivante[0][i - 1]) / 2 * geos[1]['pas']
+            trous = np.array([((1 - s) * geos[0]['X'](x0) + s * geos[1]['X'](x1), y_axe) for x0, x1 in zip(*[e[0] for e in etats])])
+            trous[i - 1], trous[i] = sur_le_segment(-rayon, s), sur_le_segment(rayon, s)
+            trous = aplatit(trous)
+            if verifie:
+                mots = [calcule_autofn_de_tresse(tresse[:k + q], nb_trous) for q in (0, 1)]
+                en_ordre = sorted(trous.tolist())
+                assert abs(trous[i - 1][0] - trous[i][0]) < 1e-6 or [lit_mot(q, en_ordre) for q in lignes] in mots, \
+                       f"lettre {k}, image {n} : mots des lacets"
+            # les segments noirs : l'axe de part et d'autre du bloc, et le segment tournant (trous et doigts)
+            bout = rayon + (nb_doigts + 0.5) * ((1 - s) * geos[0]['pas'] + s * geos[1]['pas'])
+            axe = [np.array(((5, y_axe), (x_centre - bout, y_axe))), np.array(((x_centre + bout, y_axe), (largeur - 5, y_axe))),
+                   aplatit((sur_le_segment(-bout, s), sur_le_segment(bout, s)))]
+            dessins.append((lignes, trous, clou, axe))
+            durees.append(duree)
+        cle = suivante
+        durees[-1] = pause
+    durees[-1] = 3 * pause
     images_pil = [en_image_pil(peint(m, t, c, hauteur, largeur, axe=a, **options)) for m, t, c, a in dessins]
     images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
 
@@ -933,3 +1239,6 @@ film_de_tresse_simultane([4, 3, -1, -1, 2, -4, 1], './imgs/film_simultane_43m1m1
 gif_en_mp4('./imgs/film_43m1m12m41.gif')
 gif_en_mp4('./imgs/film_continu_43m1m12m41.gif')
 gif_en_mp4('./imgs/film_simultane_43m1m12m41.gif')
+# essais en arcs de cercle, pas encore au point (croisements) : décommenter pour les produire
+# film_de_tresse_simultane([4, 3, -1, -1, 2, -4, 1], './imgs/essai_noeuds_43m1m12m41.gif', largeur_brin=3, en_arcs=True)
+# film_de_tresse_en_arcs([4, 3, -1, -1, 2, -4, 1], './imgs/essai_arcs_43m1m12m41.gif', largeur_brin=3)
