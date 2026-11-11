@@ -510,10 +510,12 @@ def lit_mot(points, trous):
     (ou de droite à gauche) de la demi-droite qui monte du trou j.'''
     mot = []
     for p, q in zip(points[:-1], points[1:]):
+        lettres = [] # (place sur le segment, lettre) : un segment peut traverser plusieurs demi-droites
         for j, (xt, yt) in enumerate(trous, 1):
             if (p[0] < xt) != (q[0] < xt):
-                y = p[1] + (q[1] - p[1]) * (xt - p[0]) / (q[0] - p[0])
-                if y < yt: mot.append(j if q[0] >= xt else -j)
+                place = (xt - p[0]) / (q[0] - p[0])
+                if p[1] + (q[1] - p[1]) * place < yt: lettres.append((place, j if q[0] >= xt else -j))
+        mot.extend(lettre for _, lettre in sorted(lettres))
     simplifie(mot)
     return mot
 
@@ -573,8 +575,8 @@ def demi_tour(morceaux, trous, geo, disque, sigma, t):
         return p
     return [[f(m) for m in lacet] for lacet in morceaux], f(trous)
 
-def axe_pendant_demi_tour(geo, disque, avec_marge, trous_tournes, i, t, largeur):
-    '''Morceaux de l'axe au temps t du demi-tour. Hors de la couronne l'axe ne bouge pas. Le segment i tourne,
+def axe_pendant_demi_tour(geo, disque, r, trous_tournes, i, t, largeur):
+    '''Morceaux de l'axe au temps t du demi-tour (r : demi-écart des trous i et i+1). Hors de la couronne l'axe ne bouge pas. Le segment i tourne,
     rigide entre les trous i et i+1. Les morceaux des segments i-1 et i+1 accrochés à ces trous (jusqu'au bord de la
     couronne) sont voués à disparaître : le centre de rotation les emporte, ils tournent avec lui et glissent vers lui
     en rétrécissant (distances au centre multipliées par 1 - t) ; les nouveaux morceaux poussent depuis le bord de la
@@ -582,7 +584,6 @@ def axe_pendant_demi_tour(geo, disque, avec_marge, trous_tournes, i, t, largeur)
     centre, _, r_ext = disque
     X, y = geo['X'], geo['y_axe']
     c = np.array((X(centre), y))
-    r = (avec_marge[0][i] - avec_marge[0][i - 1]) / 2
     a, b = trous_tournes[i - 1], trous_tournes[i]
     def vieux(trou): return np.array((c + (trou - c) * (1 - t), c + (trou - c) * r_ext / r * (1 - t)))
     pousse = (r_ext - r) * geo['pas'] * t
@@ -690,7 +691,7 @@ def film_de_tresse_algebrique(tresse, fichier, duree=40, pause=500, hauteur=400,
         for n in range(1, images['demi_tour'] + 1):
             u = lisse(n / images['demi_tour'])
             m, t = demi_tour(morceaux, trous, geo, disque, sigma, u)
-            ajoute(m, t, clou, axe_pendant_demi_tour(geo, disque, avec_marge, t, abs(sigma), u, largeur))
+            ajoute(m, t, clou, axe_pendant_demi_tour(geo, disque, disque[1] - 0.5, t, abs(sigma), u, largeur))
         tordus, trous_tordus = m, t
         # 3. retouche vers l'état non réduit, dont les points nouveaux sont là où les arcs tordus coupent l'axe
         non_reduit, origines = agit(avec_marge, sigma, detail=True)
@@ -749,6 +750,151 @@ def film_de_tresse_algebrique(tresse, fichier, duree=40, pause=500, hauteur=400,
     images_pil = [en_image_pil(peint(m, t, c, hauteur, largeur, axe=a, **options)) for m, t, c, a in dessins]
     images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
 
+# Le film simultané : le demi-tour dure toute la lettre et rien ne reste à régler une fois les trous en place.
+# 1. Pas de mou. Un bigone de l'état non réduit est toujours fait d'un point nouveau et du bout extérieur Q de son
+#    arc, quand Q est dans l'intervalle voisin du bloc, du côté où l'arc s'enroule. Ces points Q sont les plus proches
+#    du bloc. Avant de tordre, on les range : les « doigts » (les deux arcs de Q vont dans le bloc : Q contourne un
+#    trou) entrent dans le disque rigide et tournent avec lui ; les « passants » (un seul arc va dans le bloc) entrent
+#    dans la couronne, où ils ne tournent qu'en partie et quittent l'axe : le lacet passe sans faire de capuchon.
+#    Tous les brins traversent alors la couronne en s'éloignant du centre : la torsion les enroule sans créneaux.
+# 2. Deux dessins du même instant u : D_u = H_u(image clé k, rangée pour σ) et A_u = H_(u-1)(image clé k+1, rangée
+#    pour σ⁻¹), où H_t est la rotation de t demi-tour, amortie dans la couronne. Les passants de l'un sont les
+#    points nouveaux de l'autre. D_u est exact au départ, A_u à l'arrivée : l'image est leur mélange, de poids u,
+#    entre points communs. Le rangement (et le retour aux abscisses de l'image clé) se fait pendant la rotation.
+# Le mélange est linéaire : pas de preuve d'absence de croisement, mais les deux dessins sont proches.
+
+def mise_en_page_du_demi_tour(etat, sigma):
+    """Abscisses (même ordre) rangées pour le demi-tour du bloc des trous i et i+1 : doigts à côté des trous,
+    passants dans la couronne, le reste au-delà. Renvoie (état, disque (centre, rayon intérieur, rayon extérieur),
+    ensemble des passants (lacet, indice du point))."""
+    trous, lacets = etat
+    i = abs(sigma)
+    a, b = trous[i - 1], trous[i]
+    centre, r = (a + b) / 2, (b - a) / 2
+    limites = {'gauche': (trous[i - 2] if i >= 2 else -math.inf, a), 'droite': (b, trous[i + 1] if i + 1 < len(trous) else math.inf)}
+    def dans_bloc(x): return x is not None and a < x < b
+    doigts, passants = {'gauche': [], 'droite': []}, {'gauche': [], 'droite': []}
+    for l, lacet in enumerate(lacets):
+        points = [None] + lacet + [None] # None : le clou
+        for j, x in enumerate(lacet):
+            # l'arc d'indice pair est en haut : pour j pair c'est celui qui suit le point, sinon celui qui précède
+            bout_haut, bout_bas = (points[j + 2], points[j]) if j % 2 == 0 else (points[j], points[j + 2])
+            for cote, (x1, x2) in limites.items():
+                if not x1 < x < x2: continue
+                # l'arc que l'enroulement ramène de ce côté : pour σ positif, arc du haut à droite, du bas à gauche
+                ramene, autre = (bout_haut, bout_bas) if (cote == 'droite') == (sigma > 0) else (bout_bas, bout_haut)
+                if dans_bloc(ramene): (doigts if dans_bloc(autre) else passants)[cote].append((abs(x - centre), l, j))
+    for cote, (x1, x2) in limites.items():
+        proches = sorted((abs(x - centre), l, j) for l, lacet in enumerate(lacets) for j, x in enumerate(lacet) if x1 < x < x2)
+        assert proches[:len(doigts[cote]) + len(passants[cote])] == sorted(doigts[cote]) + sorted(passants[cote]), \
+               "les doigts puis les passants sont les points les plus proches du bloc"
+    rigides = {(l, j) for cote in doigts for _, l, j in doigts[cote]} \
+              | {(l, j) for l, lacet in enumerate(lacets) for j, x in enumerate(lacet) if dans_bloc(x)}
+    nb_sorties = sum(((l, j) in rigides) != ((l, j + 1) in rigides)
+                     for l, lacet in enumerate(lacets) for j in range(-1, len(lacet)))
+    r_int = r + max(len(doigts['gauche']), len(doigts['droite'])) + 0.5
+    r_ext = r_int + 1 + nb_sorties
+    place = {}
+    for cote, signe in (('gauche', -1), ('droite', 1)):
+        for rang, (_, l, j) in enumerate(sorted(doigts[cote]), 1): place[(l, j)] = centre + signe * (r + rang)
+        for rang, (_, l, j) in enumerate(sorted(passants[cote]), 1):
+            place[(l, j)] = centre + signe * (r_int + (r_ext - r_int) * rang / (len(passants[cote]) + 1))
+    dehors = trous[:i - 1] + trous[i + 1:] + [x for l, lacet in enumerate(lacets) for j, x in enumerate(lacet)
+                                             if (l, j) not in place and not dans_bloc(x)]
+    # le reste est posé juste au-delà de la couronne : les points communs à cette image clé et à la suivante ont
+    # ainsi les mêmes abscisses (au demi-tour du bloc près) dans les deux rangements
+    dg = max([x - (centre - r_ext - 0.5) for x in dehors if x < a], default=0)
+    dd = max([(centre + r_ext + 0.5) - x for x in dehors if x > b], default=0)
+    def decale(x): return x - dg if x < a else x + dd if x > b else x
+    return (([decale(x) for x in trous], [[place.get((l, j), decale(x)) for j, x in enumerate(lacet)] for l, lacet in enumerate(lacets)]),
+            (centre, r_int, r_ext), {(l, j) for cote in passants for _, l, j in passants[cote]})
+
+def dessin_pendant_demi_tour(etat, sigma, rangement, t, **cadre):
+    """Dessin de l'état (une image clé) rangé dans la proportion « rangement » pour le demi-tour, puis tourné de
+    t demi-tour. Tant que le rangement n'est pas fini, la couronne s'arrête avant les autres trous.
+    Renvoie (morceaux, trous, clou, géométrie, disque, passants)."""
+    page, (centre, r_int, r_ext), passants = mise_en_page_du_demi_tour(etat, sigma)
+    e = interpole(etat, page, rangement)
+    i = abs(sigma)
+    a, b = e[0][i - 1], e[0][i]
+    ecart = min([a - x for x in e[0][:i - 1]] + [x - b for x in e[0][i + 1:]], default=math.inf)
+    ext = min(r_ext, (b - a) / 2 + ecart - 0.5)
+    disque = (centre, min(r_int, ext - 0.25), ext)
+    morceaux, trous, clou, geo = dessin_etat(e, disque=(centre, rangement * r_ext), **cadre)
+    morceaux, trous = demi_tour(morceaux, trous, geo, disque, sigma, t)
+    return morceaux, trous, clou, geo, disque, passants
+
+def entre_points_communs(morceaux, passants):
+    """Les morceaux d'un lacet recollés en polylignes qui vont d'un point commun au suivant
+    (passants : indices des points du lacet qui ne sont pas communs aux deux images clés)."""
+    segments, courant = [], []
+    for j, morceau in enumerate(morceaux):
+        courant.append(morceau)
+        if j < len(morceaux) - 1 and j not in passants:
+            segments.append(np.concatenate(courant))
+            courant = []
+    return segments + [np.concatenate(courant)]
+
+def film_de_tresse_simultane(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400,
+                             images=48, part_du_rangement=0.3, verifie=False, **options):
+    """GIF animé : pour chaque σ_i, un seul mouvement (voir plus haut). Pendant que les trous i et i+1 tournent,
+    les lacets sont entraînés sans prendre de mou et les abscisses passent de celles de l'image clé à celles
+    de la suivante. images : nombre d'images par lettre ; part_du_rangement : part du mouvement pendant laquelle
+    les abscisses se rangent (au début) ou rejoignent l'image clé (à la fin).
+    verifie : relit le mot de chaque lacet sur chaque image (lent)."""
+    nb_trous = max(map(operator.abs, tresse), default=5) + 1
+    cadre = {'hauteur': hauteur, 'largeur': largeur}
+    def lisse(u): return u * u * (3 - 2 * u)
+    dessins, durees = [], []
+
+    cle = etat_de_tresse([], nb_trous)
+    m, t, c, geo = dessin_etat(cle, **cadre)
+    dessins.append((polylignes(m), t, c, geo['axe']))
+    durees.append(pause)
+    for k, sigma in enumerate(tresse):
+        i = abs(sigma)
+        suivante = etat_de_tresse(tresse[:k + 1], nb_trous)
+        mots = [calcule_autofn_de_tresse(tresse[:k + j], nb_trous) for j in (0, 1)]
+        for n in range(1, images + 1):
+            u = n / images
+            s = lisse(u)
+            md, td, clou, gd, dd, pd = dessin_pendant_demi_tour(cle, sigma, lisse(min(1, u / part_du_rangement)), s, **cadre)
+            ma, ta, _, ga, da, pa = dessin_pendant_demi_tour(suivante, -sigma, lisse(min(1, (1 - u) / part_du_rangement)),
+                                                             1 - s, **cadre)
+            ta[[i - 1, i]] = ta[[i, i - 1]] # les deux trous ont échangé leurs places dans l'image clé suivante
+            lignes = []
+            for l in range(len(md)):
+                depart = entre_points_communs(md[l], {j for ll, j in pd if ll == l})
+                arrivee = entre_points_communs(ma[l], {j for ll, j in pa if ll == l})
+                assert len(depart) == len(arrivee), "les deux images clés ont les mêmes points communs"
+                lignes.append(np.concatenate([melange(p, q, s) for p, q in zip(depart, arrivee)]))
+            trous = (1 - s) * td + s * ta
+            if verifie:
+                en_ordre = sorted(trous.tolist())
+                # quand les deux trous sont à la verticale l'un de l'autre, les mots ne sont pas définis
+                assert abs(trous[i - 1][0] - trous[i][0]) < 1e-6 or [lit_mot(p, en_ordre) for p in lignes] in mots, \
+                       f"lettre {k}, image {n} : mots des lacets"
+            # l'axe (voir axe_pendant_demi_tour), avec le centre et le rayon de la couronne mélangés eux aussi
+            y = gd['y_axe']
+            c = np.array(((1 - s) * gd['X'](dd[0]) + s * ga['X'](da[0]), y))
+            rayon = (1 - s) * dd[2] * gd['pas'] + s * da[2] * ga['pas']
+            a, b = trous[i - 1], trous[i]
+            r = np.hypot(*(b - a)) / 2
+            def vieux(trou): return np.array((c + (trou - c) * (1 - s), c + (trou - c) * rayon / r * (1 - s)))
+            pousse = (rayon - r) * s
+            axe = [np.array(((5, y), (c[0] - rayon, y))), np.array(((c[0] + rayon, y), (largeur - 5, y))),
+                   np.array((a, b)), vieux(a), vieux(b),
+                   np.array(((c[0] - rayon, y), (c[0] - rayon + pousse, y))),
+                   np.array(((c[0] + rayon, y), (c[0] + rayon - pousse, y)))]
+            dessins.append((lignes, trous, clou, axe))
+            durees.append(duree)
+        cle = suivante
+        durees[-1] = pause
+    durees[-1] = 3 * pause
+
+    images_pil = [en_image_pil(peint(m, t, c, hauteur, largeur, axe=a, **options)) for m, t, c, a in dessins]
+    images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
+
 def en_image_pil(surface):
     '''Convertit une surface Cairo ARGB32 en image PIL (Cairo range les pixels en BGRA).'''
     return Image.frombuffer('RGBA', (surface.get_width(), surface.get_height()), bytes(surface.get_data()),
@@ -783,5 +929,7 @@ dessine_auto_de_tresse([1, 1, 2, 2], './imgs/nouv_1122.png')
 dessine_auto_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/nouv_43m1m12m41.png', largeur_brin=3)
 film_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_43m1m12m41.gif', largeur_brin=3)
 film_de_tresse_algebrique([4, 3, -1, -1, 2, -4, 1], './imgs/film_continu_43m1m12m41.gif', largeur_brin=3)
+film_de_tresse_simultane([4, 3, -1, -1, 2, -4, 1], './imgs/film_simultane_43m1m12m41.gif', largeur_brin=3)
 gif_en_mp4('./imgs/film_43m1m12m41.gif')
 gif_en_mp4('./imgs/film_continu_43m1m12m41.gif')
+gif_en_mp4('./imgs/film_simultane_43m1m12m41.gif')
