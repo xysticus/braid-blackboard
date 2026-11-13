@@ -143,6 +143,19 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       mais près des images clés des arcs géants sortent du cadre, des brins se croisent, et `verifie` échoue :
       la règle qui place le raccord est à revoir.
 
+11. **Triangulation mobile** (`programmes/Triangulation.py`, `film_triangule` → `imgs/film_triangule_*.gif`) : plus d'axe
+    ni de couronne. Sommets : trous, clou, extrémités de l'axe, sommets des bords haut et bas à la verticale des
+    trous (décalés de 0,31 px pour ne pas être sur le clou). Un lacet est une suite de points sur les arêtes
+    (fraction de l'arête), deux points consécutifs dans un même triangle. σ_i : les trous i, i+1 tournent d'un demi-tour,
+    les points suivent leur arête, les sommets des bords croisent sans se rejoindre (écart √((r cos θ)² + (g sin θ)²)).
+    Les arêtes non de Delaunay sont retournées (`Maillage.delaunay`, `retourne`) : les points de l'arête disparaissent,
+    chaque corde qui sépare les deux nouveaux triangles coupe la nouvelle diagonale (`courbe_apres_flip`), la forme ne
+    change pas. Aucune réduction de bigones à faire. Dessin : arcs de cercle (`deux_arcs`) entre points d'arêtes,
+    sans angle droit imposé. `verifie_triangulation` relit les mots (`lit_mot`) après chaque lettre : bon sur la tresse
+    chargée du point 9 et sur 30 tresses aléatoires. Limites : points non réespacés sur les arêtes (brins serrés
+    après beaucoup de lettres) ; non-croisement des arcs lissés non vérifié (les cordes ne se croisent pas par
+    construction). Le fichier charge le début de `NouvAutoMorph.py` par `exec` (ce script lance ses films au chargement).
+
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
 de l'image k : le dessin du préfixe suivant est bien l'image du dessin courant par la torsion.
