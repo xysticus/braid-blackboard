@@ -153,8 +153,16 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     change pas. Aucune réduction de bigones à faire. Dessin : arcs de cercle (`deux_arcs`) entre points d'arêtes,
     sans angle droit imposé. `verifie_triangulation` relit les mots (`lit_mot`) après chaque lettre : bon sur la tresse
     chargée du point 9 et sur 30 tresses aléatoires.
-    Maillage fin (`maillage_initial(fin=True)`) : milieux sur les bords, deux rangées intermédiaires à 0,8 × l'espacement
-    des trous de l'axe (hors de portée du demi-tour). Réespacement continu (`Film.reespace`, taux 0,08 par sous-pas) :
+    Maillage fin (`maillage_initial(fin=True)`) : milieux sur les bords, deux rangées intermédiaires à 0,85 × la
+    distance de l'axe au bord (au moins 0,65 × l'espacement des trous, hors de portée du demi-tour), rangée alignée
+    sur les trous en bas. Le dessin de départ est étiré au-dessus de l'axe pour remplir la bande du haut (un brin
+    n'occupe que les triangles qu'il traverse : une bande qu'il ne traverse pas reste vide).
+    **Clou en pointe de degré 2** : il pend sous une base (coins et deux sommets à ±90 px) ; son seul triangle contient
+    les départs et arrivées de tous les lacets, qui passent tous par l'arête de la base ; il est dans
+    `Maillage.proteges` (aucun flip ne lui ajoute d'arête), donc cela reste vrai pendant tout le film
+    (`depart_et_arrivee_ensemble`). Les côtés de la pointe doivent être plus plats que les brins qui quittent le clou
+    (élévation minimale 12,9°, pointe à 8,8°), sinon un brin sort du maillage. Réespacement continu (`Film.reespace`,
+    taux 0,08 par sous-pas) :
     les fractions des points de chaque arête tendent vers une répartition régulière sans changer d'ordre, donc sans
     croisement. Limites : les cordes ne se croisent jamais (vérifié), mais les arcs lissés si (0 sur la tresse de
     référence, jusqu'à ~20 sur la tresse chargée à partir de la 6ᵉ lettre : brins très serrés, les paires d'arcs
