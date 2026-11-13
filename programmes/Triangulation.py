@@ -124,24 +124,47 @@ class Maillage:
         raise RuntimeError("les flips ne s'arrêtent pas")
 
 
-def maillage_initial(trous, clou, hauteur, largeur):
-    '''Triangulation de Delaunay du rectangle : trous sur l'axe, sommets au-dessus et au-dessous de chaque trou
-    sur les bords, extrémités de l'axe, clou. Renvoie (maillage, indices des trous, du clou,
-    des sommets du bord haut, du bord bas) ; les sommets des bords sont rangés comme les trous, avec les
-    coins en plus : indices k + 1 pour le trou k.'''
+def maillage_initial(trous, clou, hauteur, largeur, fin=True):
+    '''Triangulation de Delaunay du rectangle. Rangées de sommets : bords haut et bas (à la verticale des trous
+    et entre eux), si fin deux rangées intermédiaires au-dessus et au-dessous de l'axe (assez loin pour que le
+    demi-tour de deux trous voisins ne les touche pas), l'axe (extrémités et trous), puis le clou.
+    Renvoie (maillage, indices des trous, du clou, sommets du bord haut, du bord bas) ; les sommets des bords
+    alignés sur les trous sont rangés avec les coins : indice k + 1 pour le trou k.'''
     n = len(trous)
     y_axe = trous[0][1] + DECALAGE_AXE
-    xs = [0] + [x + DECALAGE_BORD for x, _ in trous] + [largeur]
+    xt = [x + DECALAGE_BORD for x, _ in trous]
+    pas = (trous[-1][0] - trous[0][0]) / max(n - 1, 1) if n > 1 else largeur / 2
+    milieux = [(a + b) / 2 for a, b in zip(xt[:-1], xt[1:])]
+    if n > 1: milieux = [xt[0] - pas / 2] + milieux + [xt[-1] + pas / 2]
+    else: milieux = []
+    xs_fin = sorted([0, largeur] + xt + [x for x in milieux if 0 < x < largeur])
     pts = []
     def ajoute(p): pts.append(p); return len(pts) - 1
+
+    def rangee(y, xs): return [ajoute((x, y)) for x in xs]
+    y_haut, y_bas = 3, hauteur - 3
+    ecart = min(0.8 * pas, 0.5 * (y_axe - y_haut))
+    rangees = []
+    haut = [ajoute((x, y_haut)) for x in [0] + xt + [largeur]]
+    # sommets du bord haut hors alignement : on les range par abscisse dans la rangée
+    bord_haut = haut + [ajoute((x, y_haut)) for x in xs_fin if x not in [0, largeur] + xt] if fin else haut
+    rangees.append(bord_haut)
+    if fin: rangees.append(rangee(y_axe - ecart, xs_fin))
     axe = [ajoute((0, y_axe))] + [ajoute((x, y_axe)) for x, _ in trous] + [ajoute((largeur, y_axe))]
-    haut = [ajoute((x, 3)) for x in xs]
-    bas = [ajoute((x, hauteur - 3)) for x in xs]
+    rangees.append(axe)
+    if fin and y_axe + ecart < clou[1] - 25: rangees.append(rangee(y_axe + ecart, xs_fin))
+    bas = [ajoute((x, y_bas)) for x in [0] + xt + [largeur]]
+    bord_bas = bas + [ajoute((x, y_bas)) for x in xs_fin if x not in [0, largeur] + xt] if fin else bas
+    rangees.append(bord_bas)
     triangles = []
-    for rangee in (haut, bas):
-        for k in range(n + 1):
-            triangles.append((axe[k], axe[k + 1], rangee[k]))
-            triangles.append((axe[k + 1], rangee[k], rangee[k + 1]))
+    for r1, r2 in zip(rangees[:-1], rangees[1:]):
+        r1 = sorted(r1, key=lambda i: pts[i][0])
+        r2 = sorted(r2, key=lambda i: pts[i][0])
+        i = j = 0
+        while i < len(r1) - 1 or j < len(r2) - 1:
+            avance_1 = j == len(r2) - 1 or (i < len(r1) - 1 and pts[r1[i + 1]][0] <= pts[r2[j + 1]][0])
+            if avance_1: triangles.append((r1[i], r1[i + 1], r2[j])); i += 1
+            else: triangles.append((r1[i], r2[j], r2[j + 1])); j += 1
     nail = ajoute(tuple(clou))
     m = Maillage(pts, triangles)
     for t in list(m.triangles):
@@ -208,6 +231,19 @@ class Film:
         self.maillage, self.trous, self.clou, self.haut, self.bas = maillage_initial(trous, clou, hauteur, largeur)
         self.courbes = [noeuds_de_polyligne(p, self.maillage, self.clou) for p in polylignes(morceaux)]
 
+    def reespace(self, taux):
+        '''Rapproche d'un taux les fractions des points de chaque arête de leur répartition régulière,
+        sans changer leur ordre (donc sans créer de croisement).'''
+        par_arete = {}
+        for k, courbe in enumerate(self.courbes):
+            for i, n in enumerate(courbe):
+                if n[0] == 'e': par_arete.setdefault(n[1:3], []).append((n[3], k, i))
+        for (u, v), liste in par_arete.items():
+            liste.sort()
+            for j, (w, k, i) in enumerate(liste):
+                cible = (j + 1) / (len(liste) + 1)
+                self.courbes[k][i] = ('e', u, v, w + taux * (cible - w))
+
     def polylignes(self, lisse=True):
         return [polyligne_de_courbe(self.maillage, c, lisse) for c in self.courbes]
 
@@ -245,7 +281,7 @@ class Film:
             m.pos[rangee[k + 1]][0] = milieu[0] - ecart
             m.pos[rangee[k + 2]][0] = milieu[0] + ecart
 
-    def lettre(self, sigma, images=24, sous_pas=6):
+    def lettre(self, sigma, images=24, sous_pas=6, taux=0.08):
         '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA) ; renvoie les images (surfaces Cairo) du mouvement.'''
         depart = self.maillage.pos.copy()
         resultat = []
@@ -255,6 +291,7 @@ class Film:
             self.place(None, sigma, pas / (images * sous_pas), depart)
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
+            self.reespace(taux)
             if pas % sous_pas == 0: resultat.append(self.cadre())
         return resultat
 
