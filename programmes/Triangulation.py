@@ -484,6 +484,10 @@ def film_triangule(tresse, fichier, vitesse=None, pause=0.5, largeur_brin=None, 
     ffmpeg.stdin.close()
     ffmpeg.wait()
 
-assert verifie_triangulation([1])
-assert verifie_triangulation([1, -2, 1])
-assert verifie_triangulation([4, 3, -1, -1, 2, -4, 1])
+if __name__ == "__main__":
+    # tests et exemples, lancés seulement quand le script est exécuté (pas à l'import) ; depuis la racine du dépôt
+    assert verifie_triangulation([1])
+    assert verifie_triangulation([1, -2, 1])
+    assert verifie_triangulation([4, 3, -1, -1, 2, -4, 1])
+    film_triangule([4, 3, -1, -1, 2, -4, 1], './imgs/film_triangule_43m1m12m41.mp4')
+    film_triangule([1, -2, 1, -2, 1, -2, 3, -1, 2], './imgs/film_triangule_charge.mp4')
