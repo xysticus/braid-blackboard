@@ -2,6 +2,14 @@
 
 Un notebook pour dessiner des éléments du groupe de tresse (Artin braid group).
 
+<p align="center"><img src="imgs/bouquet_iris.jpg" alt="Trois iris faits de lacets" width="420"></p>
+
+<p align="center"><em>Action d'Artin du groupe des tresses sur le groupe fondamental du disque troué,
+ou croissance d'iris des calanques dans F₃₅. Il n'y a que 35 lacets.</em></p>
+
+Le bouquet est un film (`programmes/Bouquet.py`) : les trous d'un disque bougent, et les 35 lacets qui les
+entourent, transportés sans jamais se couper, poussent en tiges puis éclosent en fleurs.
+
 Exemple du dessin de la tresse ![4 -2 3 -2](CodeCogsEqn1.gif) avec l'appel `dessine_tresse([4, -2, 3, -2])`:
 
 ![Une tresse](imgs/4m23m2.png)
