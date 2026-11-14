@@ -143,7 +143,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       mais près des images clés des arcs géants sortent du cadre, des brins se croisent, et `verifie` échoue :
       la règle qui place le raccord est à revoir.
 
-11. **Triangulation mobile** (`programmes/Triangulation.py`, `film_triangule` → `imgs/film_triangule_*.gif`) : plus d'axe
+11. **Triangulation mobile** (`programmes/Triangulation.py`, `film_triangule` → `imgs/film_triangule_*.mp4`) : plus d'axe
     ni de couronne. Sommets : trous, clou, extrémités de l'axe, sommets des bords haut et bas à la verticale des
     trous (décalés de 0,31 px pour ne pas être sur le clou). Un lacet est une suite de points sur les arêtes
     (fraction de l'arête), deux points consécutifs dans un même triangle. σ_i : les trous i, i+1 tournent d'un demi-tour,
@@ -173,6 +173,24 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     (interpolé), le trait est au plus 70 % de cet écart. Le dessin de départ est replacé sur la disposition 0 par une
     transformation affine par morceaux des abscisses. Plus la tresse est chargée, plus `s` est petit (2,8 px à la 7ᵉ
     lettre de la tresse chargée).
+    **Film** : 800 × 800 par défaut (longueurs en pixels réglées pour 400 et multipliées par `largeur / 400`), 96 images
+    par lettre (2 sous-pas par image), donc une durée proportionnelle à la longueur de la tresse. `film_triangule`
+    écrit le MP4 au fil du calcul par un tube vers ffmpeg (un GIF de cette taille ne tiendrait pas en mémoire) ;
+    `Film.lettre(..., rendu=f)` appelle f avec chaque image, sans rendu rien n'est dessiné (tests plus rapides).
+    **Tension dès la première image** : 400 pas de `tend` dans `Film.__init__`.
+    **Dessin des enroulements et des voyages** (`Film.polyligne`) : direction en chaque point = corde entre ses deux
+    voisins. Autour d'un trou, les points tendus sont à égale distance sur des arêtes qui rayonnent, donc cette corde
+    est perpendiculaire au rayon : les enroulements sont des arcs de cercle centrés sur le trou, et un brin tendu entre
+    deux enroulements est droit. Essai écarté : imposer la perpendiculaire au rayon aux seuls points « plaqués » contre
+    le trou (chaîne de points au contact partant du trou) ; là où un faisceau quitte un enroulement, deux brins voisins
+    n'ont pas le même statut et leurs arcs se coupent (36 croisements au lieu de 0 sur une image clé).
+    **Brins attachés au clou** : on insère dans le dessin leur premier (dernier) passage sur l'axe
+    (`portions_du_clou`), avec la verticale pour direction : ils partent de l'axe perpendiculairement.
+    Essai abandonné : tirer les points de ces brins vers un chemin imposé (arc de cercle centré sur l'axe, vertical au
+    départ, de rayon κ × éloignement à la verticale du clou, puis tangente jusqu'au clou ; avec ou sans descente
+    verticale jusque sous les arcs du bas). Ces chemins ne se croisent pas entre eux (vérifié numériquement), mais
+    ils ignorent les arcs du bas qui enjambent la colonne du clou : ces arcs étaient écrasés contre les brins du clou,
+    la profondeur « sous les arcs » s'emballait (rétroaction), jusqu'à 60 croisements par image.
     Réespacement continu (`Film.tend`, taux 0,15 par sous-pas) : plus de répartition uniforme sur les arêtes (elle étalait les brins sur toute la longueur,
     trop loin des trous). `Film.tend` : chaque point est tiré vers l'endroit de son arête où ses deux voisins sont
     alignés avec lui (le brin se tend), puis, arête par arête, les points gardent leur ordre, restent à `ecart`
@@ -181,7 +199,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     images clés (écart régulier sur l'axe, remplissage vertical qui part des trous). L'ordre sur chaque arête est
     conservé, donc pas de croisement des cordes.
     croisement. Limites : les cordes ne se croisent jamais (vérifié), mais les arcs lissés parfois (avec la tension et la disposition proportionnelle : 2 à la 1ʳᵉ
-    lettre de la tresse de référence puis 0, et sur la tresse chargée 0 sauf 8 à la 6ᵉ lettre et 4 à la 7ᵉ ; sans elle jusqu'à 194). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
+    lettre de la tresse de référence puis 0, et sur la tresse chargée 0 sauf 8 à la 6ᵉ lettre (en 800 px, 48 images par lettre) ; sans elle jusqu'à 194). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
     intersections aux extrémités (les brins se rejoignent au clou). Le fichier charge le début de `NouvAutoMorph.py`
     par `exec` (ce script lance ses films au chargement).
 
