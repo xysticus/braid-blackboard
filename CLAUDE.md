@@ -167,9 +167,13 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     (y compris les deux de gauche et de droite) est proportionnelle à 1 + le nombre de brins qui le traversent
     (compté dans l'état : il égale les croisements réels de l'axe sur le dessin, vérifié à chaque image clé), donc
     l'écart `s` entre deux points consécutifs de l'axe est le même partout ; la verticale suit le même écart (les brins
-    se tassent près des trous). Les trous glissent de la disposition de l'image clé k à celle de k+1 pendant le
-    demi-tour de la lettre (centre et rayon du demi-tour interpolés ; le clou garde sa place relative entre ses deux
-    voisins du bord bas), toujours un seul mouvement par lettre. L'écart `ecart` de `tend` est celui de la disposition
+    se tassent près des trous). Pendant la lettre, les trous glissent de la disposition de l'image clé k à celle du
+    milieu de la lettre (`Film.milieux` : disposition de l'état non réduit `agit(état k, σ)`, qui compte les brins
+    passant de chaque côté du bloc pendant le demi-tour), puis à celle de l'image clé k+1 (`Film.abscisses`,
+    interpolation douce ; centre et rayon du demi-tour suivent ; le clou garde sa place relative entre ses deux
+    voisins du bord bas), toujours un seul mouvement par lettre. Sans la disposition du milieu, la bande de droite de
+    la tresse de référence (1 brin avant et après σ₄⁻¹) était trop étroite pour le jaune qui fait le tour de la paire
+    pendant le demi-tour : il recouvrait le bleu. L'écart `ecart` de `tend` est celui de la disposition
     (interpolé), le trait est au plus 70 % de cet écart. Le dessin de départ est replacé sur la disposition 0 par une
     transformation affine par morceaux des abscisses. Plus la tresse est chargée, plus `s` est petit (2,8 px à la 7ᵉ
     lettre de la tresse chargée).
@@ -182,7 +186,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     (arc de cercle tangent aux deux segments, qui prend au plus la moitié du plus court) : rien que des droites et des
     arcs, sans point d'inflexion. Un brin tendu reste droit jusqu'à son coude ; les enroulements, faits de petits
     coudes réguliers autour d'un trou, sont des cercles. 0 croisement sur toutes les images clés des deux tresses
-    d'essai. Essais écartés : une direction par point (corde entre les voisins) et une paire d'arcs (`deux_arcs`) par
+    d'essai, et sur une image sur quatre des deux films ; les brins ne se touchent que dans l'éventail du clou. Essais écartés : une direction par point (corde entre les voisins) et une paire d'arcs (`deux_arcs`) par
     segment : un brin droit qui tourne d'un coup en un point fait un S dans le segment qui précède (zigzags des brins
     extérieurs, 2 à 8 croisements par image clé) ; imposer la perpendiculaire au rayon aux points « plaqués » contre un
     trou (36 croisements : deux brins voisins d'un faisceau qui quitte un enroulement n'ont pas le même statut).
@@ -198,7 +202,9 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     Réespacement continu (`Film.tend`, taux 0,15 par sous-pas) : plus de répartition uniforme sur les arêtes (elle étalait les brins sur toute la longueur,
     trop loin des trous). `Film.tend` : chaque point est tiré vers l'endroit de son arête où ses deux voisins sont
     alignés avec lui (le brin se tend), puis, arête par arête, les points gardent leur ordre, restent à `ecart`
-    les uns des autres et des sommets (régression monotone bornée, `monotone`).
+    les uns des autres perpendiculairement aux brins (ecart / sinus le long d'une arête traversée en biais, sinus
+    borné à 0,3 : dans un triangle plat, l'écart le long de l'arête ne suffisait pas) et à `ecart` des sommets
+    (régression monotone bornée, `monotone`).
     Les brins se tassent à écart fixe près des trous et laissent du vide au-delà, comme les demi-cercles emboîtés des
     images clés (écart régulier sur l'axe, remplissage vertical qui part des trous). L'ordre sur chaque arête est
     conservé, donc pas de croisement des cordes.

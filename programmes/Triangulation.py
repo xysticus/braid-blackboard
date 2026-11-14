@@ -204,7 +204,12 @@ class Film:
         self.hauteur, self.largeur = hauteur, largeur
         e = largeur / 400 # échelle des longueurs en pixels (réglées pour 400 × 400)
         self.nb_trous = max(map(operator.abs, tresse), default=1) + 1
-        self.dispositions = [self.disposition(tresse[:k]) for k in range(len(tresse) + 1)]
+        self.dispositions = [self.disposition(etat_de_tresse(tresse[:k], self.nb_trous))
+                             for k in range(len(tresse) + 1)]
+        # au milieu de chaque lettre : l'état non réduit compte les brins qui passent de chaque côté du bloc
+        # pendant le demi-tour (ils doivent y trouver leur place)
+        self.milieux = [self.disposition(agit(etat_de_tresse(tresse[:k], self.nb_trous), sigma))
+                        for k, sigma in enumerate(tresse)]
         self.etape = 0 # indice de l'image clé courante
         morceaux, trous, clou, _ = dessin_etat(etat_de_tresse([], self.nb_trous), hauteur, largeur)
         # le dessin de départ est replacé sur la disposition de l'image clé 0 : les abscisses sont transformées
@@ -231,12 +236,12 @@ class Film:
         # la tension s'applique dès la première image : pas de lacets lâches au départ
         for _ in range(400): self.tend(0.3, self.dispositions[0][1])
 
-    def disposition(self, tresse):
-        '''(abscisses des trous, écart entre brins) de l'image clé de la tresse : la largeur de chaque intervalle de
-        l'axe (y compris les deux de gauche et de droite) est proportionnelle à 1 + le nombre de brins qui le
-        traversent, donc l'écart entre deux points consécutifs de l'axe (et entre deux brins ailleurs) est le même
-        partout.'''
-        trous, lacets = etat_de_tresse(tresse, self.nb_trous)
+    def disposition(self, etat):
+        '''(abscisses des trous, écart entre brins) pour un état (celui d'une image clé, ou l'état non réduit du
+        milieu d'une lettre) : la largeur de chaque intervalle de l'axe (y compris les deux de gauche et de droite)
+        est proportionnelle à 1 + le nombre de brins qui le traversent, donc l'écart entre deux points consécutifs
+        de l'axe (et entre deux brins ailleurs) est le même partout.'''
+        trous, lacets = etat
         comptes = [0] * (self.nb_trous + 1)
         for lacet in lacets:
             for x in lacet: comptes[intervalle(x, trous)] += 1
@@ -262,8 +267,10 @@ class Film:
     def tend(self, taux, ecart, degagement=None):
         '''Un pas de tension des lacets. Chaque point est tiré, d'une fraction taux du chemin, vers sa cible sur son
         arête : l'endroit où ses deux voisins sont alignés avec lui (le brin se tend). Puis, arête par arête,
-        les points gardent leur ordre et restent à `ecart` pixels les uns des autres et à `degagement` (par défaut
-        ecart) pixels des sommets (projection d'une régression monotone bornée), moins si l'arête est trop courte.
+        les points gardent leur ordre et restent à `ecart` pixels les uns des autres perpendiculairement aux brins
+        (donc à ecart / sinus le long d'une arête traversée en biais, sinus borné à 0,3) et à `degagement` (par
+        défaut ecart) pixels des sommets (projection d'une régression monotone bornée), moins si l'arête est trop
+        courte.
         Les brins se tassent donc à écart fixe là où ils sont tirés, près des trous, et laissent du vide au-delà ;
         l'ordre sur chaque arête ne change pas, donc aucun croisement.'''
         degagement = ecart if degagement is None else degagement
@@ -277,17 +284,26 @@ class Film:
                 p, q = self.maillage.position(courbe[i - 1]), self.maillage.position(courbe[i + 1])
                 den = croix(d, q - p)
                 cible = croix(p - pos[u], q - p) / den if abs(den) > 1e-9 else w
-                par_arete.setdefault((u, v), []).append((w + taux * (min(max(cible, 0), 1) - w), k, i))
+                # sinus de l'angle sous lequel le brin traverse l'arête
+                sinus = abs(den) / max(math.hypot(*d) * math.hypot(*(q - p)), 1e-12)
+                par_arete.setdefault((u, v), []).append((w + taux * (min(max(cible, 0), 1) - w), k, i, sinus))
         for (u, v), liste in par_arete.items():
             longueur = math.hypot(*(pos[v] - pos[u]))
             liste.sort()
             m = len(liste)
             marge = min(degagement, 0.3 * longueur)
-            g = min(ecart, max(longueur - 2 * marge, 0) / (m + 1))
-            cibles = [w * longueur - j * g for j, (w, _, _) in enumerate(liste)]
-            finals = [min(max(x, marge), longueur - marge - (m - 1) * g) + j * g for j, x in enumerate(monotone(cibles))]
+            # écart le long de l'arête entre deux points voisins : ecart / sinus, pour que les brins restent à ecart
+            # l'un de l'autre perpendiculairement même s'ils traversent l'arête en biais (triangle plat)
+            ecarts = [ecart / max((liste[j - 1][3] + liste[j][3]) / 2, 0.3) for j in range(1, m)]
+            place = max(longueur - 2 * marge, 0)
+            if sum(ecarts) > place * m / (m + 1): # pas la place : on réduit tous les écarts
+                ecarts = [g * place * m / (m + 1) / sum(ecarts) for g in ecarts]
+            cumul = [0.0]
+            for g in ecarts: cumul.append(cumul[-1] + g)
+            cibles = [liste[j][0] * longueur - cumul[j] for j in range(m)]
+            finals = [min(max(x, marge), longueur - marge - cumul[-1]) + cumul[j] for j, x in enumerate(monotone(cibles))]
             for j, final in enumerate(finals):
-                _, k, i = liste[j]
+                _, k, i, _ = liste[j]
                 self.courbes[k][i] = ('e', u, v, final / longueur)
 
     def polyligne(self, k, lisse=True, part_du_conge=0.5):
@@ -358,13 +374,12 @@ class Film:
 
     def place(self, sigma, u):
         '''Place les sommets au temps u de la lettre σ (vers l'image clé suivante) : les trous glissent de la
-        disposition de l'image clé courante à la suivante, et les deux trous de σ font en plus un demi-tour autour
-        de leur milieu (centre et rayon eux aussi interpolés).'''
+        disposition de l'image clé courante à celle du milieu de la lettre puis à celle de l'image clé suivante
+        (`abscisses`), et les deux trous de σ font en plus un demi-tour autour de leur milieu.'''
         m, i, n = self.maillage, abs(sigma) - 1, self.nb_trous
-        xs0, xs1 = self.dispositions[self.etape][0], self.dispositions[self.etape + 1][0]
-        x = [(1 - u) * a + u * b for a, b in zip(xs0, xs1)] # abscisses de chaque place, de gauche à droite
-        milieu = (1 - u) * (xs0[i] + xs0[i + 1]) / 2 + u * (xs1[i] + xs1[i + 1]) / 2
-        r = (1 - u) * (xs0[i + 1] - xs0[i]) / 2 + u * (xs1[i + 1] - xs1[i]) / 2
+        xs1 = self.dispositions[self.etape + 1][0]
+        x = self.abscisses(u)[0] # abscisses de chaque place, de gauche à droite
+        milieu, r = (x[i] + x[i + 1]) / 2, (x[i + 1] - x[i]) / 2
         theta = SENS_DE_SIGMA * (1 if sigma > 0 else -1) * math.pi * u
         c, s = math.cos(theta), math.sin(theta)
         for j, h in enumerate(self.trous): m.pos[h] = (x[j], self.y_axe)
@@ -384,18 +399,28 @@ class Film:
             self.trous[i], self.trous[i + 1] = b, a
             self.etape += 1
 
+    def abscisses(self, u):
+        '''(abscisses des places, écart) au temps u de la lettre courante : de l'image clé à la disposition du
+        milieu de la lettre pendant la première moitié, puis de celle-ci à l'image clé suivante (interpolation
+        douce, sans à-coup aux raccords).'''
+        (xa, ea), (xm, em), (xb, eb) = self.dispositions[self.etape], self.milieux[self.etape], \
+            self.dispositions[self.etape + 1]
+        if u <= 0.5: (x0, e0), (x1, e1), v = (xa, ea), (xm, em), 2 * u
+        else: (x0, e0), (x1, e1), v = (xm, em), (xb, eb), 2 * u - 1
+        v = v * v * (3 - 2 * v)
+        return [(1 - v) * a + v * b for a, b in zip(x0, x1)], (1 - v) * e0 + v * e1
+
     def lettre(self, sigma, images=96, sous_pas=2, taux=0.15, largeur_brin=None, rendu=None):
         '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA). rendu : fonction appelée avec chaque image (surface Cairo) ;
         sans elle, rien n'est dessiné.'''
-        ecart0, ecart1 = self.dispositions[self.etape][1], self.dispositions[self.etape + 1][1]
         for pas in range(1, images * sous_pas + 1):
             u = pas / (images * sous_pas)
+            ecart = self.abscisses(u)[1]
             self.place(sigma, u)
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
-            self.tend(taux, (1 - u) * ecart0 + u * ecart1)
-            if rendu and pas % sous_pas == 0:
-                rendu(self.cadre(largeur_brin=largeur_brin, ecart=(1 - u) * ecart0 + u * ecart1))
+            self.tend(taux, ecart)
+            if rendu and pas % sous_pas == 0: rendu(self.cadre(largeur_brin=largeur_brin, ecart=ecart))
 
 
 SENS_DE_SIGMA = 1
