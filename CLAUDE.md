@@ -240,21 +240,22 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     `Pousse` hérite de `Film` (état de départ d'une tresse à n brins, puis `y_axe = -inf` pour couper le départ
     perpendiculaire des brins du clou). Les trous dorment en rang serré sous une terre épaisse (la graine) : les
     pousses surgissent du sol. Chaque plante (`fleur`, `feuille`) monte le long d'une tige de Bézier en oscillant
-    (nutation). **Éclosion** (idée de l'utilisateur) : une fleur = 5 sépales et 4 pétales rangés par angle de 240° à
-    -60° (le bas reste ouvert pour la tige ; à 210°/-30°, les lacets des sépales du bas filaient droit vers le clou,
+    (nutation). **Éclosion** (idée de l'utilisateur) : une fleur = 5 sépales et 4 pétales rangés par angle de 250° à
+    -70° (avec un écart de 2,3 px, à 240°/-60° les lacets des sépales du bas se séparaient de nouveau de la tige) (le bas reste ouvert pour la tige ; à 210°/-30°, les lacets des sépales du bas filaient droit vers le clou,
     lignes isolées à côté des tiges) ; les sépales forment une cage qui ne tourne pas, les pétales tournent
     d'un tour à l'intérieur (les lacets s'enroulent en couches : le bourgeon), puis sortent entre les sépales ; les
     couches, retenues par les sépales, gonflent en lobes pincés entre eux : la fleur sort du bourgeon au lieu de le
     gonfler. Essais écartés : sépales qui tournent avec les pétales (ils sont alors à l'intérieur des couches et ne
     retiennent rien : contour convexe sans vallée) ; trop de trous ou un écart de 6 px (faisceaux de 450 px de large) ;
     tension très relâchée (taux 0,06 : grands drapés) ; 3 pétales (triangle) ; 2 tours de bourgeon (trop de couches).
-    Réglages : écart 3 px, trait 1,4 px, taux 0,12 (tension un peu relâchée), rayons bourgeon 20, sépales 52,
+    Réglages : écart 2,3 px (tiges moins épaisses), trait 1,4 px, taux 0,12 (tension un peu relâchée), rayons bourgeon 20, sépales 52,
     fleur 100 ; montée sans croisement de trous grâce au passage par un demi-cercle dans l'ordre de la graine
     (distance minimale contrôlée). Feuille : deux trous sur un segment qui s'allonge ; les feuilles sont aux deux bouts de la graine, tournées vers
-    l'extérieur (entre deux fleurs, une feuille coupait le chemin d'une tige et la faisait plier). Dessin : fond bleu clair, terre
-    blanche dessinée par-dessus, lacets (trait 2 px) remplis d'une couleur transparente puis tracés ; verts pour les
+    l'extérieur (entre deux fleurs, une feuille coupait le chemin d'une tige et la faisait plier). Dessin : fond bleu clair, pas de
+    sol (les tiges convergent vers le clou en bas de l'image ; hauteurs des têtes comptées depuis le bas), lacets (trait 2 px) remplis d'une couleur transparente puis tracés ; verts pour les
     tiges et les feuilles ; une fleur est peinte en deux fois (`secteur_de_fleur` : disque de 2,6 × son rayon autour
-    de la tête, privé d'un coin de 60° dans la direction de la tige) : en vert hors du secteur, et dans le secteur
+    de la tête, privé d'un coin de 50° dans la direction de la tige, qui ne commence qu'au-delà des sépales : sinon
+    le vert de la tige montait en pointe jusqu'au cœur) : en vert hors du secteur, et dans le secteur
     en bicolore, blanc au centre puis de la couleur de la fleur, qui remplace le vert du bouton à l'éclosion (le vert
     disparaît des fleurs, la couleur ne descend pas sur les tiges) ; chaque image calculée montrée deux fois, lumière
     constante (une variation d'une image à l'autre faisait clignoter). Essai abandonné à la demande de l'utilisateur (copie hors dépôt) : une calanque (cailloux de

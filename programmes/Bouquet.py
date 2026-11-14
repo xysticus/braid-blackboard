@@ -89,11 +89,11 @@ class Pousse(Film):
         nb_trous = sum(g['trous'] for g in groupes)
         super().__init__([nb_trous - 1], hauteur, largeur) # une tresse de nb_trous brins : seul l'état de départ sert
         self.e = e = largeur / 800
-        self.ecart, self.taux = ecart or 3 * e, taux
+        self.ecart, self.taux = ecart or 2.3 * e, taux
         clou = self.maillage.pos[self.clou]
         # la graine : les trous en rang serré sous la terre, au-dessus du clou
         self.y_graine = clou[1] - 30 * e
-        self.y_sol = self.y_graine - 22 * e
+        self.y_sol = hauteur # pas de sol dessiné : les hauteurs des têtes sont comptées depuis le bas de l'image
         self.graine = np.array([(clou[0] + (k - (nb_trous - 1) / 2) * 10 * e, self.y_graine) for k in range(nb_trous)])
         self.premier = np.cumsum([0] + [g['trous'] for g in groupes])
         self.deplace(list(self.trous), self.graine, pas_max=2 * e, taux=0.15)
@@ -143,17 +143,21 @@ class Pousse(Film):
         return d / math.hypot(*d)
 
     def secteur_de_fleur(self, ctx, n, t):
-        '''Chemin du secteur où l'on peint la fleur n : grand disque autour de la tête privé d'un coin de 60° dans la
-        direction de la tige (la couleur ne descend pas sur la tige).'''
+        '''Chemin de la région où l'on peint la fleur n : grand disque autour de la tête privé d'un coin de 50° dans
+        la direction de la tige, ce coin ne commençant qu'au-delà des sépales (la couleur ne descend pas sur la tige,
+        et le vert de la tige ne monte pas jusqu'au cœur de la fleur). Chemin simple : grand arc hors du coin,
+        rentrée le long d'un bord du coin, petit arc en travers du coin, sortie le long de l'autre bord.'''
         g = self.groupes[n]
         centre, R = self.centre(n, t), 2.6 * g['rayon_fleur'] * self.e
+        r = 1.1 * g['rayon_sepales'] * self.e
         tige = math.atan2(*self.direction_de_tige(n)[::-1])
-        ctx.move_to(*centre)
-        ctx.arc(*centre, R, tige + math.radians(30), tige - math.radians(30) + 2 * math.pi)
+        demi = math.radians(25)
+        ctx.arc(*centre, R, tige + demi, tige - demi + 2 * math.pi)
+        ctx.arc(*centre, r, tige - demi, tige + demi)
         ctx.close_path()
 
     def trous_de_fleur(self, n, t):
-        '''Trous de la fleur n, rangés par angle décroissant de 240° à -60° (le bas reste ouvert pour la tige ; les
+        '''Trous de la fleur n, rangés par angle décroissant de 250° à -70° (le bas reste ouvert pour la tige ; les
         sépales du bas sont près de l'axe de la tige, pour que leurs lacets longent le faisceau) :
         sépales (rangs pairs) et pétales (rangs impairs) en alternance. Les sépales forment une cage qui ne tourne pas,
         les pétales sont à l'intérieur, sur le petit cercle du bourgeon. Pendant la montée, tous passent du rang de la
@@ -170,7 +174,7 @@ class Pousse(Film):
         resultat = []
         for j in range(m):
             demi = math.pi - math.pi * j / (m - 1)
-            final = math.radians(240 - 300 * j / (m - 1))
+            final = math.radians(250 - 320 * j / (m - 1))
             a = (1 - cercle) * demi + cercle * final
             if j % 2 == 0: # sépale
                 rayon = (1 - cercle) * g['rayon_bourgeon'] + cercle * g['rayon_sepales']
@@ -223,7 +227,7 @@ class Pousse(Film):
         '''Image au temps t : fond bleu clair (lumière légèrement variable, comme les prises de vue image par image),
         lacets remplis d'une couleur transparente et tracés : verts pour les tiges et les feuilles ; dans la fleur
         (secteur autour de la tête, sans la tige), blancs au centre puis de la couleur de la fleur, ce bicolore
-        apparaissant à l'éclosion ; puis la terre blanche, qui cache les graines.'''
+        apparaissant à l'éclosion. Pas de sol : les tiges partent du bas de l'image.'''
         l, h, e = self.largeur, self.hauteur, self.e
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, l, h)
         ctx = cairo.Context(surface)
@@ -270,9 +274,6 @@ class Pousse(Film):
             ctx.clip()
             self.trace(ctx, points, fleur, largeur)
             ctx.restore()
-        ctx.set_source_rgb(*(np.array((0.97, 0.97, 0.95)) * min(lumiere, 1.0 / 0.97)))
-        ctx.rectangle(0, self.y_sol, l, h)
-        ctx.fill()
         return surface
 
 
@@ -293,13 +294,13 @@ def feuille(tete, depart, angle, longueur=80, **reglages):
 # Les feuilles sont aux deux bouts de la graine, tournées vers l'extérieur : entre deux fleurs, une feuille coupait le
 # chemin d'une tige et la faisait plier.
 BOUQUET = [
-    feuille((110, 150), 1.5, math.radians(150)),
-    feuille((215, 215), 2.2, math.radians(160), longueur=70),
-    fleur((190, 560), 0.0, (0.92, 0.35, 0.50), sens=1),
-    fleur((415, 760), 0.8, (0.97, 0.78, 0.25), sens=-1, nutation=22),
-    fleur((630, 540), 1.6, (0.62, 0.42, 0.90), sens=1, nutation=16),
-    feuille((595, 200), 2.6, math.radians(20), longueur=70),
-    feuille((700, 140), 1.8, math.radians(30)),
+    feuille((110, 130), 1.5, math.radians(150)),
+    feuille((215, 185), 2.2, math.radians(160), longueur=70),
+    fleur((190, 580), 0.0, (0.92, 0.35, 0.50), sens=1),
+    fleur((415, 770), 0.8, (0.97, 0.78, 0.25), sens=-1, nutation=22),
+    fleur((630, 560), 1.6, (0.62, 0.42, 0.90), sens=1, nutation=16),
+    feuille((595, 175), 2.6, math.radians(20), longueur=70),
+    feuille((700, 120), 1.8, math.radians(30)),
 ]
 
 def film_bouquet(fichier, groupes=BOUQUET, duree=13.5, images_par_seconde=25, saccade=2, pause=2.0, **options):
@@ -323,6 +324,19 @@ def film_bouquet(fichier, groupes=BOUQUET, duree=13.5, images_par_seconde=25, sa
         for _ in range(fois): ffmpeg.stdin.write(donnees)
     ffmpeg.stdin.close()
     ffmpeg.wait()
+
+
+def image_bouquet(fichier, largeur_mm=152, hauteur_mm=205, dpi=300, t=13.5, groupes=BOUQUET, **options):
+    '''Image du bouquet au temps t (fleurs écloses), pour l'impression : largeur_mm × hauteur_mm à dpi points par
+    pouce (152 × 205 mm à 300 dpi : 1795 × 2421 pixels). Le film est recalculé à cette taille (toutes les longueurs
+    suivent la largeur) ; JPEG ou PNG selon l'extension, avec la résolution inscrite dans le fichier.'''
+    from tresses import en_image_pil
+    l, h = round(largeur_mm / 25.4 * dpi), round(hauteur_mm / 25.4 * dpi)
+    pousse = Pousse(groupes, hauteur=h, largeur=l, **options)
+    pas = 2 / 25
+    for n in range(1, round(t / pas) + 1): pousse.deplace(*pousse.cibles(n * pas), pas_max=2 * pousse.e)
+    image = en_image_pil(pousse.dessine(t))
+    image.save(fichier, dpi=(dpi, dpi), **({'quality': 95, 'subsampling': 0} if fichier.lower().endswith(('.jpg', '.jpeg')) else {}))
 
 
 if __name__ == "__main__":
