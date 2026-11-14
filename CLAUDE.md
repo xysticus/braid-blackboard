@@ -36,7 +36,7 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   (`lit_mot`), arcs de cercle raccordés (`deux_arcs`), images (`en_image_pil`, `gif_en_mp4`). Ses `assert` tournent
   à chaque import (rapide).
 - `programmes/NouvAutoMorph.py` : films successifs à partir de l'état (image par image, algébrique, simultané, essais
-  en arcs) : voir plus bas. `from tresses import *` ; lancé, il écrit ses images et ses films.
+  en arcs) : voir plus bas. `from tresses import *` ; lancé (`__main__`), il écrit ses images et ses films.
 - `programmes/Triangulation.py` : **le film actuel** (triangulation mobile, point 11 plus bas), `film_triangule`.
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
@@ -260,8 +260,10 @@ environment.yml --prune` si l'environnement existe déjà).
 - Un automorphisme = liste des images des générateurs (`images[i]` est l'image de x_(i+1)).
 - Plusieurs fonctions travaillent par effet de bord (`simplifie`, `conjugaison_locale`) : le docstring le signale.
 - Python ≥ 3.10 requis (`match`/`case` utilisés).
-- Les scripts n'ont pas de `if __name__ == "__main__"` : les tests sont des `assert`/`print` au niveau module,
-  exécutés à chaque lancement.
+- Deux usages pour chaque script : module (on l'importe, rien ne s'exécute) et exemples (on le lance) : les tests
+  (`assert`), les `print` d'essai et la fabrication des images et des films sont sous `if __name__ == "__main__":`
+  dans `NouvAutoMorph.py` et `Triangulation.py`. `tresses.py`, sans exemples, garde ses `assert` au niveau du module
+  (rapides, ils vérifient la base à chaque import).
 
 ## Environnement
 
@@ -280,8 +282,8 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
-python -c "import sys; sys.path.insert(0, 'programmes'); import Triangulation as T; T.film_triangule([4, 3, -1, -1, 2, -4, 1], 'imgs/film_triangule_43m1m12m41.mp4')"   # le film actuel
-python programmes/Triangulation.py   # vérifie seulement les assert (tresses.py et Triangulation.py)
+python programmes/Triangulation.py   # le film actuel : vérifie les assert, écrit imgs/film_triangule_*.mp4
+python -c "import sys; sys.path.insert(0, 'programmes'); import Triangulation as T; T.film_triangule([1, 2, -1], 'imgs/f.mp4')"   # un autre film
 python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif, imgs/film_continu_*.gif (film algébrique) et imgs/film_simultane_*.gif, plus leurs .mp4
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks

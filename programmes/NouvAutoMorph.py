@@ -11,17 +11,6 @@ from PIL import Image
 
 from tresses import * # base commune : mots, état, dessin d'un état, arcs, images
 
-# tests sur la tresse compliquée
-t = calcule_autofn_de_tresse([1,1,2,2])
-print(t)
-
-d = calcule_arcs(t[0]) 
-print(d)
-
-print(calcule_arcs(t[1]))
-
-print(calcule_arcs(t[2]))
-
 # Le film algébrique : chaque lettre est une suite de mouvements élémentaires sur l'état, chacun continu.
 # 1. réespacement (les abscisses changent, leur ordre non : les demi-cercles ne se croisent jamais) pour vider
 #    une marge autour du bloc des trous i et i+1 ;
@@ -658,14 +647,28 @@ def film_de_tresse(tresse, fichier, duree=700, **options):
     durees = [duree] * len(tresse) + [2 * duree]
     images[0].save(fichier, save_all=True, append_images=images[1:], duration=durees, loop=0)
 
-dessine_auto_de_tresse([1, 1, 2, 2], './imgs/nouv_1122.png')
-dessine_auto_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/nouv_43m1m12m41.png', largeur_brin=3)
-film_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_43m1m12m41.gif', largeur_brin=3)
-film_de_tresse_algebrique([4, 3, -1, -1, 2, -4, 1], './imgs/film_continu_43m1m12m41.gif', largeur_brin=3)
-film_de_tresse_simultane([4, 3, -1, -1, 2, -4, 1], './imgs/film_simultane_43m1m12m41.gif', largeur_brin=3)
-gif_en_mp4('./imgs/film_43m1m12m41.gif')
-gif_en_mp4('./imgs/film_continu_43m1m12m41.gif')
-gif_en_mp4('./imgs/film_simultane_43m1m12m41.gif')
-# essais en arcs de cercle, pas encore au point (croisements) : décommenter pour les produire
-# film_de_tresse_simultane([4, 3, -1, -1, 2, -4, 1], './imgs/essai_noeuds_43m1m12m41.gif', largeur_brin=3, en_arcs=True)
-# film_de_tresse_en_arcs([4, 3, -1, -1, 2, -4, 1], './imgs/essai_arcs_43m1m12m41.gif', largeur_brin=3)
+if __name__ == "__main__":
+    # exemples, lancés seulement quand le script est exécuté (pas à l'import) : depuis la racine du dépôt,
+    # écrit les images et les films dans imgs/
+    # tests sur la tresse compliquée
+    t = calcule_autofn_de_tresse([1,1,2,2])
+    print(t)
+
+    d = calcule_arcs(t[0]) 
+    print(d)
+
+    print(calcule_arcs(t[1]))
+
+    print(calcule_arcs(t[2]))
+
+    dessine_auto_de_tresse([1, 1, 2, 2], './imgs/nouv_1122.png')
+    dessine_auto_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/nouv_43m1m12m41.png', largeur_brin=3)
+    film_de_tresse([4, 3, -1, -1, 2, -4, 1], './imgs/film_43m1m12m41.gif', largeur_brin=3)
+    film_de_tresse_algebrique([4, 3, -1, -1, 2, -4, 1], './imgs/film_continu_43m1m12m41.gif', largeur_brin=3)
+    film_de_tresse_simultane([4, 3, -1, -1, 2, -4, 1], './imgs/film_simultane_43m1m12m41.gif', largeur_brin=3)
+    gif_en_mp4('./imgs/film_43m1m12m41.gif')
+    gif_en_mp4('./imgs/film_continu_43m1m12m41.gif')
+    gif_en_mp4('./imgs/film_simultane_43m1m12m41.gif')
+    # essais en arcs de cercle, pas encore au point (croisements) : décommenter pour les produire
+    # film_de_tresse_simultane([4, 3, -1, -1, 2, -4, 1], './imgs/essai_noeuds_43m1m12m41.gif', largeur_brin=3, en_arcs=True)
+    # film_de_tresse_en_arcs([4, 3, -1, -1, 2, -4, 1], './imgs/essai_arcs_43m1m12m41.gif', largeur_brin=3)
