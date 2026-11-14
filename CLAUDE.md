@@ -222,6 +222,32 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     croisement. Les cordes ne se croisent jamais ; avant les congés, les arcs lissés se croisaient parfois (jusqu'à 194 sans la tension). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
     intersections aux extrémités (les brins se rejoignent au clou).
 
+12. **Morphing de lacets : un bouquet qui pousse** (idée du 2026-11-14, prototype `programmes/Bouquet.py`, séparé du
+    travail sur les tresses). Une tresse est un mouvement de n points dans le disque ; nos demi-tours sur l'axe n'en
+    sont qu'un cas. Si les trous suivent des chemins quelconques (une « chorégraphie » : position de chaque trou à
+    chaque instant), les lacets sont emportés par la déformation du plan qui accompagne ce mouvement : un morphing
+    de lacets, topologie exacte comme dans le film des tresses (triangulation mobile, flips, tension, congés).
+    Déjà prêt : `Maillage`, `tend`, le dessin en congés ne dépendent pas de l'axe. Dépend de l'axe : le mouvement
+    (`place`, dispositions), le départ perpendiculaire des brins du clou, la relecture des mots (`lit_mot`,
+    demi-droites verticales). Seule contrainte : deux trous ne se rencontrent jamais.
+    Le bouquet : des trous qui montent depuis le clou tirent des lacets (tiges) ; des groupes de trous qui tournent
+    les uns autour des autres enroulent les lacets en rosaces (chaque tour ajoute une couche de pétales) ; couleurs
+    qui virent du vert (tige) à la couleur de la fleur ; éventuellement régions entre lacets remplies (pétales
+    pleins), tension relâchée pour un rendu plus végétal. Visée : les documentaires en image par image (time-lapse)
+    qui montrent une plante pousser jour après jour, côté « surgissant ».
+    **Prototype** (`programmes/Bouquet.py`, `film_bouquet` → `imgs/bouquet.mp4`, 16 s, calcul en ~6 s) : `Pousse`
+    hérite de `Film` (état de départ d'une tresse à n brins, puis `y_axe = -inf` pour couper le départ perpendiculaire
+    des brins du clou) ; les trous sont d'abord rassemblés sans être montrés en rang serré au-dessus du clou (la
+    graine). Chorégraphie (`etat_du_groupe`, `choregraphie`) : chaque fleur (groupe de trous) monte le long d'une
+    tige de Bézier en oscillant (nutation), en bouton (demi-cercle ouvert vers le haut, dans l'ordre de la graine :
+    sinon deux trous se croisaient en sortant du rang), puis tourne en s'élargissant sur un cercle (ouverture).
+    `insere_sommet` ajoute un sommet dans un triangle (les cordes sont recoupées par les trois nouvelles arêtes) :
+    un anneau de 10 satellites, posé juste avant l'ouverture et qui tourne avec la fleur, rend les corolles rondes
+    (sans lui, la triangulation grossière autour des têtes donnait des polygones de 4 à 6 côtés). Dessin : fond
+    sombre à lumière légèrement variable, sol, dégradé vertical du vert de la tige à la couleur de la fleur, trous en
+    pistils ; chaque image calculée est montrée deux fois (aspect image par image). Distance minimale entre trous
+    contrôlée (13,7 px).
+
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
 de l'image k : le dessin du préfixe suivant est bien l'image du dessin courant par la torsion.
