@@ -216,7 +216,11 @@ class Film:
         for p in lignes: p[:, 0] = np.interp(p[:, 0], avant, apres)
         clou = (float(np.interp(clou[0], avant, apres)), clou[1])
         trous = [(x, trous[0][1]) for x in xs0]
-        self.decalage_bas = next(d for d in (DECALAGE_BORD, 12 * e, -12 * e) if all(abs(x + d - clou[0]) >= 8 * e for x in xs0))
+        # décalage des sommets du bord bas : loin du clou ; si les trous sont trop serrés pour les trois décalages
+        # habituels, celui qui éloigne le plus les sommets du clou
+        def distance_au_clou(d): return min(abs(x + d - clou[0]) for x in xs0)
+        self.decalage_bas = next((d for d in (DECALAGE_BORD, 12 * e, -12 * e) if distance_au_clou(d) >= 8 * e),
+                                 max(np.linspace(-12 * e, 12 * e, 49), key=distance_au_clou))
         self.maillage, self.trous, self.clou, self.haut, self.bas = maillage_initial(
             trous, clou, hauteur, largeur, self.decalage_bas)
         self.y_axe = self.maillage.pos[self.trous[0]][1]

@@ -235,18 +235,26 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     qui virent du vert (tige) à la couleur de la fleur ; éventuellement régions entre lacets remplies (pétales
     pleins), tension relâchée pour un rendu plus végétal. Visée : les documentaires en image par image (time-lapse)
     qui montrent une plante pousser jour après jour, côté « surgissant ».
-    **Prototype** (`programmes/Bouquet.py`, `film_bouquet` → `imgs/bouquet.mp4`, 16 s, calcul en ~6 s) : `Pousse`
-    hérite de `Film` (état de départ d'une tresse à n brins, puis `y_axe = -inf` pour couper le départ perpendiculaire
-    des brins du clou) ; les trous sont d'abord rassemblés sans être montrés en rang serré au-dessus du clou (la
-    graine). Chorégraphie (`etat_du_groupe`, `choregraphie`) : chaque fleur (groupe de trous) monte le long d'une
-    tige de Bézier en oscillant (nutation), en bouton (demi-cercle ouvert vers le haut, dans l'ordre de la graine :
-    sinon deux trous se croisaient en sortant du rang), puis tourne en s'élargissant sur un cercle (ouverture).
-    `insere_sommet` ajoute un sommet dans un triangle (les cordes sont recoupées par les trois nouvelles arêtes) :
-    un anneau de 10 satellites, posé juste avant l'ouverture et qui tourne avec la fleur, rend les corolles rondes
-    (sans lui, la triangulation grossière autour des têtes donnait des polygones de 4 à 6 côtés). Dessin : fond
-    sombre à lumière légèrement variable, sol, dégradé vertical du vert de la tige à la couleur de la fleur, trous en
-    pistils ; chaque image calculée est montrée deux fois (aspect image par image). Distance minimale entre trous
-    contrôlée (13,7 px).
+    **Prototype** (`programmes/Bouquet.py`, `film_bouquet` → `imgs/bouquet.mp4`, 15,5 s, calcul ~35 s, 35 trous) :
+    `Pousse` hérite de `Film` (état de départ d'une tresse à n brins, puis `y_axe = -inf` pour couper le départ
+    perpendiculaire des brins du clou). Les trous dorment en rang serré sous une terre épaisse (la graine) : les
+    pousses surgissent du sol. Chaque plante (`fleur`, `feuille`) monte le long d'une tige de Bézier en oscillant
+    (nutation). **Éclosion** (idée de l'utilisateur) : une fleur = 5 sépales et 4 pétales rangés par angle de 210° à
+    -30° (le bas reste ouvert pour la tige) ; les sépales forment une cage qui ne tourne pas, les pétales tournent
+    d'un tour à l'intérieur (les lacets s'enroulent en couches : le bourgeon), puis sortent entre les sépales ; les
+    couches, retenues par les sépales, gonflent en lobes pincés entre eux : la fleur sort du bourgeon au lieu de le
+    gonfler. Essais écartés : sépales qui tournent avec les pétales (ils sont alors à l'intérieur des couches et ne
+    retiennent rien : contour convexe sans vallée) ; trop de trous ou un écart de 6 px (faisceaux de 450 px de large) ;
+    tension très relâchée (taux 0,06 : grands drapés) ; 3 pétales (triangle) ; 2 tours de bourgeon (trop de couches).
+    Réglages : écart 3 px, trait 1,4 px, taux 0,12 (tension un peu relâchée), rayons bourgeon 20, sépales 52,
+    fleur 100 ; montée sans croisement de trous grâce au passage par un demi-cercle dans l'ordre de la graine
+    (distance minimale contrôlée). Feuille : deux trous sur un segment qui s'allonge. Dessin : lacets remplis d'une
+    couleur transparente puis tracés, dégradé radial autour de chaque fleur (vert puis couleur des pétales qui
+    apparaît à l'éclosion), lacets des sépales verts, cœur jaune, terre dessinée par-dessus ; chaque image calculée
+    montrée deux fois, lumière légèrement variable. `insere_sommet` (sommet ajouté dans un triangle, cordes
+    recoupées) et l'anneau de satellites ne servent plus (ils arrondissaient les corolles de la première version).
+    Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
+    clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
