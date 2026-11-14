@@ -22,9 +22,6 @@ DECALAGE_AXE = 0.01 # les trous sont un peu sous l'axe de dessin : les points de
 DECALAGE_BORD = 0.31 # les sommets des bords ne sont pas exactement à la verticale des trous (le clou y serait)
 
 
-ECART_BRINS = 6 # écart minimal en pixels entre deux brins sur une arête
-DEGAGEMENT_TROUS = 10 # distance minimale en pixels entre un brin et un sommet, sur une arête
-
 def croix(u, v): return u[0] * v[1] - u[1] * v[0]
 
 def monotone(valeurs):
@@ -40,8 +37,7 @@ def monotone(valeurs):
 class Maillage:
     '''Triangulation d'un nuage de points : positions et triangles (ensembles de trois indices).'''
 
-    def __init__(self, pos, triangles, proteges=()):
-        self.proteges = set(proteges) # sommets qui ne gagnent jamais d'arête (le clou)
+    def __init__(self, pos, triangles):
         self.pos = np.array(pos, dtype=float)
         self.triangles = {frozenset(t) for t in triangles}
         self.signes = {t: self.signe(t) for t in self.triangles}
@@ -80,7 +76,6 @@ class Maillage:
             b, d = [next(iter(t - {a, c})) for t in tris]
             if self.cotangente(b, a, c) + self.cotangente(d, a, c) >= -1e-9: continue
             if not self.convexe(a, b, c, d): continue
-            if {b, d} & self.proteges: continue
             if any(set(e) == {b, d} for e in self.aretes()): continue
             return a, b, c, d
         return None
@@ -139,30 +134,30 @@ class Maillage:
         raise RuntimeError("les flips ne s'arrêtent pas")
 
 
-def maillage_initial(trous, clou, hauteur, largeur):
-    '''Triangulation de départ en trois bandes horizontales, rangées de haut en bas :
+def maillage_initial(trous, clou, hauteur, largeur, decalage_bas=DECALAGE_BORD):
+    '''Triangulation de départ en deux bandes horizontales, rangées de haut en bas :
     - le bord haut, un sommet à la verticale de chaque trou (et les coins) ;
     - l'axe (extrémités et trous) : entre les deux, la bande des arcs du haut ;
-    - une rangée sous l'axe (à 60 % de la distance de l'axe à la base), un sommet à la verticale de chaque trou : bande des arcs du bas ;
-    - la base, sous laquelle pend le clou : bande du clou. Le clou est une pointe de degré 2 dont l'unique triangle
-    contient les départs et les arrivées de tous les lacets, et il ne gagne jamais d'arête (`proteges`).
+    - le bord bas, avec le clou dessus et un sommet à la verticale de chaque trou (et les coins) : entre l'axe et lui,
+    la bande des arcs du bas, où arrivent aussi les brins du clou.
     Chaque bande est découpée en une échelle de triangles (zigzag entre les deux rangées), puis les arêtes non de
-    Delaunay sont retournées. Les rangées alignées (haut et bas) ont les coins en plus : indice k + 1 pour le trou k.
+    Delaunay sont retournées (le clou peut gagner des arêtes). Les sommets du bord bas sont décalés de decalage_bas
+    pour ne pas être trop près du clou.
+    Les rangées alignées (haut et bas) ont les coins en plus : indice k + 1 pour le trou k.
     Renvoie (maillage, indices des trous, du clou, rangée alignée du haut, du bas).'''
     y_axe = trous[0][1] + DECALAGE_AXE
     xs_alignes = [0] + [x + DECALAGE_BORD for x, _ in trous] + [largeur]
+    xs_bas = [0] + [x + decalage_bas for x, _ in trous] + [largeur]
     pts = []
     def ajoute(p): pts.append(p); return len(pts) - 1
     def rangee(y, xs): return [ajoute((x, y)) for x in xs]
 
     haut = rangee(3, xs_alignes)
     axe = [ajoute((0, y_axe))] + [ajoute((x, y_axe)) for x, _ in trous] + [ajoute((largeur, y_axe))]
-    y_base = clou[1] - 14
-    bas = rangee(y_axe + 0.6 * (y_base - y_axe), xs_alignes)
-    demi_base = 90 # les brins quittent le clou avec au moins 12,9° d'élévation : les côtés de la pointe font moins (14/90)
-    base = rangee(y_base, [0, clou[0] - demi_base, clou[0] + demi_base, largeur])
+    nail = ajoute(tuple(clou))
+    bas = [ajoute((x, clou[1])) for x in xs_bas]
     triangles = []
-    for r1, r2 in zip((haut, axe, bas), (axe, bas, base)):
+    for r1, r2 in zip((haut, axe), (axe, bas + [nail])):
         r1 = sorted(r1, key=lambda i: pts[i][0])
         r2 = sorted(r2, key=lambda i: pts[i][0])
         i = j = 0
@@ -170,9 +165,7 @@ def maillage_initial(trous, clou, hauteur, largeur):
             avance_1 = j == len(r2) - 1 or (i < len(r1) - 1 and pts[r1[i + 1]][0] <= pts[r2[j + 1]][0])
             if avance_1: triangles.append((r1[i], r1[i + 1], r2[j])); i += 1
             else: triangles.append((r1[i], r2[j], r2[j + 1])); j += 1
-    nail = ajoute(tuple(clou))
-    triangles.append((base[1], base[2], nail))
-    m = Maillage(pts, triangles, proteges={nail})
+    m = Maillage(pts, triangles)
     m.delaunay([])
     return m, axe[1:-1], nail, haut, bas
 
@@ -222,22 +215,55 @@ class Film:
     def __init__(self, tresse, hauteur=400, largeur=400):
         self.hauteur, self.largeur = hauteur, largeur
         self.nb_trous = max(map(operator.abs, tresse), default=1) + 1
+        self.dispositions = [self.disposition(tresse[:k]) for k in range(len(tresse) + 1)]
+        self.etape = 0 # indice de l'image clé courante
         morceaux, trous, clou, _ = dessin_etat(etat_de_tresse([], self.nb_trous), hauteur, largeur)
-        self.maillage, self.trous, self.clou, self.haut, self.bas = maillage_initial(trous, clou, hauteur, largeur)
+        # le dessin de départ est replacé sur la disposition de l'image clé 0 : les abscisses sont transformées
+        # par la fonction croissante affine par morceaux qui envoie les anciens trous sur les nouveaux
+        xs0 = self.dispositions[0][0]
+        avant, apres = [0] + [x for x, _ in trous] + [largeur], [0] + xs0 + [largeur]
         lignes = polylignes(morceaux)
+        for p in lignes: p[:, 0] = np.interp(p[:, 0], avant, apres)
+        clou = (float(np.interp(clou[0], avant, apres)), clou[1])
+        trous = [(x, trous[0][1]) for x in xs0]
+        self.decalage_bas = next(d for d in (DECALAGE_BORD, 12, -12) if all(abs(x + d - clou[0]) >= 8 for x in xs0))
+        self.maillage, self.trous, self.clou, self.haut, self.bas = maillage_initial(
+            trous, clou, hauteur, largeur, self.decalage_bas)
+        self.y_axe = self.maillage.pos[self.trous[0]][1]
+        # le clou garde sa place relative entre les deux sommets du bord bas qui l'encadrent
+        xs_bas = [self.maillage.pos[i][0] for i in self.bas]
+        j = max(k for k in range(len(xs_bas) - 1) if xs_bas[k] <= clou[0])
+        self.place_du_clou = (j, (clou[0] - xs_bas[j]) / (xs_bas[j + 1] - xs_bas[j]))
         # le dessin de départ est aplati : on l'étire au-dessus de l'axe pour qu'il occupe la bande du haut
-        y_axe, y_min = self.maillage.pos[self.trous[0]][1], min(p[:, 1].min() for p in lignes)
-        etirement = (y_axe - 14) / (y_axe - y_min)
-        for p in lignes: p[:, 1] = np.where(p[:, 1] < y_axe, y_axe - (y_axe - p[:, 1]) * etirement, p[:, 1])
+        y_min = min(p[:, 1].min() for p in lignes)
+        etirement = (self.y_axe - 14) / (self.y_axe - y_min)
+        for p in lignes: p[:, 1] = np.where(p[:, 1] < self.y_axe, self.y_axe - (self.y_axe - p[:, 1]) * etirement, p[:, 1])
         self.courbes = [noeuds_de_polyligne(p, self.maillage, self.clou) for p in lignes]
 
-    def tend(self, taux, ecart=ECART_BRINS, degagement=DEGAGEMENT_TROUS):
+    def disposition(self, tresse):
+        '''(abscisses des trous, écart entre brins) de l'image clé de la tresse : la largeur de chaque intervalle de
+        l'axe (y compris les deux de gauche et de droite) est proportionnelle à 1 + le nombre de brins qui le
+        traversent, donc l'écart entre deux points consécutifs de l'axe (et entre deux brins ailleurs) est le même
+        partout.'''
+        trous, lacets = etat_de_tresse(tresse, self.nb_trous)
+        comptes = [0] * (self.nb_trous + 1)
+        for lacet in lacets:
+            for x in lacet: comptes[intervalle(x, trous)] += 1
+        ecart = self.largeur / sum(c + 1 for c in comptes)
+        xs, cumul = [], 0
+        for c in comptes[:-1]:
+            cumul += (c + 1) * ecart
+            xs.append(cumul)
+        return xs, ecart
+
+    def tend(self, taux, ecart, degagement=None):
         '''Un pas de tension des lacets. Chaque point est tiré, d'une fraction taux du chemin, vers l'endroit de son
         arête où ses deux voisins sont alignés avec lui (le brin se tend) ; puis, arête par arête, les points gardent
-        leur ordre et restent à `ecart` pixels les uns des autres et à `degagement` pixels des sommets (projection
+        leur ordre et restent à `ecart` pixels les uns des autres et à `degagement` (par défaut ecart) pixels des sommets (projection
         d'une régression monotone bornée), moins si l'arête est trop courte. Les brins se tassent donc à écart fixe là
         où ils sont tirés, près des trous, et laissent du vide au-delà ; l'ordre sur chaque arête ne change pas, donc
         aucun croisement.'''
+        degagement = ecart if degagement is None else degagement
         pos = self.maillage.pos
         par_arete = {}
         for k, courbe in enumerate(self.courbes):
@@ -271,45 +297,51 @@ class Film:
         trous = sorted(map(tuple, self.positions_des_trous()))
         return [lit_mot(p, trous) for p in self.polylignes(lisse)]
 
-    def cadre(self, lisse=True, largeur_brin=3, avec_arêtes=True):
+    def cadre(self, lisse=True, largeur_brin=3, avec_arêtes=True, ecart=None):
+        if ecart is not None: largeur_brin = min(largeur_brin, max(1, 0.7 * ecart)) # brins serrés : trait plus fin
         arêtes = [self.maillage.pos[list(e)] for e in self.maillage.aretes()] if avec_arêtes else None
         return peint(self.polylignes(lisse), self.positions_des_trous(), self.maillage.pos[self.clou],
                      self.hauteur, self.largeur, largeur_brin, axe=arêtes)
 
-    def place(self, i, sigma, u, depart):
-        '''Place les sommets au temps u du demi-tour des trous i et i+1 (indices 0 ...) : depart = positions
-        au début de la lettre.'''
-        m, k = self.maillage, abs(sigma) - 1
-        a, b = self.trous[k], self.trous[k + 1]
-        milieu = (depart[a] + depart[b]) / 2
-        r = math.hypot(*(depart[b] - depart[a])) / 2
+    def place(self, sigma, u):
+        '''Place les sommets au temps u de la lettre σ (vers l'image clé suivante) : les trous glissent de la
+        disposition de l'image clé courante à la suivante, et les deux trous de σ font en plus un demi-tour autour
+        de leur milieu (centre et rayon eux aussi interpolés).'''
+        m, i, n = self.maillage, abs(sigma) - 1, self.nb_trous
+        xs0, xs1 = self.dispositions[self.etape][0], self.dispositions[self.etape + 1][0]
+        x = [(1 - u) * a + u * b for a, b in zip(xs0, xs1)] # abscisses de chaque place, de gauche à droite
+        milieu = (1 - u) * (xs0[i] + xs0[i + 1]) / 2 + u * (xs1[i] + xs1[i + 1]) / 2
+        r = (1 - u) * (xs0[i + 1] - xs0[i]) / 2 + u * (xs1[i + 1] - xs1[i]) / 2
         theta = SENS_DE_SIGMA * (1 if sigma > 0 else -1) * math.pi * u
         c, s = math.cos(theta), math.sin(theta)
-        for h in (a, b):
-            d = depart[h] - milieu
-            m.pos[h] = milieu + np.array((c * d[0] - s * d[1], s * d[0] + c * d[1]))
-        if u == 1:
-            m.pos[a], m.pos[b] = depart[b].copy(), depart[a].copy()
-            self.trous[k], self.trous[k + 1] = b, a
+        for j, h in enumerate(self.trous): m.pos[h] = (x[j], self.y_axe)
+        a, b = self.trous[i], self.trous[i + 1]
+        m.pos[a] = (milieu - r * c, self.y_axe - r * s)
+        m.pos[b] = (milieu + r * c, self.y_axe + r * s)
         # les sommets des bords se croisent sans jamais se rejoindre
-        g = 0.4 * r
-        ecart = math.hypot(r * c, g * s)
-        for rangee in (self.haut, self.bas):
-            m.pos[rangee[k + 1]][0] = milieu[0] - ecart
-            m.pos[rangee[k + 2]][0] = milieu[0] + ecart
+        ecart = math.hypot(r * c, 0.4 * r * s)
+        bords = list(x)
+        bords[i], bords[i + 1] = milieu - ecart, milieu + ecart
+        for rangee, decalage in ((self.haut, DECALAGE_BORD), (self.bas, self.decalage_bas)):
+            for j in range(n): m.pos[rangee[j + 1]][0] = bords[j] + decalage
+        j, f = self.place_du_clou
+        m.pos[self.clou][0] = m.pos[self.bas[j]][0] + f * (m.pos[self.bas[j + 1]][0] - m.pos[self.bas[j]][0])
+        if u == 1:
+            m.pos[a], m.pos[b] = (xs1[i + 1], self.y_axe), (xs1[i], self.y_axe)
+            self.trous[i], self.trous[i + 1] = b, a
+            self.etape += 1
 
-    def lettre(self, sigma, images=24, sous_pas=6, taux=0.15):
+    def lettre(self, sigma, images=24, sous_pas=6, taux=0.15, largeur_brin=3):
         '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA) ; renvoie les images (surfaces Cairo) du mouvement.'''
-        depart = self.maillage.pos.copy()
+        ecart0, ecart1 = self.dispositions[self.etape][1], self.dispositions[self.etape + 1][1]
         resultat = []
-        trous_depart = list(self.trous)
         for pas in range(1, images * sous_pas + 1):
-            self.trous[:] = trous_depart
-            self.place(None, sigma, pas / (images * sous_pas), depart)
+            u = pas / (images * sous_pas)
+            self.place(sigma, u)
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
-            self.tend(taux)
-            if pas % sous_pas == 0: resultat.append(self.cadre())
+            self.tend(taux, (1 - u) * ecart0 + u * ecart1)
+            if pas % sous_pas == 0: resultat.append(self.cadre(largeur_brin=largeur_brin, ecart=(1 - u) * ecart0 + u * ecart1))
         return resultat
 
 
@@ -324,24 +356,19 @@ def verifie_triangulation(tresse, images=12, **options):
         film.lettre(sigma, images)
         attendu = calcule_autofn_de_tresse(tresse[:k + 1], film.nb_trous)
         if film.mots() != attendu or film.mots(False) != attendu: return False
-        if not depart_et_arrivee_ensemble(film): return False
     return True
 
 def film_triangule(tresse, fichier, images=24, pause=500, largeur_brin=3, **options):
     '''GIF : un demi-tour continu par lettre, triangulation en gris.'''
     film = Film(tresse, **options)
-    cadres = [film.cadre(largeur_brin=largeur_brin)]
+    cadres = [film.cadre(largeur_brin=largeur_brin, ecart=film.dispositions[0][1])]
     durees = [pause]
     for sigma in tresse:
-        cadres += film.lettre(sigma, images)
+        cadres += film.lettre(sigma, images, largeur_brin=largeur_brin)
         durees += [40] * (images - 1) + [pause]
     durees[-1] = 3 * pause
     pil = [en_image_pil(c) for c in cadres]
     pil[0].save(fichier, save_all=True, append_images=pil[1:], duration=durees, loop=0)
-
-def depart_et_arrivee_ensemble(film):
-    '''Le premier et le dernier point de chaque lacet sont sur la même arête : la seule qui borde le triangle du clou.'''
-    return all(c[1][1:3] == c[-2][1:3] for c in film.courbes) and len({c[1][1:3] for c in film.courbes}) == 1
 
 assert verifie_triangulation([1])
 assert verifie_triangulation([1, -2, 1])

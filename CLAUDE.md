@@ -153,27 +153,35 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     change pas. Aucune réduction de bigones à faire. Dessin : arcs de cercle (`deux_arcs`) entre points d'arêtes,
     sans angle droit imposé. `verifie_triangulation` relit les mots (`lit_mot`) après chaque lettre : bon sur la tresse
     chargée du point 9 et sur 30 tresses aléatoires.
-    **Triangulation de départ en trois bandes** (`maillage_initial`) : bande du haut (bord haut → axe, arcs du haut),
-    bande du milieu (axe → rangée à 60 % de la distance à la base, arcs du bas), bande du bas (sous cette rangée,
-    contient le clou). Chaque bande est une échelle de triangles entre deux rangées ; les rangées du haut et du bas ont
-    un sommet à la verticale de chaque trou. Un maillage plus fin (rangées intermédiaires, milieux) n'a rien apporté et
-    a été retiré. Le dessin de départ est étiré au-dessus de l'axe pour remplir la bande du haut (un brin n'occupe que
-    les triangles qu'il traverse). La bande du milieu doit avoir une vraie hauteur même si le dessin de départ n'a pas
-    d'arc du bas (sinon un trou qui tourne retourne un triangle).
-    **Clou en pointe de degré 2** : il pend sous une base (coins et deux sommets à ±90 px) ; son seul triangle contient
-    les départs et arrivées de tous les lacets, qui passent tous par l'arête de la base ; il est dans
-    `Maillage.proteges` (aucun flip ne lui ajoute d'arête), donc cela reste vrai pendant tout le film
-    (`depart_et_arrivee_ensemble`). Les côtés de la pointe doivent être plus plats que les brins qui quittent le clou
-    (élévation minimale 12,9°, pointe à 8,8°), sinon un brin sort du maillage. Réespacement continu (`Film.reespace`,
-    taux 0,15 par sous-pas) : plus de répartition uniforme sur les arêtes (elle étalait les brins sur toute la longueur,
+    **Triangulation de départ en deux bandes** (`maillage_initial`) : bande du haut (bord haut → axe, arcs du haut) et
+    bande du bas (axe → bord bas, arcs du bas et arrivée des brins au clou). Chaque bande est une échelle de triangles
+    entre deux rangées ; les rangées du haut et du bas ont un sommet à la verticale de chaque trou, et le clou est un
+    sommet du bord bas (si un trou est à la verticale du clou, le clou est son sommet du bord bas). Un maillage plus fin
+    n'a rien apporté. Le dessin de départ est étiré au-dessus de l'axe pour remplir la bande du haut (un brin n'occupe
+    que les triangles qu'il traverse). **Plus de bande du bas séparée ni de pointe au clou** : essai précédent (clou en
+    pointe de degré 2 sous une base, protégé contre tout flip) qui gardait le départ et l'arrivée de chaque lacet
+    dans un même triangle ; il forçait tous les brins à traverser une seule arête puis une bande entière (zigzags
+    près du clou) et empêchait de résorber des triangles écrasés. Maintenant le départ et l'arrivée d'un lacet ne sont
+    plus forcément dans le même triangle, mais restent voisins autour du clou et la tension les garde proches.
+    **Disposition proportionnelle** (`Film.disposition`) : à chaque image clé, la largeur de chaque intervalle de l'axe
+    (y compris les deux de gauche et de droite) est proportionnelle à 1 + le nombre de brins qui le traversent
+    (compté dans l'état : il égale les croisements réels de l'axe sur le dessin, vérifié à chaque image clé), donc
+    l'écart `s` entre deux points consécutifs de l'axe est le même partout ; la verticale suit le même écart (les brins
+    se tassent près des trous). Les trous glissent de la disposition de l'image clé k à celle de k+1 pendant le
+    demi-tour de la lettre (centre et rayon du demi-tour interpolés ; le clou garde sa place relative entre ses deux
+    voisins du bord bas), toujours un seul mouvement par lettre. L'écart `ecart` de `tend` est celui de la disposition
+    (interpolé), le trait est au plus 70 % de cet écart. Le dessin de départ est replacé sur la disposition 0 par une
+    transformation affine par morceaux des abscisses. Plus la tresse est chargée, plus `s` est petit (2,8 px à la 7ᵉ
+    lettre de la tresse chargée).
+    Réespacement continu (`Film.tend`, taux 0,15 par sous-pas) : plus de répartition uniforme sur les arêtes (elle étalait les brins sur toute la longueur,
     trop loin des trous). `Film.tend` : chaque point est tiré vers l'endroit de son arête où ses deux voisins sont
-    alignés avec lui (le brin se tend), puis, arête par arête, les points gardent leur ordre, restent à `ECART_BRINS`
-    (6 px) les uns des autres et à `DEGAGEMENT_TROUS` (10 px) des sommets (régression monotone bornée, `monotone`).
+    alignés avec lui (le brin se tend), puis, arête par arête, les points gardent leur ordre, restent à `ecart`
+    les uns des autres et des sommets (régression monotone bornée, `monotone`).
     Les brins se tassent à écart fixe près des trous et laissent du vide au-delà, comme les demi-cercles emboîtés des
     images clés (écart régulier sur l'axe, remplissage vertical qui part des trous). L'ordre sur chaque arête est
     conservé, donc pas de croisement des cordes.
-    croisement. Limites : les cordes ne se croisent jamais (vérifié), mais les arcs lissés parfois (avec la tension : 0 à 2 par image sur la tresse de
-    référence, 0 à 4 sur la tresse chargée sauf ~40 à la 6ᵉ lettre de la tresse chargée ; sans elle jusqu'à 194). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
+    croisement. Limites : les cordes ne se croisent jamais (vérifié), mais les arcs lissés parfois (avec la tension et la disposition proportionnelle : 2 à la 1ʳᵉ
+    lettre de la tresse de référence puis 0, et sur la tresse chargée 0 sauf 8 à la 6ᵉ lettre et 4 à la 7ᵉ ; sans elle jusqu'à 194). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
     intersections aux extrémités (les brins se rejoignent au clou). Le fichier charge le début de `NouvAutoMorph.py`
     par `exec` (ce script lance ses films au chargement).
 
