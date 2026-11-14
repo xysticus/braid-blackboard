@@ -132,6 +132,26 @@ class Pousse(Film):
         centre = bezier(graine, controle, tete, montee)
         return centre + np.array((g['nutation'] * self.e * math.sin(2 * math.pi * t / 2.7 + n) * math.sin(math.pi * montee), 0))
 
+    def direction_de_tige(self, n):
+        '''Direction (unitaire) de la tige sous la tête de la plante n : celle de la courbe de Bézier à son arrivée,
+        retournée.'''
+        g = self.groupes[n]
+        graine = self.graine[self.premier[n]:self.premier[n + 1]].mean(axis=0)
+        tete = np.array((g['tete'][0] * self.e, self.y_sol - g['tete'][1] * self.e))
+        controle = np.array((graine[0] + g.get('courbure', 0.15) * (tete[0] - graine[0]), (graine[1] + tete[1]) / 2))
+        d = controle - tete
+        return d / math.hypot(*d)
+
+    def secteur_de_fleur(self, ctx, n, t):
+        '''Chemin du secteur où l'on peint la fleur n : grand disque autour de la tête privé d'un coin de 60° dans la
+        direction de la tige (la couleur ne descend pas sur la tige).'''
+        g = self.groupes[n]
+        centre, R = self.centre(n, t), 2.6 * g['rayon_fleur'] * self.e
+        tige = math.atan2(*self.direction_de_tige(n)[::-1])
+        ctx.move_to(*centre)
+        ctx.arc(*centre, R, tige + math.radians(30), tige - math.radians(30) + 2 * math.pi)
+        ctx.close_path()
+
     def trous_de_fleur(self, n, t):
         '''Trous de la fleur n, rangés par angle décroissant de 240° à -60° (le bas reste ouvert pour la tige ; les
         sépales du bas sont près de l'axe de la tige, pour que leurs lacets longent le faisceau) :
@@ -186,56 +206,71 @@ class Pousse(Film):
         '''(sommets qui bougent, leurs positions au temps t) : les trous.'''
         return list(self.trous), self.choregraphie(t)
 
+    def trace(self, ctx, points, motif, largeur):
+        '''Remplit le lacet d'une couleur transparente puis le trace.'''
+        ctx.move_to(*points[0])
+        for p in points[1:]: ctx.line_to(*p)
+        ctx.close_path()
+        ctx.set_source(motif)
+        ctx.save()
+        ctx.clip_preserve()
+        ctx.paint_with_alpha(0.16)
+        ctx.restore()
+        ctx.set_line_width(largeur)
+        ctx.stroke()
+
     def dessine(self, t, lumiere=1.0):
-        '''Image au temps t : fond sombre (lumière légèrement variable, comme les prises de vue image par image),
-        lacets remplis d'une couleur transparente et tracés, du vert des tiges et des feuilles à la couleur des
-        pétales (dégradé radial autour de chaque fleur, qui apparaît à l'éclosion), puis la terre,
-        qui cache les graines.'''
+        '''Image au temps t : fond bleu clair (lumière légèrement variable, comme les prises de vue image par image),
+        lacets remplis d'une couleur transparente et tracés : verts pour les tiges et les feuilles ; dans la fleur
+        (secteur autour de la tête, sans la tige), blancs au centre puis de la couleur de la fleur, ce bicolore
+        apparaissant à l'éclosion ; puis la terre blanche, qui cache les graines.'''
         l, h, e = self.largeur, self.hauteur, self.e
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, l, h)
         ctx = cairo.Context(surface)
         fond = cairo.LinearGradient(0, 0, 0, h)
-        fond.add_color_stop_rgb(0, 0.05 * lumiere, 0.06 * lumiere, 0.09 * lumiere)
-        fond.add_color_stop_rgb(1, 0.11 * lumiere, 0.11 * lumiere, 0.13 * lumiere)
+        fond.add_color_stop_rgb(0, *(np.array((0.62, 0.80, 0.95)) * lumiere))
+        fond.add_color_stop_rgb(1, *(np.array((0.82, 0.91, 0.98)) * lumiere))
         ctx.set_source(fond)
         ctx.paint()
         ctx.set_line_cap(cairo.LINE_CAP_ROUND)
         ctx.set_line_join(cairo.LINE_JOIN_ROUND)
-        vert, sombre = np.array((0.32, 0.64, 0.30)), np.array((0.20, 0.42, 0.20))
+        largeur = 2.0 * e
+        vert, sombre, blanc = np.array((0.26, 0.56, 0.24)), np.array((0.16, 0.38, 0.16)), np.array((1.0, 1.0, 1.0))
         plante_du_lacet = [n for n, g in enumerate(self.groupes) for _ in range(g['trous'])]
         for k, points in enumerate(self.polylignes()):
             n = plante_du_lacet[k]
             g = self.groupes[n]
             centre = self.centre(n, t)
-            sepale = g['sorte'] == 'fleur' and (k - self.premier[n]) % 2 == 0
-            if g['sorte'] == 'fleur' and not sepale:
-                eclosion = self.phases(g, t)[2]
-                petale = (1 - eclosion) * vert + eclosion * np.array(g['couleur'])
-                rb, rf = g['rayon_bourgeon'] * e, g['rayon_fleur'] * e
-                motif = cairo.RadialGradient(*centre, 0, *centre, 1.8 * rf)
-                motif.add_color_stop_rgb(0, *((1 - eclosion) * vert + eclosion * np.array((1.0, 0.85, 0.35))))
-                motif.add_color_stop_rgb(rb / (1.8 * rf), *vert)
-                motif.add_color_stop_rgb(0.5, *petale)
-                motif.add_color_stop_rgb(0.75, *petale)
-                motif.add_color_stop_rgb(1, *vert)
-            else:
-                motif = cairo.RadialGradient(*centre, 0, *centre, g.get('longueur', 60) * e)
-                motif.add_color_stop_rgb(0, *vert)
-                motif.add_color_stop_rgb(1, *sombre)
-            ctx.move_to(*points[0])
-            for p in points[1:]: ctx.line_to(*p)
-            ctx.close_path()
-            ctx.set_source(motif)
+            motif = cairo.RadialGradient(*centre, 0, *centre, g.get('longueur', 60) * e)
+            motif.add_color_stop_rgb(0, *vert)
+            motif.add_color_stop_rgb(1, *sombre)
+            if g['sorte'] == 'feuille':
+                self.trace(ctx, points, motif, largeur)
+                continue
+            # fleur : vert hors du secteur de la fleur...
             ctx.save()
-            ctx.clip_preserve()
-            ctx.paint_with_alpha(0.16)
+            ctx.rectangle(0, 0, l, h)
+            self.secteur_de_fleur(ctx, n, t)
+            ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+            ctx.clip()
+            self.trace(ctx, points, motif, largeur)
             ctx.restore()
-            ctx.set_line_width(1.4 * e)
-            ctx.stroke()
-        terre = cairo.LinearGradient(0, self.y_sol, 0, h)
-        terre.add_color_stop_rgb(0, 0.24 * lumiere, 0.16 * lumiere, 0.09 * lumiere)
-        terre.add_color_stop_rgb(1, 0.13 * lumiere, 0.09 * lumiere, 0.05 * lumiere)
-        ctx.set_source(terre)
+            # ... et dans le secteur, du vert du bouton au blanc et à la couleur de la fleur qui éclot
+            eclosion = self.phases(g, t)[2]
+            rf = g['rayon_fleur'] * e
+            interieur = (1 - eclosion) * vert + eclosion * blanc
+            exterieur = (1 - eclosion) * vert + eclosion * np.array(g['couleur'])
+            fleur = cairo.RadialGradient(*centre, 0, *centre, 2.6 * rf)
+            fleur.add_color_stop_rgb(0, *interieur)
+            fleur.add_color_stop_rgb(0.21, *interieur)
+            fleur.add_color_stop_rgb(0.42, *exterieur)
+            fleur.add_color_stop_rgb(1, *exterieur)
+            ctx.save()
+            self.secteur_de_fleur(ctx, n, t)
+            ctx.clip()
+            self.trace(ctx, points, fleur, largeur)
+            ctx.restore()
+        ctx.set_source_rgb(*(np.array((0.97, 0.97, 0.95)) * min(lumiere, 1.0 / 0.97)))
         ctx.rectangle(0, self.y_sol, l, h)
         ctx.fill()
         return surface
@@ -269,20 +304,19 @@ BOUQUET = [
 
 def film_bouquet(fichier, groupes=BOUQUET, duree=13.5, images_par_seconde=25, saccade=2, pause=2.0, **options):
     '''Film MP4 du bouquet. saccade : chaque image calculée est montrée ce nombre de fois (aspect image par image des
-    films de plantes qui poussent) ; légère variation de lumière d'une image calculée à l'autre.'''
+    films de plantes qui poussent) ; lumière constante (une variation d'une image à l'autre faisait clignoter).'''
     pousse = Pousse(groupes, **options)
     l, h = pousse.largeur, pousse.hauteur
     ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
                                '-s', f'{l}x{h}', '-r', str(images_par_seconde), '-i', '-', '-pix_fmt', 'yuv420p',
                                '-c:v', 'libvpx-vp9', '-crf', '24', '-b:v', '0', '-deadline', 'realtime',
                                '-cpu-used', '8', '-row-mt', '1', fichier], stdin=subprocess.PIPE)
-    hasard = np.random.default_rng(1)
     pas = saccade / images_par_seconde
     nombre = round(duree / pas)
     for n in range(nombre + 1):
         t = n * pas
         if n: pousse.deplace(*pousse.cibles(t), pas_max=2 * pousse.e)
-        surface = pousse.dessine(t, lumiere=1 + hasard.normal(0, 0.04))
+        surface = pousse.dessine(t)
         surface.flush()
         donnees = bytes(surface.get_data())
         fois = saccade if n < nombre else round(pause * images_par_seconde)

@@ -251,10 +251,14 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     Réglages : écart 3 px, trait 1,4 px, taux 0,12 (tension un peu relâchée), rayons bourgeon 20, sépales 52,
     fleur 100 ; montée sans croisement de trous grâce au passage par un demi-cercle dans l'ordre de la graine
     (distance minimale contrôlée). Feuille : deux trous sur un segment qui s'allonge ; les feuilles sont aux deux bouts de la graine, tournées vers
-    l'extérieur (entre deux fleurs, une feuille coupait le chemin d'une tige et la faisait plier). Dessin : lacets remplis d'une
-    couleur transparente puis tracés, dégradé radial autour de chaque fleur (vert puis couleur des pétales qui
-    apparaît à l'éclosion), lacets des sépales verts, terre dessinée par-dessus ; chaque image calculée
-    montrée deux fois, lumière légèrement variable. `insere_sommet` (sommet ajouté dans un triangle, cordes
+    l'extérieur (entre deux fleurs, une feuille coupait le chemin d'une tige et la faisait plier). Dessin : fond bleu clair, terre
+    blanche dessinée par-dessus, lacets (trait 2 px) remplis d'une couleur transparente puis tracés ; verts pour les
+    tiges et les feuilles ; une fleur est peinte en deux fois (`secteur_de_fleur` : disque de 2,6 × son rayon autour
+    de la tête, privé d'un coin de 60° dans la direction de la tige) : en vert hors du secteur, et dans le secteur
+    en bicolore, blanc au centre puis de la couleur de la fleur, qui remplace le vert du bouton à l'éclosion (le vert
+    disparaît des fleurs, la couleur ne descend pas sur les tiges) ; chaque image calculée montrée deux fois, lumière
+    constante (une variation d'une image à l'autre faisait clignoter). Essai abandonné à la demande de l'utilisateur (copie hors dépôt) : une calanque (cailloux de
+    calcaire faits de lacets enroulés, sable, pluie, bulbe d'où sortent les plantes), traits épais, fond noir. `insere_sommet` (sommet ajouté dans un triangle, cordes
     recoupées) et l'anneau de satellites ne servent plus (ils arrondissaient les corolles de la première version).
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
     clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
