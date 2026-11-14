@@ -79,9 +79,10 @@ class Pousse(Film):
     (lacets autour de trous posés sur l'axe), on rassemble sans le montrer les trous sous terre près du clou (la
     graine), puis on fait suivre aux trous la chorégraphie, image par image.'''
 
-    def __init__(self, groupes, hauteur=800, largeur=800, ecart=None, taux=0.12):
+    def __init__(self, groupes, hauteur=1080, largeur=810, ecart=None, taux=0.12):
         '''groupes : liste de fleurs et de feuilles (dictionnaires, voir BOUQUET) ; leurs trous sont pris de gauche
-        à droite dans la graine. taux : force de la tension à chaque sous-pas (petite : lacets plus souples, qui
+        à droite dans la graine ; leurs têtes sont données par (abscisse, hauteur au-dessus du sol), en pixels d'une
+        image de 800 de large. Format portrait 3:4 par défaut, comme une photo. taux : force de la tension à chaque sous-pas (petite : lacets plus souples, qui
         suivent le mouvement avec retard).'''
         self.groupes = groupes
         for g in groupes: g['trous'] = 2 if g['sorte'] == 'feuille' else 2 * g['petales'] + 1 # sépales : un de plus
@@ -125,14 +126,15 @@ class Pousse(Film):
         un peu (nutation : les plantes tournent sur elles-mêmes en poussant).'''
         g = self.groupes[n]
         graine = self.graine[self.premier[n]:self.premier[n + 1]].mean(axis=0)
-        tete = np.array(g['tete'], dtype=float) * self.e
+        tete = np.array((g['tete'][0] * self.e, self.y_sol - g['tete'][1] * self.e))
         controle = np.array((graine[0] + g.get('courbure', 0.15) * (tete[0] - graine[0]), (graine[1] + tete[1]) / 2))
         montee = self.phases(g, t)[0]
         centre = bezier(graine, controle, tete, montee)
         return centre + np.array((g['nutation'] * self.e * math.sin(2 * math.pi * t / 2.7 + n) * math.sin(math.pi * montee), 0))
 
     def trous_de_fleur(self, n, t):
-        '''Trous de la fleur n, rangés par angle décroissant de 210° à -30° (le bas reste ouvert pour la tige) :
+        '''Trous de la fleur n, rangés par angle décroissant de 240° à -60° (le bas reste ouvert pour la tige ; les
+        sépales du bas sont près de l'axe de la tige, pour que leurs lacets longent le faisceau) :
         sépales (rangs pairs) et pétales (rangs impairs) en alternance. Les sépales forment une cage qui ne tourne pas,
         les pétales sont à l'intérieur, sur le petit cercle du bourgeon. Pendant la montée, tous passent du rang de la
         graine à un demi-cercle ouvert vers le haut (dans l'ordre de la graine, sans croisement), puis à cette
@@ -148,7 +150,7 @@ class Pousse(Film):
         resultat = []
         for j in range(m):
             demi = math.pi - math.pi * j / (m - 1)
-            final = math.radians(210 - 240 * j / (m - 1))
+            final = math.radians(240 - 300 * j / (m - 1))
             a = (1 - cercle) * demi + cercle * final
             if j % 2 == 0: # sépale
                 rayon = (1 - cercle) * g['rayon_bourgeon'] + cercle * g['rayon_sepales']
@@ -187,7 +189,7 @@ class Pousse(Film):
     def dessine(self, t, lumiere=1.0):
         '''Image au temps t : fond sombre (lumière légèrement variable, comme les prises de vue image par image),
         lacets remplis d'une couleur transparente et tracés, du vert des tiges et des feuilles à la couleur des
-        pétales (dégradé radial autour de chaque fleur, qui apparaît à l'éclosion), cœurs des fleurs, puis la terre,
+        pétales (dégradé radial autour de chaque fleur, qui apparaît à l'éclosion), puis la terre,
         qui cache les graines.'''
         l, h, e = self.largeur, self.hauteur, self.e
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, l, h)
@@ -230,13 +232,6 @@ class Pousse(Film):
             ctx.restore()
             ctx.set_line_width(1.4 * e)
             ctx.stroke()
-        for n, g in enumerate(self.groupes):
-            if g['sorte'] != 'fleur': continue
-            eclosion = self.phases(g, t)[2]
-            if eclosion <= 0: continue
-            ctx.set_source_rgba(1.0, 0.85, 0.3, eclosion)
-            ctx.arc(*self.centre(n, t), 5 * e, 0, 2 * math.pi)
-            ctx.fill()
         terre = cairo.LinearGradient(0, self.y_sol, 0, h)
         terre.add_color_stop_rgb(0, 0.24 * lumiere, 0.16 * lumiere, 0.09 * lumiere)
         terre.add_color_stop_rgb(1, 0.13 * lumiere, 0.09 * lumiere, 0.05 * lumiere)
@@ -259,15 +254,17 @@ def feuille(tete, depart, angle, longueur=80, **reglages):
     r.update(reglages)
     return r
 
-# de gauche à droite dans la graine
+# de gauche à droite dans la graine ; têtes : (abscisse, hauteur au-dessus du sol) dans une image de 800 de large.
+# Les feuilles sont aux deux bouts de la graine, tournées vers l'extérieur : entre deux fleurs, une feuille coupait le
+# chemin d'une tige et la faisait plier.
 BOUQUET = [
-    feuille((150, 540), 1.5, math.radians(150)),
-    fleur((185, 310), 0.0, (0.92, 0.35, 0.50), sens=1),
-    feuille((320, 500), 2.2, math.radians(160), longueur=70),
-    fleur((420, 160), 0.8, (0.97, 0.78, 0.25), sens=-1, nutation=22),
-    feuille((520, 470), 2.6, math.radians(20), longueur=70),
-    fleur((640, 330), 1.6, (0.62, 0.42, 0.90), sens=1, nutation=16),
-    feuille((690, 560), 1.8, math.radians(30)),
+    feuille((110, 150), 1.5, math.radians(150)),
+    feuille((215, 215), 2.2, math.radians(160), longueur=70),
+    fleur((190, 560), 0.0, (0.92, 0.35, 0.50), sens=1),
+    fleur((415, 760), 0.8, (0.97, 0.78, 0.25), sens=-1, nutation=22),
+    fleur((630, 540), 1.6, (0.62, 0.42, 0.90), sens=1, nutation=16),
+    feuille((595, 200), 2.6, math.radians(20), longueur=70),
+    feuille((700, 140), 1.8, math.radians(30)),
 ]
 
 def film_bouquet(fichier, groupes=BOUQUET, duree=13.5, images_par_seconde=25, saccade=2, pause=2.0, **options):
