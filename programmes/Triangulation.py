@@ -10,15 +10,11 @@ tassent autour des trous et vont en ligne droite d'un enroulement à l'autre. Le
 points dont chaque coude est arrondi par un arc de cercle (congé) : des droites et des arcs, les enroulements
 étant des cercles autour des trous ; les brins attachés au clou partent de l'axe perpendiculairement.'''
 
-import math, operator, os, subprocess
+import math, operator, subprocess
 import numpy as np
-import cairo
 
-# Les fonctions de NouvAutoMorph.py : le script lance ses films à la fin du fichier, on n'en charge que le début.
-_chemin = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NouvAutoMorph.py')
-with open(_chemin, encoding='utf-8') as _f:
-    _source = _f.read().split("dessine_auto_de_tresse([1, 1, 2, 2]")[0]
-exec(compile(_source, _chemin, 'exec'))
+from tresses import (calcule_autofn_de_tresse, etat_de_tresse, intervalle, agit, dessin_etat, polylignes,
+                     lit_mot, peint, deux_arcs, en_image_pil)
 
 DECALAGE_AXE = 0.01 # les trous sont un peu sous l'axe de dessin : les points de passage sont strictement au-dessus
 DECALAGE_BORD = 0.31 # les sommets des bords ne sont pas exactement à la verticale des trous (le clou y serait)

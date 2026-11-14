@@ -30,8 +30,14 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   Liens Binder dans le README, ne pas casser leurs chemins.
 - `programmes/AutoMorphPNG.py` : version script complète (pycairo → PNG) de l'algorithme de dessin
   des automorphismes. Sert de référence fonctionnelle.
-- `programmes/NouvAutoMorph.py` : **réimplémentation en cours** (travail actif), avec un algorithme plus simple :
-  voir plus bas.
+- `programmes/tresses.py` : **base commune** importée par les deux scripts suivants : mots de F_n et action d'Artin
+  (`calcule_autofn_de_tresse`), état d'un méandre (`intervalles`, `abscisses`, `etat_de_tresse`), action algébrique
+  de σ_i (`agit`, `reduit`), dessin d'un état (`dessin_etat`, `peint`, `image_auto_de_tresse`), relecture des mots
+  (`lit_mot`), arcs de cercle raccordés (`deux_arcs`), images (`en_image_pil`, `gif_en_mp4`). Ses `assert` tournent
+  à chaque import (rapide).
+- `programmes/NouvAutoMorph.py` : films successifs à partir de l'état (image par image, algébrique, simultané, essais
+  en arcs) : voir plus bas. `from tresses import *` ; lancé, il écrit ses images et ses films.
+- `programmes/Triangulation.py` : **le film actuel** (triangulation mobile, point 11 plus bas), `film_triangule`.
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas.
@@ -214,8 +220,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     images clés (écart régulier sur l'axe, remplissage vertical qui part des trous). L'ordre sur chaque arête est
     conservé, donc pas de croisement des cordes.
     croisement. Les cordes ne se croisent jamais ; avant les congés, les arcs lissés se croisaient parfois (jusqu'à 194 sans la tension). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
-    intersections aux extrémités (les brins se rejoignent au clou). Le fichier charge le début de `NouvAutoMorph.py`
-    par `exec` (ce script lance ses films au chargement).
+    intersections aux extrémités (les brins se rejoignent au clou).
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
@@ -275,6 +280,8 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
+python -c "import sys; sys.path.insert(0, 'programmes'); import Triangulation as T; T.film_triangule([4, 3, -1, -1, 2, -4, 1], 'imgs/film_triangule_43m1m12m41.mp4')"   # le film actuel
+python programmes/Triangulation.py   # vérifie seulement les assert (tresses.py et Triangulation.py)
 python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif, imgs/film_continu_*.gif (film algébrique) et imgs/film_simultane_*.gif, plus leurs .mp4
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
