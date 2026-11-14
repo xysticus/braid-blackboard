@@ -178,14 +178,18 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     écrit le MP4 au fil du calcul par un tube vers ffmpeg (un GIF de cette taille ne tiendrait pas en mémoire) ;
     `Film.lettre(..., rendu=f)` appelle f avec chaque image, sans rendu rien n'est dessiné (tests plus rapides).
     **Tension dès la première image** : 400 pas de `tend` dans `Film.__init__`.
-    **Dessin des enroulements et des voyages** (`Film.polyligne`) : direction en chaque point = corde entre ses deux
-    voisins. Autour d'un trou, les points tendus sont à égale distance sur des arêtes qui rayonnent, donc cette corde
-    est perpendiculaire au rayon : les enroulements sont des arcs de cercle centrés sur le trou, et un brin tendu entre
-    deux enroulements est droit. Essai écarté : imposer la perpendiculaire au rayon aux seuls points « plaqués » contre
-    le trou (chaîne de points au contact partant du trou) ; là où un faisceau quitte un enroulement, deux brins voisins
-    n'ont pas le même statut et leurs arcs se coupent (36 croisements au lieu de 0 sur une image clé).
-    **Brins attachés au clou** : on insère dans le dessin leur premier (dernier) passage sur l'axe
-    (`portions_du_clou`), avec la verticale pour direction : ils partent de l'axe perpendiculairement.
+    **Dessin en droites et congés** (`Film.polyligne`) : la ligne brisée des points, chaque coude arrondi par un congé
+    (arc de cercle tangent aux deux segments, qui prend au plus la moitié du plus court) : rien que des droites et des
+    arcs, sans point d'inflexion. Un brin tendu reste droit jusqu'à son coude ; les enroulements, faits de petits
+    coudes réguliers autour d'un trou, sont des cercles. 0 croisement sur toutes les images clés des deux tresses
+    d'essai. Essais écartés : une direction par point (corde entre les voisins) et une paire d'arcs (`deux_arcs`) par
+    segment : un brin droit qui tourne d'un coup en un point fait un S dans le segment qui précède (zigzags des brins
+    extérieurs, 2 à 8 croisements par image clé) ; imposer la perpendiculaire au rayon aux points « plaqués » contre un
+    trou (36 croisements : deux brins voisins d'un faisceau qui quitte un enroulement n'ont pas le même statut).
+    **Brins attachés au clou** : leur premier (dernier) passage sur l'axe (`portions_du_clou`) est remplacé dans le
+    dessin par deux points de part et d'autre de l'axe, sur la verticale si le brin traverse l'axe à moins de 45° de la
+    verticale (poids décroissant avec l'angle), sinon dans la direction du brin : ils partent de l'axe
+    perpendiculairement sans faire de cran quand, pendant un demi-tour, ils traversent l'axe en biais.
     Essai abandonné : tirer les points de ces brins vers un chemin imposé (arc de cercle centré sur l'axe, vertical au
     départ, de rayon κ × éloignement à la verticale du clou, puis tangente jusqu'au clou ; avec ou sans descente
     verticale jusque sous les arcs du bas). Ces chemins ne se croisent pas entre eux (vérifié numériquement), mais
@@ -198,8 +202,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     Les brins se tassent à écart fixe près des trous et laissent du vide au-delà, comme les demi-cercles emboîtés des
     images clés (écart régulier sur l'axe, remplissage vertical qui part des trous). L'ordre sur chaque arête est
     conservé, donc pas de croisement des cordes.
-    croisement. Limites : les cordes ne se croisent jamais (vérifié), mais les arcs lissés parfois (avec la tension et la disposition proportionnelle : 2 à la 1ʳᵉ
-    lettre de la tresse de référence puis 0, et sur la tresse chargée 0 sauf 8 à la 6ᵉ lettre (en 800 px, 48 images par lettre) ; sans elle jusqu'à 194). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
+    croisement. Les cordes ne se croisent jamais ; avant les congés, les arcs lissés se croisaient parfois (jusqu'à 194 sans la tension). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
     intersections aux extrémités (les brins se rejoignent au clou). Le fichier charge le début de `NouvAutoMorph.py`
     par `exec` (ce script lance ses films au chargement).
 

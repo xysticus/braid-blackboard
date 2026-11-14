@@ -6,9 +6,9 @@ l'arête), et deux points consécutifs sont dans un même triangle. Quand les tr
 de l'autre, les sommets bougent, les points suivent leur arête, et quand une arête cesse d'être de Delaunay
 (par exemple quand deux trous passent à la verticale l'un de l'autre) on la retourne : les lacets sont
 recalculés dans les nouveaux triangles sans changer de forme. Les lacets sont tendus (`Film.tend`) : ils se
-tassent autour des trous et vont en ligne droite d'un enroulement à l'autre. Le dessin est tracé en arcs de cercle
-(`deux_arcs`) entre les points des arêtes, un par triangle traversé : arcs centrés sur le trou pour les
-enroulements, droites pour les brins tendus ; les brins attachés au clou partent de l'axe perpendiculairement.'''
+tassent autour des trous et vont en ligne droite d'un enroulement à l'autre. Le dessin est la ligne brisée des
+points dont chaque coude est arrondi par un arc de cercle (congé) : des droites et des arcs, les enroulements
+étant des cercles autour des trous ; les brins attachés au clou partent de l'axe perpendiculairement.'''
 
 import math, operator, os, subprocess
 import numpy as np
@@ -290,39 +290,54 @@ class Film:
                 _, k, i = liste[j]
                 self.courbes[k][i] = ('e', u, v, final / longueur)
 
-    def polyligne(self, k, lisse=True):
-        '''Polyligne dessinée de la courbe k : une paire d'arcs de cercle raccordés avec la même tangente
-        (`deux_arcs`) entre deux points consécutifs, la direction en un point étant celle de la corde entre ses deux
-        voisins. Autour d'un trou, les points sont à égale distance sur des arêtes qui rayonnent : cette corde est
-        perpendiculaire au rayon et les enroulements sont des arcs de cercle centrés sur le trou ; un brin tendu
-        entre deux enroulements est droit. (Imposer la perpendiculaire au rayon aux seuls points « plaqués » contre le
-        trou fait davantage de croisements : deux brins voisins d'un faisceau qui quitte un enroulement n'ont pas le
-        même statut.) Les brins attachés au clou partent
-        de l'axe perpendiculairement : on ajoute leur premier (dernier) passage sur l'axe, avec la verticale pour
-        direction.'''
+    def polyligne(self, k, lisse=True, part_du_conge=0.5):
+        '''Polyligne dessinée de la courbe k : la ligne brisée de ses points, dont chaque coude est arrondi par un
+        congé, arc de cercle tangent aux deux segments, qui en prend au plus `part_du_conge` (la moitié par défaut :
+        deux congés voisins se touchent sans se chevaucher). Le dessin n'est fait que de droites et d'arcs, sans
+        point d'inflexion : un brin tendu reste droit jusqu'à son coude, les enroulements, faits de petits coudes
+        réguliers autour d'un trou, sont des cercles. (Avec une direction par point et une paire d'arcs par segment,
+        un brin droit qui tourne d'un coup en un point fait un S dans le segment qui précède.)
+        Les brins attachés au clou partent de l'axe perpendiculairement : leur premier (dernier) passage sur l'axe
+        est remplacé par deux points de part et d'autre de l'axe, sur la verticale si le brin traverse l'axe à peu
+        près verticalement (pendant un demi-tour il peut le traverser en biais : on suit alors sa direction).'''
         courbe = self.courbes[k]
         pts = [self.maillage.position(n) for n in courbe]
         if not lisse: return np.array(pts)
-        directions = [None] * len(pts) # None : direction de la corde entre les voisins
-        # passages sur l'axe des brins du clou, insérés entre deux points (de la fin vers le début)
+        # passages sur l'axe des brins du clou : le premier est entre les points i1 - 1 et i1
+        # (indices = range(1, i1)), le dernier entre i2 et i2 + 1 (indices = range(i2 + 1, ...))
         insertions = []
-        # le premier passage est entre les points i1 - 1 et i1 (indices = range(1, i1)), le dernier entre i2 et
-        # i2 + 1 (indices = range(i2 + 1, ...)) : on l'insère à l'indice i1, ou i2 + 1
         for n, (indices, x) in enumerate(self.portions_du_clou(courbe)):
-            insertions.append((indices.stop if n == 0 else indices.start, np.array((x, self.y_axe))))
-        for i, q in sorted(insertions, key=lambda e: -e[0]):
-            if np.hypot(*(q - pts[i - 1])) < 1e-6 or np.hypot(*(q - pts[i])) < 1e-6: continue
-            pts.insert(i, q)
-            directions.insert(i, np.array((0.0, -1.0)))
-        tangentes = []
-        for i, t in enumerate(directions):
-            corde = pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]
-            if t is None: t = corde
-            norme = math.hypot(*t)
-            t = t / norme if norme > 1e-12 else np.array((1.0, 0.0))
-            tangentes.append(t if t @ corde >= 0 else -t)
-        morceaux = [deux_arcs(pts[i], tangentes[i], pts[i + 1], tangentes[i + 1]) for i in range(len(pts) - 1)]
-        return np.concatenate([morceaux[0]] + [m[1:] for m in morceaux[1:]])
+            i = indices.stop if n == 0 else indices.start
+            insertions.append((i, np.array((x, self.y_axe)), n == 0))
+        ecart = self.dispositions[self.etape][1]
+        for i, q, premier in sorted(insertions, key=lambda e: -e[0]):
+            voisins = min(abs(q[1] - pts[i - 1][1]), abs(q[1] - pts[i][1]))
+            if voisins < 1e-6: continue
+            # direction au passage : la verticale si le brin traverse l'axe à moins de 45° de la verticale (poids
+            # décroissant avec l'angle), sinon celle du brin : on ne crée pas de cran pendant les demi-tours
+            segment = pts[i] - pts[i - 1]
+            segment = segment / math.hypot(*segment)
+            verticale = np.array((0.0, math.copysign(1.0, segment[1])))
+            poids = max(0.0, 1 - math.acos(min(1.0, abs(segment[1]))) / (math.pi / 4))
+            d = poids * verticale + (1 - poids) * segment
+            d = d / math.hypot(*d)
+            delta = min(ecart, 0.3 * voisins) / max(abs(d[1]), 1e-3)
+            pts[i:i] = [q - delta * d, q + delta * d]
+        dessin = [pts[0]]
+        for a, v, b in zip(pts[:-2], pts[1:-1], pts[2:]):
+            la, lb = math.hypot(*(a - v)), math.hypot(*(b - v))
+            if la < 1e-9 or lb < 1e-9:
+                dessin.append(v)
+                continue
+            ua, ub = (a - v) / la, (b - v) / lb
+            if ua @ ub < -1 + 1e-9: # pas de coude
+                dessin.append(v)
+                continue
+            c = part_du_conge * min(la, lb)
+            p1, p2 = v + c * ua, v + c * ub
+            dessin.extend(deux_arcs(p1, -ua, p2, ub))
+        dessin.append(pts[-1])
+        return np.array(dessin)
 
     def polylignes(self, lisse=True):
         return [self.polyligne(k, lisse) for k in range(len(self.courbes))]
