@@ -5,10 +5,12 @@ extrémités de l'axe. Un lacet est une suite de points posés sur les arêtes (
 l'arête), et deux points consécutifs sont dans un même triangle. Quand les trous i et i+1 tournent l'un autour
 de l'autre, les sommets bougent, les points suivent leur arête, et quand une arête cesse d'être de Delaunay
 (par exemple quand deux trous passent à la verticale l'un de l'autre) on la retourne : les lacets sont
-recalculés dans les nouveaux triangles sans changer de forme. Le dessin est tracé en arcs de cercle
-(`deux_arcs`) entre les points des arêtes, un par triangle traversé.'''
+recalculés dans les nouveaux triangles sans changer de forme. Les lacets sont tendus (`Film.tend`) : ils se
+tassent autour des trous et vont en ligne droite d'un enroulement à l'autre. Le dessin est tracé en arcs de cercle
+(`deux_arcs`) entre les points des arêtes, un par triangle traversé : arcs centrés sur le trou pour les
+enroulements, droites pour les brins tendus ; les brins attachés au clou partent de l'axe perpendiculairement.'''
 
-import math, operator, os
+import math, operator, os, subprocess
 import numpy as np
 import cairo
 
@@ -195,25 +197,12 @@ def noeuds_de_polyligne(points, maillage, clou):
     return [('v', clou)] + pile + [('v', clou)]
 
 
-def polyligne_de_courbe(maillage, courbe, lisse=True):
-    '''Polyligne dessinée : des arcs de cercle entre points consécutifs (paires d'arcs raccordées avec la même
-    tangente, la direction en un point étant celle de la corde entre ses deux voisins).'''
-    pts = [maillage.position(n) for n in courbe]
-    if not lisse: return np.array(pts)
-    tangentes = []
-    for k in range(len(pts)):
-        d = pts[min(k + 1, len(pts) - 1)] - pts[max(k - 1, 0)]
-        norme = math.hypot(*d)
-        tangentes.append(d / norme if norme > 1e-12 else np.array((1.0, 0.0)))
-    morceaux = [deux_arcs(pts[k], tangentes[k], pts[k + 1], tangentes[k + 1]) for k in range(len(pts) - 1)]
-    return np.concatenate([morceaux[0]] + [m[1:] for m in morceaux[1:]])
-
-
 class Film:
     '''Les trous en mouvement, leur triangulation et les lacets posés dessus.'''
 
-    def __init__(self, tresse, hauteur=400, largeur=400):
+    def __init__(self, tresse, hauteur=800, largeur=800):
         self.hauteur, self.largeur = hauteur, largeur
+        e = largeur / 400 # échelle des longueurs en pixels (réglées pour 400 × 400)
         self.nb_trous = max(map(operator.abs, tresse), default=1) + 1
         self.dispositions = [self.disposition(tresse[:k]) for k in range(len(tresse) + 1)]
         self.etape = 0 # indice de l'image clé courante
@@ -226,7 +215,7 @@ class Film:
         for p in lignes: p[:, 0] = np.interp(p[:, 0], avant, apres)
         clou = (float(np.interp(clou[0], avant, apres)), clou[1])
         trous = [(x, trous[0][1]) for x in xs0]
-        self.decalage_bas = next(d for d in (DECALAGE_BORD, 12, -12) if all(abs(x + d - clou[0]) >= 8 for x in xs0))
+        self.decalage_bas = next(d for d in (DECALAGE_BORD, 12 * e, -12 * e) if all(abs(x + d - clou[0]) >= 8 * e for x in xs0))
         self.maillage, self.trous, self.clou, self.haut, self.bas = maillage_initial(
             trous, clou, hauteur, largeur, self.decalage_bas)
         self.y_axe = self.maillage.pos[self.trous[0]][1]
@@ -236,9 +225,11 @@ class Film:
         self.place_du_clou = (j, (clou[0] - xs_bas[j]) / (xs_bas[j + 1] - xs_bas[j]))
         # le dessin de départ est aplati : on l'étire au-dessus de l'axe pour qu'il occupe la bande du haut
         y_min = min(p[:, 1].min() for p in lignes)
-        etirement = (self.y_axe - 14) / (self.y_axe - y_min)
+        etirement = (self.y_axe - 14 * e) / (self.y_axe - y_min)
         for p in lignes: p[:, 1] = np.where(p[:, 1] < self.y_axe, self.y_axe - (self.y_axe - p[:, 1]) * etirement, p[:, 1])
         self.courbes = [noeuds_de_polyligne(p, self.maillage, self.clou) for p in lignes]
+        # la tension s'applique dès la première image : pas de lacets lâches au départ
+        for _ in range(400): self.tend(0.3, self.dispositions[0][1])
 
     def disposition(self, tresse):
         '''(abscisses des trous, écart entre brins) de l'image clé de la tresse : la largeur de chaque intervalle de
@@ -256,13 +247,25 @@ class Film:
             xs.append(cumul)
         return xs, ecart
 
+    def portions_du_clou(self, courbe):
+        '''Pour une courbe, les deux bouts attachés au clou : [(indices des points avant le premier passage sur
+        l'axe, abscisse de ce passage), (indices après le dernier, abscisse)].'''
+        pts = [self.maillage.position(n) for n in courbe]
+        def passage(i, j):
+            (x1, y1), (x2, y2) = pts[i], pts[j]
+            return x1 + (x2 - x1) * (self.y_axe - y1) / (y2 - y1) if abs(y2 - y1) > 1e-12 else x2
+        haut = [i for i, q in enumerate(pts) if q[1] <= self.y_axe]
+        if not haut: return []
+        i1, i2 = haut[0], haut[-1]
+        return [(range(1, i1), passage(i1 - 1, i1)), (range(i2 + 1, len(pts) - 1), passage(i2 + 1, i2))]
+
     def tend(self, taux, ecart, degagement=None):
-        '''Un pas de tension des lacets. Chaque point est tiré, d'une fraction taux du chemin, vers l'endroit de son
-        arête où ses deux voisins sont alignés avec lui (le brin se tend) ; puis, arête par arête, les points gardent
-        leur ordre et restent à `ecart` pixels les uns des autres et à `degagement` (par défaut ecart) pixels des sommets (projection
-        d'une régression monotone bornée), moins si l'arête est trop courte. Les brins se tassent donc à écart fixe là
-        où ils sont tirés, près des trous, et laissent du vide au-delà ; l'ordre sur chaque arête ne change pas, donc
-        aucun croisement.'''
+        '''Un pas de tension des lacets. Chaque point est tiré, d'une fraction taux du chemin, vers sa cible sur son
+        arête : l'endroit où ses deux voisins sont alignés avec lui (le brin se tend). Puis, arête par arête,
+        les points gardent leur ordre et restent à `ecart` pixels les uns des autres et à `degagement` (par défaut
+        ecart) pixels des sommets (projection d'une régression monotone bornée), moins si l'arête est trop courte.
+        Les brins se tassent donc à écart fixe là où ils sont tirés, près des trous, et laissent du vide au-delà ;
+        l'ordre sur chaque arête ne change pas, donc aucun croisement.'''
         degagement = ecart if degagement is None else degagement
         pos = self.maillage.pos
         par_arete = {}
@@ -282,13 +285,47 @@ class Film:
             marge = min(degagement, 0.3 * longueur)
             g = min(ecart, max(longueur - 2 * marge, 0) / (m + 1))
             cibles = [w * longueur - j * g for j, (w, _, _) in enumerate(liste)]
-            for j, x in enumerate(monotone(cibles)):
-                x = min(max(x, marge), longueur - marge - (m - 1) * g)
+            finals = [min(max(x, marge), longueur - marge - (m - 1) * g) + j * g for j, x in enumerate(monotone(cibles))]
+            for j, final in enumerate(finals):
                 _, k, i = liste[j]
-                self.courbes[k][i] = ('e', u, v, (x + j * g) / longueur)
+                self.courbes[k][i] = ('e', u, v, final / longueur)
+
+    def polyligne(self, k, lisse=True):
+        '''Polyligne dessinée de la courbe k : une paire d'arcs de cercle raccordés avec la même tangente
+        (`deux_arcs`) entre deux points consécutifs, la direction en un point étant celle de la corde entre ses deux
+        voisins. Autour d'un trou, les points sont à égale distance sur des arêtes qui rayonnent : cette corde est
+        perpendiculaire au rayon et les enroulements sont des arcs de cercle centrés sur le trou ; un brin tendu
+        entre deux enroulements est droit. (Imposer la perpendiculaire au rayon aux seuls points « plaqués » contre le
+        trou fait davantage de croisements : deux brins voisins d'un faisceau qui quitte un enroulement n'ont pas le
+        même statut.) Les brins attachés au clou partent
+        de l'axe perpendiculairement : on ajoute leur premier (dernier) passage sur l'axe, avec la verticale pour
+        direction.'''
+        courbe = self.courbes[k]
+        pts = [self.maillage.position(n) for n in courbe]
+        if not lisse: return np.array(pts)
+        directions = [None] * len(pts) # None : direction de la corde entre les voisins
+        # passages sur l'axe des brins du clou, insérés entre deux points (de la fin vers le début)
+        insertions = []
+        # le premier passage est entre les points i1 - 1 et i1 (indices = range(1, i1)), le dernier entre i2 et
+        # i2 + 1 (indices = range(i2 + 1, ...)) : on l'insère à l'indice i1, ou i2 + 1
+        for n, (indices, x) in enumerate(self.portions_du_clou(courbe)):
+            insertions.append((indices.stop if n == 0 else indices.start, np.array((x, self.y_axe))))
+        for i, q in sorted(insertions, key=lambda e: -e[0]):
+            if np.hypot(*(q - pts[i - 1])) < 1e-6 or np.hypot(*(q - pts[i])) < 1e-6: continue
+            pts.insert(i, q)
+            directions.insert(i, np.array((0.0, -1.0)))
+        tangentes = []
+        for i, t in enumerate(directions):
+            corde = pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]
+            if t is None: t = corde
+            norme = math.hypot(*t)
+            t = t / norme if norme > 1e-12 else np.array((1.0, 0.0))
+            tangentes.append(t if t @ corde >= 0 else -t)
+        morceaux = [deux_arcs(pts[i], tangentes[i], pts[i + 1], tangentes[i + 1]) for i in range(len(pts) - 1)]
+        return np.concatenate([morceaux[0]] + [m[1:] for m in morceaux[1:]])
 
     def polylignes(self, lisse=True):
-        return [polyligne_de_courbe(self.maillage, c, lisse) for c in self.courbes]
+        return [self.polyligne(k, lisse) for k in range(len(self.courbes))]
 
     def positions_des_trous(self):
         return self.maillage.pos[self.trous]
@@ -297,7 +334,8 @@ class Film:
         trous = sorted(map(tuple, self.positions_des_trous()))
         return [lit_mot(p, trous) for p in self.polylignes(lisse)]
 
-    def cadre(self, lisse=True, largeur_brin=3, avec_arêtes=True, ecart=None):
+    def cadre(self, lisse=True, largeur_brin=None, avec_arêtes=True, ecart=None):
+        if largeur_brin is None: largeur_brin = 3 * self.largeur / 400
         if ecart is not None: largeur_brin = min(largeur_brin, max(1, 0.7 * ecart)) # brins serrés : trait plus fin
         arêtes = [self.maillage.pos[list(e)] for e in self.maillage.aretes()] if avec_arêtes else None
         return peint(self.polylignes(lisse), self.positions_des_trous(), self.maillage.pos[self.clou],
@@ -331,18 +369,18 @@ class Film:
             self.trous[i], self.trous[i + 1] = b, a
             self.etape += 1
 
-    def lettre(self, sigma, images=24, sous_pas=6, taux=0.15, largeur_brin=3):
-        '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA) ; renvoie les images (surfaces Cairo) du mouvement.'''
+    def lettre(self, sigma, images=96, sous_pas=2, taux=0.15, largeur_brin=None, rendu=None):
+        '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA). rendu : fonction appelée avec chaque image (surface Cairo) ;
+        sans elle, rien n'est dessiné.'''
         ecart0, ecart1 = self.dispositions[self.etape][1], self.dispositions[self.etape + 1][1]
-        resultat = []
         for pas in range(1, images * sous_pas + 1):
             u = pas / (images * sous_pas)
             self.place(sigma, u)
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
             self.tend(taux, (1 - u) * ecart0 + u * ecart1)
-            if pas % sous_pas == 0: resultat.append(self.cadre(largeur_brin=largeur_brin, ecart=(1 - u) * ecart0 + u * ecart1))
-        return resultat
+            if rendu and pas % sous_pas == 0:
+                rendu(self.cadre(largeur_brin=largeur_brin, ecart=(1 - u) * ecart0 + u * ecart1))
 
 
 SENS_DE_SIGMA = 1
@@ -358,17 +396,31 @@ def verifie_triangulation(tresse, images=12, **options):
         if film.mots() != attendu or film.mots(False) != attendu: return False
     return True
 
-def film_triangule(tresse, fichier, images=24, pause=500, largeur_brin=3, **options):
-    '''GIF : un demi-tour continu par lettre, triangulation en gris.'''
+def film_triangule(tresse, fichier, images=96, pause=0.5, largeur_brin=None, **options):
+    '''Film MP4 (VP9, 25 images/s), écrit au fil du calcul par ffmpeg : un demi-tour continu par lettre, `images`
+    images par lettre (le film est proportionnel à la longueur de la tresse), pause en secondes sur chaque image
+    clé (trois fois plus sur la dernière), triangulation en gris.'''
     film = Film(tresse, **options)
-    cadres = [film.cadre(largeur_brin=largeur_brin, ecart=film.dispositions[0][1])]
-    durees = [pause]
-    for sigma in tresse:
-        cadres += film.lettre(sigma, images, largeur_brin=largeur_brin)
-        durees += [40] * (images - 1) + [pause]
-    durees[-1] = 3 * pause
-    pil = [en_image_pil(c) for c in cadres]
-    pil[0].save(fichier, save_all=True, append_images=pil[1:], duration=durees, loop=0)
+    l, h = film.largeur, film.hauteur
+    ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
+                               '-s', f'{l}x{h}', '-r', '25', '-i', '-', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+                               '-pix_fmt', 'yuv420p', '-c:v', 'libvpx-vp9', '-crf', '24', '-b:v', '0',
+                               '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1', fichier],
+                              stdin=subprocess.PIPE)
+    def ecrit(surface, fois=1):
+        surface.flush()
+        donnees = bytes(surface.get_data())
+        for _ in range(fois): ffmpeg.stdin.write(donnees)
+    ecrit(film.cadre(largeur_brin=largeur_brin, ecart=film.dispositions[0][1]), round(25 * pause))
+    for n, sigma in enumerate(tresse):
+        derniere = []
+        def rendu(surface):
+            if derniere: ecrit(derniere.pop())
+            derniere.append(surface)
+        film.lettre(sigma, images, largeur_brin=largeur_brin, rendu=rendu)
+        ecrit(derniere.pop(), round(25 * pause * (3 if n == len(tresse) - 1 else 1)))
+    ffmpeg.stdin.close()
+    ffmpeg.wait()
 
 assert verifie_triangulation([1])
 assert verifie_triangulation([1, -2, 1])
