@@ -372,22 +372,28 @@ class Film:
         return peint(self.polylignes(lisse), self.positions_des_trous(), self.maillage.pos[self.clou],
                      self.hauteur, self.largeur, largeur_brin, axe=arêtes)
 
-    def place(self, sigma, u):
-        '''Place les sommets au temps u de la lettre σ (vers l'image clé suivante) : les trous glissent de la
-        disposition de l'image clé courante à celle du milieu de la lettre puis à celle de l'image clé suivante
-        (`abscisses`), et les deux trous de σ font en plus un demi-tour autour de leur milieu.'''
-        m, i, n = self.maillage, abs(sigma) - 1, self.nb_trous
-        xs1 = self.dispositions[self.etape + 1][0]
+    def trous_au_temps(self, sigma, u):
+        '''(positions des trous de gauche à droite au temps u de la lettre σ, abscisses des places, milieu et rayon
+        du demi-tour, angle) : les trous glissent de la disposition de l'image clé courante à celle du milieu de la
+        lettre puis à celle de l'image clé suivante (`abscisses`), et les deux trous de σ font en plus un demi-tour
+        autour de leur milieu. Ne modifie rien.'''
+        i = abs(sigma) - 1
         x = self.abscisses(u)[0] # abscisses de chaque place, de gauche à droite
         milieu, r = (x[i] + x[i + 1]) / 2, (x[i + 1] - x[i]) / 2
         theta = SENS_DE_SIGMA * (1 if sigma > 0 else -1) * math.pi * u
-        c, s = math.cos(theta), math.sin(theta)
-        for j, h in enumerate(self.trous): m.pos[h] = (x[j], self.y_axe)
-        a, b = self.trous[i], self.trous[i + 1]
-        m.pos[a] = (milieu - r * c, self.y_axe - r * s)
-        m.pos[b] = (milieu + r * c, self.y_axe + r * s)
+        positions = np.array([(xj, self.y_axe) for xj in x])
+        positions[i] = (milieu - r * math.cos(theta), self.y_axe - r * math.sin(theta))
+        positions[i + 1] = (milieu + r * math.cos(theta), self.y_axe + r * math.sin(theta))
+        return positions, x, milieu, r, theta
+
+    def place(self, sigma, u):
+        '''Place les sommets au temps u de la lettre σ (`trous_au_temps`) ; à u = 1, les deux trous de σ échangent
+        leurs places et l'on passe à l'image clé suivante.'''
+        m, i, n = self.maillage, abs(sigma) - 1, self.nb_trous
+        positions, x, milieu, r, theta = self.trous_au_temps(sigma, u)
+        for j, h in enumerate(self.trous): m.pos[h] = positions[j]
         # les sommets des bords se croisent sans jamais se rejoindre
-        ecart = math.hypot(r * c, 0.4 * r * s)
+        ecart = math.hypot(r * math.cos(theta), 0.4 * r * math.sin(theta))
         bords = list(x)
         bords[i], bords[i + 1] = milieu - ecart, milieu + ecart
         for rangee, decalage in ((self.haut, DECALAGE_BORD), (self.bas, self.decalage_bas)):
@@ -395,35 +401,55 @@ class Film:
         j, f = self.place_du_clou
         m.pos[self.clou][0] = m.pos[self.bas[j]][0] + f * (m.pos[self.bas[j + 1]][0] - m.pos[self.bas[j]][0])
         if u == 1:
+            xs1 = self.dispositions[self.etape + 1][0]
+            a, b = self.trous[i], self.trous[i + 1]
             m.pos[a], m.pos[b] = (xs1[i + 1], self.y_axe), (xs1[i], self.y_axe)
             self.trous[i], self.trous[i + 1] = b, a
             self.etape += 1
 
     def abscisses(self, u):
-        '''(abscisses des places, écart) au temps u de la lettre courante : de l'image clé à la disposition du
-        milieu de la lettre pendant la première moitié, puis de celle-ci à l'image clé suivante (interpolation
-        douce, sans à-coup aux raccords).'''
+        '''(abscisses des places, écart) au temps u de la lettre courante : interpolation linéaire de l'image clé
+        à la disposition du milieu de la lettre pendant la première moitié, puis de celle-ci à l'image clé suivante
+        (linéaire : un adoucissement arrêterait les trous au milieu et aux bouts de la lettre ; une interpolation
+        courbe pourrait intervertir deux trous voisins).'''
         (xa, ea), (xm, em), (xb, eb) = self.dispositions[self.etape], self.milieux[self.etape], \
             self.dispositions[self.etape + 1]
         if u <= 0.5: (x0, e0), (x1, e1), v = (xa, ea), (xm, em), 2 * u
         else: (x0, e0), (x1, e1), v = (xm, em), (xb, eb), 2 * u - 1
-        v = v * v * (3 - 2 * v)
         return [(1 - v) * a + v * b for a, b in zip(x0, x1)], (1 - v) * e0 + v * e1
 
-    def lettre(self, sigma, images=96, sous_pas=2, taux=0.15, largeur_brin=None, rendu=None):
-        '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA). rendu : fonction appelée avec chaque image (surface Cairo) ;
-        sans elle, rien n'est dessiné.'''
-        for pas in range(1, images * sous_pas + 1):
-            u = pas / (images * sous_pas)
+    def chemin_des_trous(self, sigma, echantillons=800):
+        '''(temps u échantillonnés, longueur cumulée du chemin parcouru par l'ensemble des trous) pendant la lettre σ.'''
+        us = np.linspace(0, 1, echantillons + 1)
+        positions = np.array([self.trous_au_temps(sigma, u)[0] for u in us])
+        pas = np.hypot(*np.moveaxis(np.diff(positions, axis=0), 2, 0)).sum(axis=1)
+        return us, np.concatenate(([0], np.cumsum(pas)))
+
+    def lettre(self, sigma, images=None, sous_pas=2, taux=0.15, largeur_brin=None, rendu=None, vitesse=None):
+        '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA). Les trous avancent à vitesse constante : le temps de la lettre
+        est reparamétré par la longueur du chemin parcouru par l'ensemble des trous, et sans `images` imposé, la
+        lettre dure (longueur du chemin) / vitesse images (vitesse en pixels par image, par défaut VITESSE à
+        l'échelle de la largeur) : les petits mouvements sont courts, les grands longs, sans à-coup d'une lettre à
+        l'autre. rendu : fonction appelée avec chaque image (surface Cairo) ; sans elle, rien n'est dessiné.
+        Renvoie le nombre d'images.'''
+        us, longueurs = self.chemin_des_trous(sigma)
+        if images is None:
+            vitesse = vitesse or VITESSE * self.largeur / 800
+            images = max(4, round(longueurs[-1] / vitesse))
+        temps = np.interp(np.linspace(0, longueurs[-1], images * sous_pas + 1)[1:], longueurs, us)
+        temps[-1] = 1.0
+        for pas, u in enumerate(temps, 1):
             ecart = self.abscisses(u)[1]
             self.place(sigma, u)
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
             self.tend(taux, ecart)
             if rendu and pas % sous_pas == 0: rendu(self.cadre(largeur_brin=largeur_brin, ecart=ecart))
+        return images
 
 
 SENS_DE_SIGMA = 1
+VITESSE = 6 # pixels parcourus par l'ensemble des trous à chaque image (pour 800 pixels de large)
 
 
 def verifie_triangulation(tresse, images=12, **options):
@@ -436,10 +462,11 @@ def verifie_triangulation(tresse, images=12, **options):
         if film.mots() != attendu or film.mots(False) != attendu: return False
     return True
 
-def film_triangule(tresse, fichier, images=96, pause=0.5, largeur_brin=None, **options):
-    '''Film MP4 (VP9, 25 images/s), écrit au fil du calcul par ffmpeg : un demi-tour continu par lettre, `images`
-    images par lettre (le film est proportionnel à la longueur de la tresse), pause en secondes sur chaque image
-    clé (trois fois plus sur la dernière), triangulation en gris.'''
+def film_triangule(tresse, fichier, vitesse=None, pause=0.5, largeur_brin=None, **options):
+    '''Film MP4 (VP9, 25 images/s), écrit au fil du calcul par ffmpeg : un demi-tour continu par lettre, les trous
+    avançant à vitesse constante (`Film.lettre`), donc la durée d'une lettre est proportionnelle au chemin parcouru
+    par les trous. Pas de pause entre les lettres ; `pause` secondes sur la première image, trois fois plus sur la
+    dernière. Triangulation en gris.'''
     film = Film(tresse, **options)
     l, h = film.largeur, film.hauteur
     ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
@@ -452,13 +479,12 @@ def film_triangule(tresse, fichier, images=96, pause=0.5, largeur_brin=None, **o
         donnees = bytes(surface.get_data())
         for _ in range(fois): ffmpeg.stdin.write(donnees)
     ecrit(film.cadre(largeur_brin=largeur_brin, ecart=film.dispositions[0][1]), round(25 * pause))
-    for n, sigma in enumerate(tresse):
-        derniere = []
-        def rendu(surface):
-            if derniere: ecrit(derniere.pop())
-            derniere.append(surface)
-        film.lettre(sigma, images, largeur_brin=largeur_brin, rendu=rendu)
-        ecrit(derniere.pop(), round(25 * pause * (3 if n == len(tresse) - 1 else 1)))
+    derniere = []
+    def rendu(surface):
+        if derniere: ecrit(derniere.pop())
+        derniere.append(surface)
+    for sigma in tresse: film.lettre(sigma, largeur_brin=largeur_brin, rendu=rendu, vitesse=vitesse)
+    ecrit(derniere.pop(), round(25 * 3 * pause))
     ffmpeg.stdin.close()
     ffmpeg.wait()
 

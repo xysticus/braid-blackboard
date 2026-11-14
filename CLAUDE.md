@@ -177,8 +177,13 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     (interpolé), le trait est au plus 70 % de cet écart. Le dessin de départ est replacé sur la disposition 0 par une
     transformation affine par morceaux des abscisses. Plus la tresse est chargée, plus `s` est petit (2,8 px à la 7ᵉ
     lettre de la tresse chargée).
-    **Film** : 800 × 800 par défaut (longueurs en pixels réglées pour 400 et multipliées par `largeur / 400`), 96 images
-    par lettre (2 sous-pas par image), donc une durée proportionnelle à la longueur de la tresse. `film_triangule`
+    **Film** : 800 × 800 par défaut (longueurs en pixels réglées pour 400 et multipliées par `largeur / 400`).
+    **Vitesse constante** (`Film.lettre`, `chemin_des_trous`) : les trous avancent de `VITESSE` = 6 pixels par image
+    (chemin cumulé de l'ensemble des trous) ; le temps de la lettre est reparamétré par la longueur de ce chemin, et
+    une lettre dure (longueur du chemin) / vitesse images (53 à 177 images sur la tresse de référence), 2 sous-pas par
+    image. Le glissement des trous (`abscisses`) est linéaire par morceaux (un adoucissement les arrêtait au milieu
+    et aux bouts de chaque lettre ; une interpolation courbe pourrait intervertir deux trous voisins). Pas de pause
+    entre les lettres, seulement sur la première et la dernière image. `film_triangule`
     écrit le MP4 au fil du calcul par un tube vers ffmpeg (un GIF de cette taille ne tiendrait pas en mémoire) ;
     `Film.lettre(..., rendu=f)` appelle f avec chaque image, sans rendu rien n'est dessiné (tests plus rapides).
     **Tension dès la première image** : 400 pas de `tend` dans `Film.__init__`.
