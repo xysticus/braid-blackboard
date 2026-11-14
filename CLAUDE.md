@@ -153,20 +153,27 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     change pas. Aucune réduction de bigones à faire. Dessin : arcs de cercle (`deux_arcs`) entre points d'arêtes,
     sans angle droit imposé. `verifie_triangulation` relit les mots (`lit_mot`) après chaque lettre : bon sur la tresse
     chargée du point 9 et sur 30 tresses aléatoires.
-    Maillage fin (`maillage_initial(fin=True)`) : milieux sur les bords, deux rangées intermédiaires à 0,85 × la
-    distance de l'axe au bord (au moins 0,65 × l'espacement des trous, hors de portée du demi-tour), rangée alignée
-    sur les trous en bas. Le dessin de départ est étiré au-dessus de l'axe pour remplir la bande du haut (un brin
-    n'occupe que les triangles qu'il traverse : une bande qu'il ne traverse pas reste vide).
+    **Triangulation de départ en trois bandes** (`maillage_initial`) : bande du haut (bord haut → axe, arcs du haut),
+    bande du milieu (axe → rangée à 60 % de la distance à la base, arcs du bas), bande du bas (sous cette rangée,
+    contient le clou). Chaque bande est une échelle de triangles entre deux rangées ; les rangées du haut et du bas ont
+    un sommet à la verticale de chaque trou. Un maillage plus fin (rangées intermédiaires, milieux) n'a rien apporté et
+    a été retiré. Le dessin de départ est étiré au-dessus de l'axe pour remplir la bande du haut (un brin n'occupe que
+    les triangles qu'il traverse). La bande du milieu doit avoir une vraie hauteur même si le dessin de départ n'a pas
+    d'arc du bas (sinon un trou qui tourne retourne un triangle).
     **Clou en pointe de degré 2** : il pend sous une base (coins et deux sommets à ±90 px) ; son seul triangle contient
     les départs et arrivées de tous les lacets, qui passent tous par l'arête de la base ; il est dans
     `Maillage.proteges` (aucun flip ne lui ajoute d'arête), donc cela reste vrai pendant tout le film
     (`depart_et_arrivee_ensemble`). Les côtés de la pointe doivent être plus plats que les brins qui quittent le clou
     (élévation minimale 12,9°, pointe à 8,8°), sinon un brin sort du maillage. Réespacement continu (`Film.reespace`,
-    taux 0,08 par sous-pas) :
-    les fractions des points de chaque arête tendent vers une répartition régulière sans changer d'ordre, donc sans
-    croisement. Limites : les cordes ne se croisent jamais (vérifié), mais les arcs lissés si (0 sur la tresse de
-    référence, jusqu'à ~20 sur la tresse chargée à partir de la 6ᵉ lettre : brins très serrés, les paires d'arcs
-    débordent des triangles ; la tangente « bissectrice » est pire). Pour détecter un croisement, ignorer les
+    taux 0,15 par sous-pas) : plus de répartition uniforme sur les arêtes (elle étalait les brins sur toute la longueur,
+    trop loin des trous). `Film.tend` : chaque point est tiré vers l'endroit de son arête où ses deux voisins sont
+    alignés avec lui (le brin se tend), puis, arête par arête, les points gardent leur ordre, restent à `ECART_BRINS`
+    (6 px) les uns des autres et à `DEGAGEMENT_TROUS` (10 px) des sommets (régression monotone bornée, `monotone`).
+    Les brins se tassent à écart fixe près des trous et laissent du vide au-delà, comme les demi-cercles emboîtés des
+    images clés (écart régulier sur l'axe, remplissage vertical qui part des trous). L'ordre sur chaque arête est
+    conservé, donc pas de croisement des cordes.
+    croisement. Limites : les cordes ne se croisent jamais (vérifié), mais les arcs lissés parfois (avec la tension : 0 à 2 par image sur la tresse de
+    référence, 0 à 4 sur la tresse chargée sauf ~40 à la 6ᵉ lettre de la tresse chargée ; sans elle jusqu'à 194). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
     intersections aux extrémités (les brins se rejoignent au clou). Le fichier charge le début de `NouvAutoMorph.py`
     par `exec` (ce script lance ses films au chargement).
 
