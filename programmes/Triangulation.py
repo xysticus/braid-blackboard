@@ -22,7 +22,20 @@ DECALAGE_AXE = 0.01 # les trous sont un peu sous l'axe de dessin : les points de
 DECALAGE_BORD = 0.31 # les sommets des bords ne sont pas exactement à la verticale des trous (le clou y serait)
 
 
+ECART_BRINS = 6 # écart minimal en pixels entre deux brins sur une arête
+DEGAGEMENT_TROUS = 10 # distance minimale en pixels entre un brin et un sommet, sur une arête
+
 def croix(u, v): return u[0] * v[1] - u[1] * v[0]
+
+def monotone(valeurs):
+    '''Régression monotone croissante (moindres carrés) des valeurs, par mise en commun des blocs voisins.'''
+    blocs = []
+    for x in valeurs:
+        blocs.append([x, 1])
+        while len(blocs) > 1 and blocs[-2][0] > blocs[-1][0]:
+            (a, na), (b, nb) = blocs[-2], blocs[-1]
+            blocs[-2:] = [[(a * na + b * nb) / (na + nb), na + nb]]
+    return [moyenne for moyenne, n in blocs for _ in range(n)]
 
 class Maillage:
     '''Triangulation d'un nuage de points : positions et triangles (ensembles de trois indices).'''
@@ -126,44 +139,30 @@ class Maillage:
         raise RuntimeError("les flips ne s'arrêtent pas")
 
 
-def maillage_initial(trous, clou, hauteur, largeur, fin=True):
-    '''Triangulation de Delaunay du rectangle. Rangées de sommets, de haut en bas : bord haut, (si fin) rangée
-    intermédiaire, axe (extrémités et trous), (si fin) rangée intermédiaire, rangée alignée sur les trous, puis la base
-    (coins et deux sommets de part et d'autre du clou) sous laquelle pend le clou : le clou est une pointe de degré 2 dont
-    l'unique triangle contient les départs et les arrivées de tous les lacets, et il ne gagne jamais d'arête (`proteges`).
-    Les rangées « alignées » (bord haut, rangée du bas) ont un sommet à la verticale de chaque trou, avec les coins :
-    indice k + 1 pour le trou k. Renvoie (maillage, indices des trous, du clou, rangée alignée du haut, du bas).'''
-    n = len(trous)
+def maillage_initial(trous, clou, hauteur, largeur):
+    '''Triangulation de départ en trois bandes horizontales, rangées de haut en bas :
+    - le bord haut, un sommet à la verticale de chaque trou (et les coins) ;
+    - l'axe (extrémités et trous) : entre les deux, la bande des arcs du haut ;
+    - une rangée sous l'axe (à 60 % de la distance de l'axe à la base), un sommet à la verticale de chaque trou : bande des arcs du bas ;
+    - la base, sous laquelle pend le clou : bande du clou. Le clou est une pointe de degré 2 dont l'unique triangle
+    contient les départs et les arrivées de tous les lacets, et il ne gagne jamais d'arête (`proteges`).
+    Chaque bande est découpée en une échelle de triangles (zigzag entre les deux rangées), puis les arêtes non de
+    Delaunay sont retournées. Les rangées alignées (haut et bas) ont les coins en plus : indice k + 1 pour le trou k.
+    Renvoie (maillage, indices des trous, du clou, rangée alignée du haut, du bas).'''
     y_axe = trous[0][1] + DECALAGE_AXE
-    xt = [x + DECALAGE_BORD for x, _ in trous]
-    pas = (trous[-1][0] - trous[0][0]) / max(n - 1, 1) if n > 1 else largeur / 2
-    milieux = [(a + b) / 2 for a, b in zip(xt[:-1], xt[1:])]
-    if n > 1: milieux = [xt[0] - pas / 2] + milieux + [xt[-1] + pas / 2]
-    xs_fin = sorted([0, largeur] + xt + [x for x in milieux if 0 < x < largeur])
-    xs_alignes = [0] + xt + [largeur]
+    xs_alignes = [0] + [x + DECALAGE_BORD for x, _ in trous] + [largeur]
     pts = []
     def ajoute(p): pts.append(p); return len(pts) - 1
     def rangee(y, xs): return [ajoute((x, y)) for x in xs]
 
-    y_haut, y_base = 3, clou[1] - 14
-    ecart = max(0.65 * pas, 0.85 * (y_axe - y_haut)) if 0.85 * (y_axe - y_haut) > 0.65 * pas else 0.65 * pas
-    y_bas_int = y_axe + ecart
-    haut = rangee(y_haut, xs_alignes)
-    rangees = [haut + (rangee(y_haut, [x for x in xs_fin if x not in xs_alignes]) if fin else [])]
-    if fin: rangees.append(rangee(y_axe - ecart, xs_fin))
+    haut = rangee(3, xs_alignes)
     axe = [ajoute((0, y_axe))] + [ajoute((x, y_axe)) for x, _ in trous] + [ajoute((largeur, y_axe))]
-    rangees.append(axe)
-    if fin and y_bas_int < y_base - 40:
-        rangees.append(rangee(y_bas_int, xs_fin))
-        y_bas = (y_bas_int + y_base) / 2
-    else: y_bas = (y_axe + y_base) / 2
-    bas = rangee(y_bas, xs_alignes)
-    rangees.append(bas + (rangee(y_bas, [x for x in xs_fin if x not in xs_alignes]) if fin else []))
+    y_base = clou[1] - 14
+    bas = rangee(y_axe + 0.6 * (y_base - y_axe), xs_alignes)
     demi_base = 90 # les brins quittent le clou avec au moins 12,9° d'élévation : les côtés de la pointe font moins (14/90)
     base = rangee(y_base, [0, clou[0] - demi_base, clou[0] + demi_base, largeur])
-    rangees.append(base)
     triangles = []
-    for r1, r2 in zip(rangees[:-1], rangees[1:]):
+    for r1, r2 in zip((haut, axe, bas), (axe, bas, base)):
         r1 = sorted(r1, key=lambda i: pts[i][0])
         r2 = sorted(r2, key=lambda i: pts[i][0])
         i = j = 0
@@ -232,18 +231,35 @@ class Film:
         for p in lignes: p[:, 1] = np.where(p[:, 1] < y_axe, y_axe - (y_axe - p[:, 1]) * etirement, p[:, 1])
         self.courbes = [noeuds_de_polyligne(p, self.maillage, self.clou) for p in lignes]
 
-    def reespace(self, taux):
-        '''Rapproche d'un taux les fractions des points de chaque arête de leur répartition régulière,
-        sans changer leur ordre (donc sans créer de croisement).'''
+    def tend(self, taux, ecart=ECART_BRINS, degagement=DEGAGEMENT_TROUS):
+        '''Un pas de tension des lacets. Chaque point est tiré, d'une fraction taux du chemin, vers l'endroit de son
+        arête où ses deux voisins sont alignés avec lui (le brin se tend) ; puis, arête par arête, les points gardent
+        leur ordre et restent à `ecart` pixels les uns des autres et à `degagement` pixels des sommets (projection
+        d'une régression monotone bornée), moins si l'arête est trop courte. Les brins se tassent donc à écart fixe là
+        où ils sont tirés, près des trous, et laissent du vide au-delà ; l'ordre sur chaque arête ne change pas, donc
+        aucun croisement.'''
+        pos = self.maillage.pos
         par_arete = {}
         for k, courbe in enumerate(self.courbes):
             for i, n in enumerate(courbe):
-                if n[0] == 'e': par_arete.setdefault(n[1:3], []).append((n[3], k, i))
+                if n[0] != 'e': continue
+                u, v, w = n[1], n[2], n[3]
+                d = pos[v] - pos[u]
+                p, q = self.maillage.position(courbe[i - 1]), self.maillage.position(courbe[i + 1])
+                den = croix(d, q - p)
+                cible = croix(p - pos[u], q - p) / den if abs(den) > 1e-9 else w
+                par_arete.setdefault((u, v), []).append((w + taux * (min(max(cible, 0), 1) - w), k, i))
         for (u, v), liste in par_arete.items():
+            longueur = math.hypot(*(pos[v] - pos[u]))
             liste.sort()
-            for j, (w, k, i) in enumerate(liste):
-                cible = (j + 1) / (len(liste) + 1)
-                self.courbes[k][i] = ('e', u, v, w + taux * (cible - w))
+            m = len(liste)
+            marge = min(degagement, 0.3 * longueur)
+            g = min(ecart, max(longueur - 2 * marge, 0) / (m + 1))
+            cibles = [w * longueur - j * g for j, (w, _, _) in enumerate(liste)]
+            for j, x in enumerate(monotone(cibles)):
+                x = min(max(x, marge), longueur - marge - (m - 1) * g)
+                _, k, i = liste[j]
+                self.courbes[k][i] = ('e', u, v, (x + j * g) / longueur)
 
     def polylignes(self, lisse=True):
         return [polyligne_de_courbe(self.maillage, c, lisse) for c in self.courbes]
@@ -282,7 +298,7 @@ class Film:
             m.pos[rangee[k + 1]][0] = milieu[0] - ecart
             m.pos[rangee[k + 2]][0] = milieu[0] + ecart
 
-    def lettre(self, sigma, images=24, sous_pas=6, taux=0.08):
+    def lettre(self, sigma, images=24, sous_pas=6, taux=0.15):
         '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA) ; renvoie les images (surfaces Cairo) du mouvement.'''
         depart = self.maillage.pos.copy()
         resultat = []
@@ -292,7 +308,7 @@ class Film:
             self.place(None, sigma, pas / (images * sous_pas), depart)
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
-            self.reespace(taux)
+            self.tend(taux)
             if pas % sous_pas == 0: resultat.append(self.cadre())
         return resultat
 
