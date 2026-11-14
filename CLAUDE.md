@@ -235,12 +235,14 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     qui virent du vert (tige) à la couleur de la fleur ; éventuellement régions entre lacets remplies (pétales
     pleins), tension relâchée pour un rendu plus végétal. Visée : les documentaires en image par image (time-lapse)
     qui montrent une plante pousser jour après jour, côté « surgissant ».
-    **Prototype** (`programmes/Bouquet.py`, `film_bouquet` → `imgs/bouquet.mp4`, 15,5 s, calcul ~35 s, 35 trous) :
+    **Prototype** (`programmes/Bouquet.py`, `film_bouquet` → `imgs/bouquet.mp4`, portrait 3:4 810 × 1080, 15,5 s,
+    calcul ~35 s, 35 trous ; têtes données par (abscisse, hauteur au-dessus du sol)) :
     `Pousse` hérite de `Film` (état de départ d'une tresse à n brins, puis `y_axe = -inf` pour couper le départ
     perpendiculaire des brins du clou). Les trous dorment en rang serré sous une terre épaisse (la graine) : les
     pousses surgissent du sol. Chaque plante (`fleur`, `feuille`) monte le long d'une tige de Bézier en oscillant
-    (nutation). **Éclosion** (idée de l'utilisateur) : une fleur = 5 sépales et 4 pétales rangés par angle de 210° à
-    -30° (le bas reste ouvert pour la tige) ; les sépales forment une cage qui ne tourne pas, les pétales tournent
+    (nutation). **Éclosion** (idée de l'utilisateur) : une fleur = 5 sépales et 4 pétales rangés par angle de 240° à
+    -60° (le bas reste ouvert pour la tige ; à 210°/-30°, les lacets des sépales du bas filaient droit vers le clou,
+    lignes isolées à côté des tiges) ; les sépales forment une cage qui ne tourne pas, les pétales tournent
     d'un tour à l'intérieur (les lacets s'enroulent en couches : le bourgeon), puis sortent entre les sépales ; les
     couches, retenues par les sépales, gonflent en lobes pincés entre eux : la fleur sort du bourgeon au lieu de le
     gonfler. Essais écartés : sépales qui tournent avec les pétales (ils sont alors à l'intérieur des couches et ne
@@ -248,9 +250,10 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     tension très relâchée (taux 0,06 : grands drapés) ; 3 pétales (triangle) ; 2 tours de bourgeon (trop de couches).
     Réglages : écart 3 px, trait 1,4 px, taux 0,12 (tension un peu relâchée), rayons bourgeon 20, sépales 52,
     fleur 100 ; montée sans croisement de trous grâce au passage par un demi-cercle dans l'ordre de la graine
-    (distance minimale contrôlée). Feuille : deux trous sur un segment qui s'allonge. Dessin : lacets remplis d'une
+    (distance minimale contrôlée). Feuille : deux trous sur un segment qui s'allonge ; les feuilles sont aux deux bouts de la graine, tournées vers
+    l'extérieur (entre deux fleurs, une feuille coupait le chemin d'une tige et la faisait plier). Dessin : lacets remplis d'une
     couleur transparente puis tracés, dégradé radial autour de chaque fleur (vert puis couleur des pétales qui
-    apparaît à l'éclosion), lacets des sépales verts, cœur jaune, terre dessinée par-dessus ; chaque image calculée
+    apparaît à l'éclosion), lacets des sépales verts, terre dessinée par-dessus ; chaque image calculée
     montrée deux fois, lumière légèrement variable. `insere_sommet` (sommet ajouté dans un triangle, cordes
     recoupées) et l'anneau de satellites ne servent plus (ils arrondissaient les corolles de la première version).
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
