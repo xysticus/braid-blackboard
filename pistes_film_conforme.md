@@ -315,5 +315,11 @@ de départ verticaux ; demi-tours à place fixe (trous régulièrement espacés,
 Mots relus sur les rubans (`lit_mot`, demi-droites des trous voyageurs) justes après chaque lettre, sur la tresse de
 référence et la tresse chargée ; calcul très rapide (0,5 s pour la tresse chargée sans dessin, 7 s pour les deux films).
 Le ruban est parcouru côté droit à l'aller (sinon on lit les mots inverses) ; sa demi-largeur est le tiers de l'écart
-entre brins. Reste : disposition proportionnelle (les arcs tendus se tassent contre quelques trous), et la suite
-naturelle, la piste 1 bis avec ces arcs entre pointes.
+entre brins. Espacement proportionnel ajouté ensuite : à chaque image clé, largeur de chaque intervalle de l'axe proportionnelle
+à 1 + le nombre d'arcs qui le traversent (la moitié de celui des lacets, connu par `etat_de_tresse`) ; entre les
+images clés, les largeurs suivent une interpolation d'Hermite monotone (Fritsch–Carlson, `pchip`) à travers toutes les
+images clés : vitesse continue d'une lettre à l'autre (une interpolation linéaire par lettre ferait un à-coup à chaque
+image clé), largeurs toujours positives (deux trous ne s'inversent jamais). Le demi-tour se fait autour du milieu des
+deux places qui glissent, à vitesse angulaire constante. Le mouvement des arcs, très doux (« soft », dit
+l'utilisateur), vient d'un seul mouvement continu, d'une seule manière de dessiner et de l'absence de clou. Reste :
+la piste 1 bis avec ces arcs entre pointes.

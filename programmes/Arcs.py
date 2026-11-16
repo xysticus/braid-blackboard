@@ -13,7 +13,7 @@ import cairo
 
 from Triangulation import Film, croix
 from Raccord import maillage_du_raccord
-from tresses import calcule_autofn_de_tresse, lit_mot, en_image_pil, ENCODEUR
+from tresses import calcule_autofn_de_tresse, etat_de_tresse, intervalle, lit_mot, en_image_pil, ENCODEUR
 
 SENS_DE_SIGMA = 1 # comme dans les autres films : σ_i positif = demi-tour horaire à l'écran
 COULEURS = [(0.85, 0.15, 0.15), (0.10, 0.60, 0.15), (0.15, 0.25, 0.85), (0.75, 0.60, 0.05), (0.65, 0.15, 0.65),
@@ -47,6 +47,30 @@ def coupe_arc(points, maillage, debut, fin):
     return [('v', debut)] + pile + [('v', fin)]
 
 
+def pchip(y):
+    """Pentes de l'interpolation cubique d'Hermite monotone (Fritsch–Carlson) des valeurs y aux temps 0, 1, 2, ... :
+    la courbe ne dépasse jamais les valeurs entre deux temps (donc reste positive si elles le sont), et sa dérivée est
+    continue."""
+    y = np.asarray(y, dtype=float)
+    if len(y) < 2: return np.zeros_like(y)
+    d = np.diff(y, axis=0)
+    m = np.zeros_like(y)
+    m[0], m[-1] = d[0], d[-1]
+    interieur = (d[:-1] * d[1:]) > 0
+    m[1:-1] = np.where(interieur, 2 * d[:-1] * d[1:] / np.where(interieur, d[:-1] + d[1:], 1), 0)
+    for k in (0, -1): # pentes des bouts : pas de dépassement
+        m[k] = np.where(m[k] * d[k] <= 0, 0, np.minimum(np.abs(m[k]), 3 * np.abs(d[k])) * np.sign(d[k]))
+    return m
+
+def hermite(y, m, T):
+    """Valeur au temps T de l'interpolation d'Hermite de valeurs y et pentes m aux temps 0, 1, 2, ..."""
+    k = min(int(T), len(y) - 2) if len(y) > 1 else 0
+    if len(y) == 1: return y[0]
+    u = T - k
+    h00, h10, h01, h11 = 2*u**3 - 3*u**2 + 1, u**3 - 2*u**2 + u, -2*u**3 + 3*u**2, u**3 - u**2
+    return h00 * y[k] + h10 * m[k] + h01 * y[k + 1] + h11 * m[k + 1]
+
+
 class FilmArcs(Film):
     """Les arcs f_i → m_i sur la triangulation mobile. On ne garde de `Film` que le maillage, la tension et le dessin
     (le clou est neutralisé : y_axe = -inf)."""
@@ -54,14 +78,29 @@ class FilmArcs(Film):
     def __init__(self, tresse, hauteur=800, largeur=800, ecart=6):
         self.hauteur, self.largeur = hauteur, largeur
         self.n = n = max(map(operator.abs, tresse), default=1) + 1
-        self.pas_trous = largeur / (n + 1)
         self.y_trous, self.y_fixes = 0.42 * hauteur, hauteur - 60
-        voyageurs = [((k + 1) * self.pas_trous, self.y_trous) for k in range(n)]
-        fixes = [((k + 1) * self.pas_trous + 0.37, self.y_fixes) for k in range(n)] # pas à la verticale exacte
+        # espacement proportionnel : à chaque image clé, largeur de chaque intervalle de l'axe (extrémités comprises)
+        # proportionnelle à 1 + le nombre d'arcs qui le traversent (la moitié de celui des lacets) ; entre les images
+        # clés, les largeurs glissent par une interpolation lisse et monotone (vitesse continue d'une lettre à l'autre,
+        # largeurs toujours positives : deux trous ne s'inversent jamais)
+        largeurs = []
+        for k in range(len(tresse) + 1):
+            trous, lacets = etat_de_tresse(tresse[:k], n)
+            comptes = [0] * (n + 1)
+            for lacet in lacets:
+                for x in lacet: comptes[intervalle(x, trous)] += 1
+            w = np.array([1 + c / 2 for c in comptes])
+            largeurs.append(w / w.sum())
+        self.largeurs = np.array(largeurs)
+        self.pentes = pchip(self.largeurs)
+        self.marge = 30
+        voyageurs = [(x, self.y_trous) for x in self.places_au_temps(0)]
+        fixes = [((k + 1) * largeur / (n + 1) + 0.37, self.y_fixes) for k in range(n)] # pas à la verticale exacte
         self.maillage, indices, _ = maillage_du_raccord(voyageurs + fixes, None, largeur, hauteur)
         self.voyageurs, self.fixes = indices[:n], indices[n:]
         self.places = list(self.voyageurs) # le trou voyageur à chaque place de l'axe, de gauche à droite
-        # arcs de départ : segments verticaux de f_i à m_i
+        self.numero = 0 # lettres déjà faites
+        # arcs de départ : de f_i (régulièrement espacés en bas) à m_i, en ligne droite
         self.courbes = []
         for f, m in zip(self.fixes, self.voyageurs):
             points = np.linspace(self.maillage.pos[f], self.maillage.pos[m], 200)
@@ -70,24 +109,34 @@ class FilmArcs(Film):
         self.dispositions, self.etape, self.y_axe = [(None, ecart)], 0, -math.inf # neutralise le clou de Film
         for _ in range(100): self.tend(0.3, ecart)
 
+    def places_au_temps(self, T):
+        """Abscisses des n places de l'axe au temps T (T = k : image clé k)."""
+        w = np.maximum(hermite(self.largeurs, self.pentes, T), 1e-6)
+        w = w / w.sum()
+        return self.marge + (self.largeur - 2 * self.marge) * np.cumsum(w)[:-1]
+
     def lettre(self, sigma, images=60, sous_pas=3, taux=0.15, rendu=None):
-        """Demi-tour des trous aux places i et i+1 (σ_i), images régulières en angle."""
+        """Demi-tour des trous aux places i et i+1 (σ_i), à vitesse angulaire constante, autour du milieu des deux
+        places, pendant que toutes les places glissent (`places_au_temps`)."""
         i = abs(sigma) - 1
         a, b = self.places[i], self.places[i + 1]
-        pa, pb = self.maillage.pos[a].copy(), self.maillage.pos[b].copy()
-        milieu, r = (pa + pb) / 2, (pb[0] - pa[0]) / 2
         sens = SENS_DE_SIGMA * (1 if sigma > 0 else -1)
         for pas in range(1, images * sous_pas + 1):
-            theta = math.pi * pas / (images * sous_pas)
-            c, s = math.cos(theta), math.sin(theta)
+            u = pas / (images * sous_pas)
+            x = self.places_au_temps(self.numero + u)
+            for j, h in enumerate(self.places): self.maillage.pos[h] = (x[j], self.y_trous)
+            milieu, r = np.array(((x[i] + x[i + 1]) / 2, self.y_trous)), (x[i + 1] - x[i]) / 2
+            c, s = math.cos(math.pi * u), math.sin(math.pi * u)
             self.maillage.pos[a] = milieu + r * np.array((-c, -sens * s))
             self.maillage.pos[b] = milieu + r * np.array((c, sens * s))
-            if pas == images * sous_pas: self.maillage.pos[a], self.maillage.pos[b] = pb, pa
+            if pas == images * sous_pas:
+                self.maillage.pos[a], self.maillage.pos[b] = (x[i + 1], self.y_trous), (x[i], self.y_trous)
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
             self.tend(taux, self.ecart)
             if rendu and pas % sous_pas == 0: rendu(self)
         self.places[i], self.places[i + 1] = b, a
+        self.numero += 1
 
     def ruban(self, k, largeur=None):
         """Bord d'un ruban autour de l'arc k : un lacet du trou fixe autour du trou voyageur, qui revient au trou fixe
