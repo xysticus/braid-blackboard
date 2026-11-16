@@ -347,3 +347,27 @@ la piste 1 bis avec ces arcs entre pointes.
   trous, chaque triangle ayant son propre cercle.
 - À voir : la métrique dépend de la triangulation (elle change à chaque retournement d'arête de Delaunay ; est-ce
   visible ?), et du bord convexe hors de l'image, dont les sommets sont aussi des pointes.
+
+### Essai fait (2026-11-16) : le diagramme de courbes
+
+`Arcs.DiagrammeCourbes`, `film_arcs(..., classe=DiagrammeCourbes, lisere=True)` → `imgs/film_diagramme_*.mp4` (et
+`imgs/film_diagramme_geodesiques_*.mp4` avec `hyperbolique=True`). Poussée à fond, l'idée des trous fixes donne le
+diagramme de courbes de la littérature : un seul point fixe, au bout gauche de l'axe, et pour arcs les segments de
+l'axe (du point fixe au premier trou, puis d'un trou au suivant), que la tresse emporte. Plus rien n'est accroché en
+bas ; au départ l'image est l'axe lui-même. Trous fixes sur l'axe : seulement groupés à un bout ; intercalés entre les
+trous voyageurs, ils seraient dans le disque d'un demi-tour et l'on calculerait une autre tresse.
+
+- Vérification : le premier arc est le lacet x_1 (son ruban, relu par `lit_mot`, donne l'image de x_1) ; juste après
+  chaque lettre sur six tresses, dont la tresse chargée, avec les deux tensions. Les autres arcs vont d'un trou à
+  l'autre (pas de mot de F_n direct).
+- Arcs de départ : segments de l'axe légèrement bombés pour la découpe par les arêtes, que la tension redresse.
+- Dessin « liseré » (idée de l'utilisateur) : chaque arc en blanc large (0,85 × l'écart) avec un liseré de couleur
+  fin au milieu ; sur fond blanc, impression d'un écart entre brins voisins.
+- Coût : tension euclidienne, 15 s pour le film de la tresse chargée ; géodésiques, 7 min 30.
+- Géodésiques sur la tresse chargée : les brins parallèles se confondent en un seul trait loin des trous (des
+  géodésiques voisines se rapprochent exponentiellement dans les parties minces de la surface) ; illisible. La
+  tension euclidienne, avec son écart minimal, reste la bonne pour les tresses chargées ; les géodésiques ne valent
+  que pour les tresses légères.
+
+**À faire (idée de l'utilisateur)** : refaire le bouquet avec le diagramme de courbes (qui donne beaucoup de formes) ;
+le bouquet actuel doit son existence au clou (les lacets qui en partent font les tiges).

@@ -172,7 +172,9 @@ class FilmArcs(Film):
         trous = sorted(map(tuple, self.maillage.pos[self.voyageurs]))
         return [lit_mot(self.ruban(k), trous) for k in range(self.n)]
 
-    def cadre(self, rubans=False, largeur_brin=2.5, avec_aretes=False):
+    def cadre(self, rubans=False, largeur_brin=2.5, avec_aretes=False, lisere=False):
+        """Image : arcs (ou rubans) en couleur ; lisere : chaque arc tracé en blanc large avec un liseré de couleur fin
+        au milieu (sur fond blanc, impression d'un écart entre brins voisins)."""
         l, h = self.largeur, self.hauteur
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, l, h)
         ctx = cairo.Context(surface)
@@ -185,19 +187,82 @@ class FilmArcs(Film):
             ctx.set_line_width(0.7)
             for u, v in self.maillage.aretes():
                 ctx.move_to(*self.maillage.pos[u]); ctx.line_to(*self.maillage.pos[v]); ctx.stroke()
-        ctx.set_line_width(largeur_brin)
-        for k in range(self.n):
+        for k in range(len(self.courbes)):
             P = self.ruban(k) if rubans else self.polyligne(k)
-            ctx.set_source_rgb(*COULEURS[k % len(COULEURS)])
-            ctx.move_to(*P[0])
-            for q in P[1:]: ctx.line_to(*q)
-            ctx.stroke()
+            traits = [((1, 1, 1), 0.85 * self.ecart), (COULEURS[k % len(COULEURS)], 1.3)] if lisere else \
+                     [(COULEURS[k % len(COULEURS)], largeur_brin)]
+            for couleur, largeur in traits:
+                ctx.set_source_rgb(*couleur)
+                ctx.set_line_width(largeur)
+                ctx.move_to(*P[0])
+                for q in P[1:]: ctx.line_to(*q)
+                ctx.stroke()
         for liste, gris in ((self.voyageurs, 0.0), (self.fixes, 0.55)):
             ctx.set_source_rgb(gris, gris, gris)
             for v in liste:
                 ctx.arc(*self.maillage.pos[v], 4, 0, 2 * math.pi)
                 ctx.fill()
         return surface
+
+
+class DiagrammeCourbes(FilmArcs):
+    """Diagramme de courbes : un seul point fixe, au bout gauche de l'axe, et pour arcs les segments de l'axe (du point
+    fixe au premier trou, puis d'un trou au suivant), que la tresse emporte. Ils portent la même information que
+    l'action d'Artin. Au départ, le dessin est l'axe lui-même ; rien n'est accroché en bas."""
+
+    def __init__(self, tresse, hauteur=800, largeur=800, ecart=6, hyperbolique=False):
+        self.hauteur, self.largeur = hauteur, largeur
+        self.n = n = max(map(operator.abs, tresse), default=1) + 1
+        self.y_trous = 0.5 * hauteur
+        largeurs = []
+        for k in range(len(tresse) + 1):
+            trous, lacets = etat_de_tresse(tresse[:k], n)
+            comptes = [0] * (n + 1)
+            for lacet in lacets:
+                for x in lacet: comptes[intervalle(x, trous)] += 1
+            w = np.array([1 + c / 2 for c in comptes])
+            largeurs.append(w / w.sum())
+        self.largeurs = np.array(largeurs)
+        self.pentes = pchip(self.largeurs)
+        self.marge = 30
+        voyageurs = [(x, self.y_trous) for x in self.places_au_temps(0)]
+        fixe = (self.marge / 2, self.y_trous)
+        self.maillage, indices, _ = maillage_du_raccord(voyageurs + [fixe], None, largeur, hauteur)
+        self.voyageurs, self.fixes = indices[:n], indices[n:]
+        self.places = list(self.voyageurs)
+        self.numero = 0
+        # arcs de départ : les segments de l'axe, un peu bombés vers le haut pour la découpe (la tension les redresse)
+        bouts = [self.fixes[0]] + list(self.voyageurs)
+        self.courbes = []
+        for a, b in zip(bouts[:-1], bouts[1:]):
+            p, q = self.maillage.pos[a], self.maillage.pos[b]
+            u = np.linspace(0, 1, 200)
+            points = p + u[:, None] * (q - p) - np.column_stack((0 * u, 4 * np.sin(np.pi * u)))
+            self.courbes.append(coupe_arc(points, self.maillage, a, b))
+        self.ecart = ecart
+        self.dispositions, self.etape, self.y_axe = [(None, ecart)], 0, -math.inf
+        self.geodesiques = None
+        if hyperbolique:
+            from Geodesiques import Geodesiques
+            self.geodesiques = Geodesiques(self)
+            self.geodesiques.tend(tours=60)
+        else:
+            for _ in range(100): self.tend(0.3, ecart)
+
+    def mots(self):
+        """Mot relu sur le ruban du premier arc (du point fixe au premier trou), qui est le lacet x_1 : la seule
+        vérification directe (les autres arcs vont d'un trou à l'autre)."""
+        trous = sorted(map(tuple, self.maillage.pos[self.voyageurs]))
+        return [lit_mot(self.ruban(0), trous)]
+
+
+def verifie_diagramme(tresse, **options):
+    """Après chaque lettre, le mot relu sur le ruban du premier arc est l'image de x_1."""
+    film = DiagrammeCourbes(tresse, **options)
+    for k, sigma in enumerate(tresse):
+        film.lettre(sigma, images=12)
+        if film.mots()[0] != calcule_autofn_de_tresse(tresse[:k + 1], film.n)[0]: return False
+    return True
 
 
 def verifie_arcs(tresse, **options):
@@ -209,15 +274,16 @@ def verifie_arcs(tresse, **options):
     return True
 
 
-def film_arcs(tresse, fichier, rubans=False, pause=0.5, **options):
-    """options : celles de FilmArcs, dont hyperbolique=True (géodésiques)."""
+def film_arcs(tresse, fichier, rubans=False, pause=0.5, lisere=False, classe=None, **options):
+    """options : celles de FilmArcs (ou de la classe donnée, par exemple DiagrammeCourbes), dont hyperbolique=True
+    (géodésiques)."""
     """Film MP4 (AV1, 25 images/s) des arcs (ou de leurs rubans), écrit au fil du calcul par ffmpeg."""
-    film = FilmArcs(tresse, **options)
+    film = (classe or FilmArcs)(tresse, **options)
     l, h = film.largeur, film.hauteur
     ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
                                '-s', f'{l}x{h}', '-r', '25', '-i', '-', *ENCODEUR, fichier], stdin=subprocess.PIPE)
     def ecrit(f, fois=1):
-        surface = f.cadre(rubans)
+        surface = f.cadre(rubans, lisere=lisere)
         surface.flush()
         donnees = bytes(surface.get_data())
         for _ in range(fois): ffmpeg.stdin.write(donnees)
