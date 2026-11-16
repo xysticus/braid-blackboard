@@ -578,17 +578,18 @@ def en_image_pil(surface):
     return Image.frombuffer('RGBA', (surface.get_width(), surface.get_height()), bytes(surface.get_data()),
                             'raw', 'BGRA', surface.get_stride()).convert('RGB')
 
+# Encodeur des MP4 : AV1 (SVT-AV1). AV1 plutôt que H.264 : codec libre, lu par le VLC de Fedora qui n'a pas H.264.
+# Plus VP9 : le ffmpeg de conda-forge sous Windows n'a pas libvpx. Préréglage rapide (preset 10).
+ENCODEUR = ['-pix_fmt', 'yuv420p', '-c:v', 'libsvtav1', '-crf', '30', '-preset', '10']
+
 def gif_en_mp4(fichier_gif):
-    '''Convertit un GIF en MP4 (VP9) à côté de lui avec ffmpeg, à 25 images/s (les durées des images
-    du GIF sont gardées, pause finale comprise). VP9 plutôt que H.264 : codec libre, lu par le VLC
-    de Fedora qui n'a pas H.264. Réglage rapide de l'encodeur (sinon VP9 est très lent).
+    '''Convertit un GIF en MP4 (AV1, `ENCODEUR`) à côté de lui avec ffmpeg, à 25 images/s (les durées des images
+    du GIF sont gardées, pause finale comprise).
     Les dimensions sont arrondies au pair (exigé par yuv420p). Ne fait rien si ffmpeg est absent.'''
     if shutil.which('ffmpeg') is None:
         print("ffmpeg introuvable :", fichier_gif, "n'est pas converti en MP4")
         return
     fichier_mp4 = fichier_gif.removesuffix('.gif') + '.mp4'
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', fichier_gif,
-                    '-vf', 'fps=25,scale=trunc(iw/2)*2:trunc(ih/2)*2', '-pix_fmt', 'yuv420p',
-                    '-c:v', 'libvpx-vp9', '-crf', '24', '-b:v', '0',
-                    '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1',
+                    '-vf', 'fps=25,scale=trunc(iw/2)*2:trunc(ih/2)*2', *ENCODEUR,
                     '-movflags', '+faststart', fichier_mp4], check=True)

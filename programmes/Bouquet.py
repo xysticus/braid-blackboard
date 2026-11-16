@@ -15,6 +15,7 @@ import numpy as np
 import cairo
 
 from Triangulation import Film, croix
+from tresses import ENCODEUR
 
 
 def lisse(x):
@@ -309,9 +310,8 @@ def film_bouquet(fichier, groupes=BOUQUET, duree=13.5, images_par_seconde=25, sa
     pousse = Pousse(groupes, **options)
     l, h = pousse.largeur, pousse.hauteur
     ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
-                               '-s', f'{l}x{h}', '-r', str(images_par_seconde), '-i', '-', '-pix_fmt', 'yuv420p',
-                               '-c:v', 'libvpx-vp9', '-crf', '24', '-b:v', '0', '-deadline', 'realtime',
-                               '-cpu-used', '8', '-row-mt', '1', fichier], stdin=subprocess.PIPE)
+                               '-s', f'{l}x{h}', '-r', str(images_par_seconde), '-i', '-', *ENCODEUR, fichier],
+                              stdin=subprocess.PIPE)
     pas = saccade / images_par_seconde
     nombre = round(duree / pas)
     for n in range(nombre + 1):

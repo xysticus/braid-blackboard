@@ -14,7 +14,7 @@ import math, operator, subprocess
 import numpy as np
 
 from tresses import (calcule_autofn_de_tresse, etat_de_tresse, intervalle, agit, dessin_etat, polylignes,
-                     lit_mot, peint, deux_arcs, en_image_pil)
+                     lit_mot, peint, deux_arcs, en_image_pil, ENCODEUR)
 
 DECALAGE_AXE = 0.01 # les trous sont un peu sous l'axe de dessin : les points de passage sont strictement au-dessus
 DECALAGE_BORD = 0.31 # les sommets des bords ne sont pas exactement à la verticale des trous (le clou y serait)
@@ -463,7 +463,7 @@ def verifie_triangulation(tresse, images=12, **options):
     return True
 
 def film_triangule(tresse, fichier, vitesse=None, pause=0.5, largeur_brin=None, **options):
-    '''Film MP4 (VP9, 25 images/s), écrit au fil du calcul par ffmpeg : un demi-tour continu par lettre, les trous
+    '''Film MP4 (AV1, 25 images/s), écrit au fil du calcul par ffmpeg : un demi-tour continu par lettre, les trous
     avançant à vitesse constante (`Film.lettre`), donc la durée d'une lettre est proportionnelle au chemin parcouru
     par les trous. Pas de pause entre les lettres ; `pause` secondes sur la première image, trois fois plus sur la
     dernière. Triangulation en gris.'''
@@ -471,8 +471,7 @@ def film_triangule(tresse, fichier, vitesse=None, pause=0.5, largeur_brin=None, 
     l, h = film.largeur, film.hauteur
     ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
                                '-s', f'{l}x{h}', '-r', '25', '-i', '-', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
-                               '-pix_fmt', 'yuv420p', '-c:v', 'libvpx-vp9', '-crf', '24', '-b:v', '0',
-                               '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1', fichier],
+                               *ENCODEUR, fichier],
                               stdin=subprocess.PIPE)
     def ecrit(surface, fois=1):
         surface.flush()
