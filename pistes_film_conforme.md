@@ -215,3 +215,16 @@ d'environ 0,3 s par lettre à l'allure du film triangulé.
   de la suite, où elle rejoint un morceau courbe, ne bougent pas. Les images du cœur de la fenêtre n'ont plus de
   polygones, seulement de légers coins aux bouts des suites. Toujours 0 croisement sur les deux tresses (les congés
   ne sont pas garantis, vérifiés numériquement).
+- Coins aux bouts des suites de cordes : le début de la première corde (la fin de la dernière) est remplacé par une
+  paire d'arcs (`deux_arcs`) tangente à l'arc qui arrive au pied et à la corde, sur au plus la moitié de la corde
+  (`arrondit(..., depart, arrivee)`) : plus de rupture de tangente entre arcs conformes et cordes. Toujours 0
+  croisement sur les deux tresses.
+
+### Essai fait (2026-11-16) : les brins lointains en vrais demi-cercles
+
+Mesure, à quatre instants de chaque lettre, de l'écart entre les arcs conformes dont les deux pieds sont sur la même
+demi-droite extérieure (à gauche de L ou à droite de R) et les demi-cercles exacts de mêmes pieds : médiane 0,2 px
+(tresse de référence, 116 arcs) et 0,25 px (tresse chargée, 180 arcs) ; au plus 2,3 px et 5,3 px, pour de grands arcs
+qui passent près du bloc, là où les brins ne sont espacés que de quelques pixels. Conclusion : pas la peine. Loin du
+bloc, la carte conforme donne déjà des demi-cercles à l'œil, et forcer les demi-cercles exacts là où elle s'en écarte
+risquerait des croisements.

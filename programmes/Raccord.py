@@ -178,10 +178,19 @@ def tend_en_cordes(points, coupes, poids):
     return np.concatenate([morceaux[0]] + [m[1:] for m in morceaux[1:]])
 
 
-def arrondit(points, part=0.5):
+def arrondit(points, part=0.5, depart=None, arrivee=None):
     """La ligne brisée des points, chaque coude arrondi par un congé : arc de cercle tangent aux deux segments, qui en
-    prend au plus `part` du plus court (comme `Film.polyligne` du film triangulé). Les deux bouts ne bougent pas."""
+    prend au plus `part` du plus court (comme `Film.polyligne` du film triangulé). Les deux bouts ne bougent pas.
+    depart (arrivee) : direction unitaire de la courbe qui arrive au premier point (qui part du dernier) ; le début
+    du premier segment (la fin du dernier) est alors remplacé par une paire d'arcs tangente à cette courbe et au
+    segment, sur au plus `part` du segment : plus de coin à la jonction."""
+    points = [np.asarray(p, dtype=float) for p in points]
     dessin = [points[0]]
+    if depart is not None and len(points) > 1:
+        corde = points[1] - points[0]
+        lg = math.hypot(*corde)
+        if lg > 1e-9 and depart @ (corde / lg) < 1 - 1e-9:
+            dessin = list(deux_arcs(points[0], depart, points[0] + part * corde, corde / lg))
     for a, v, b in zip(points[:-2], points[1:-1], points[2:]):
         la, lb = math.hypot(*(a - v)), math.hypot(*(b - v))
         if la < 1e-9 or lb < 1e-9:
@@ -193,6 +202,12 @@ def arrondit(points, part=0.5):
             continue
         c = part * min(la, lb)
         dessin.extend(deux_arcs(v + c * ua, -ua, v + c * ub, ub))
+    if arrivee is not None and len(points) > 1:
+        corde = points[-1] - points[-2]
+        lg = math.hypot(*corde)
+        if lg > 1e-9 and arrivee @ (corde / lg) < 1 - 1e-9:
+            dessin.extend(deux_arcs(points[-1] - part * corde, corde / lg, points[-1], arrivee))
+            return np.array(dessin)
     dessin.append(points[-1])
     return np.array(dessin)
 
@@ -288,26 +303,36 @@ class RaccordTriangule:
             if morceaux is None:
                 resultat.append(self.depart[j][l] if poids < 0.5 else self.arrivee[j][l])
                 continue
+            def tangente(courbe, au_debut):
+                """Direction unitaire de la courbe à son début (en partant) ou à sa fin (en arrivant)."""
+                pts = courbe if not au_debut else courbe[::-1]
+                for k in range(len(pts) - 2, -1, -1):
+                    d = pts[-1] - pts[k]
+                    if math.hypot(*d) > 1e-6: return (d / math.hypot(*d)) * (1 if not au_debut else -1)
+                return None
+            courbes = {m: (1 - glisse) * pd + glisse * pa for m, (triangle, pd, pa) in enumerate(morceaux)
+                       if triangle not in en_cordes}
             formes, m = [], 0
             while m < len(morceaux):
-                triangle, pd, pa = morceaux[m]
-                if triangle not in en_cordes:
-                    formes.append((1 - glisse) * pd + glisse * pa)
+                if m in courbes:
+                    formes.append(courbes[m])
                     m += 1
                     continue
-                suite = []
-                while m < len(morceaux) and morceaux[m][0] in en_cordes:
-                    suite.append(morceaux[m])
-                    m += 1
+                debut = m
+                while m < len(morceaux) and m not in courbes: m += 1
+                suite = morceaux[debut:m]
                 pieds = [(1 - glisse) * suite[0][1][0] + glisse * suite[0][2][0]] + \
                         [(1 - glisse) * pd[-1] + glisse * pa[-1] for _, pd, pa in suite]
-                cordes = arrondit(np.array(pieds))
+                # jonctions avec les morceaux courbes voisins : leurs tangentes aux pieds
+                avant = tangente(courbes[debut - 1], False) if debut - 1 in courbes else None
+                apres = tangente(courbes[m], True) if m in courbes else None
+                cordes = arrondit(np.array(pieds), depart=avant, arrivee=apres)
                 if 0 < glisse < 1: forme = cordes
                 else:
-                    courbes = np.concatenate([suite[0][1 if glisse == 0 else 2]] +
-                                             [x[1 if glisse == 0 else 2][1:] for x in suite[1:]])
-                    n = max(len(courbes), len(cordes))
-                    c, r = reechantillonne(courbes, n), reechantillonne(cordes, n)
+                    vraies = np.concatenate([suite[0][1 if glisse == 0 else 2]] +
+                                            [x[1 if glisse == 0 else 2][1:] for x in suite[1:]])
+                    n = max(len(vraies), len(cordes))
+                    c, r = reechantillonne(vraies, n), reechantillonne(cordes, n)
                     poids_cordes = tension if glisse == 0 else 1 - courbe
                     forme = (1 - poids_cordes) * c + poids_cordes * r
                 formes.append(forme)
