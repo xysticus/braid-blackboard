@@ -20,10 +20,11 @@ par morceau entre traversées correspondantes (`raccorde`).
 import bisect
 import math
 import operator
+import subprocess
 import numpy as np
 
 from tresses import (calcule_autofn_de_tresse, etat_de_tresse, dessin_etat, peint, lit_mot, descente_au_clou,
-                     melange, en_image_pil, gif_en_mp4)
+                     melange, en_image_pil, ENCODEUR)
 
 SENS_DE_SIGMA = 1 # comme dans NouvAutoMorph : σ_i positif = demi-tour horaire à l'écran
 
@@ -133,16 +134,19 @@ class Carte:
         return z
 
     def image(self, w):
-        """Image d'un point intérieur : on monte verticalement depuis le bord."""
-        W = w.real + 1j * np.linspace(0, w.imag, 400) ** 1
-        return self.chemin(W, self.bord(w.real))[-1]
+        """Image d'un point intérieur : on y va en ligne droite depuis un point du bord loin des antécédents des
+        sommets (partir d'une singularité rendrait l'intégration bruitée, et Newton oscillerait)."""
+        departs = w.real + w.imag * np.linspace(-0.5, 0.5, 11)
+        x0 = departs[np.argmax([np.min(np.abs(self.w - x)) for x in departs])]
+        W = x0 + (w - x0) * (1 - np.cos(np.pi * np.linspace(0, 1, 400) / 2))
+        return self.chemin(W, self.bord(x0))[-1]
 
     def antecedent(self, z):
         """Antécédent d'un point intérieur (méthode de Newton)."""
         w = complex(z.real - self.delta, max(z.imag, 1.0))
         for _ in range(50):
             e = self.image(w) - z
-            if abs(e) < 1e-7: return w
+            if abs(e) < 1e-4: return w # les tables du bord sont interpolées : pas mieux que ~1e-6 près
             w = w - e / self.derivee(np.array([w]))[0]
             w = complex(w.real, max(w.imag, 1e-3))
         raise ValueError("antécédent d'un point intérieur : Newton ne converge pas")
@@ -321,28 +325,67 @@ def traversees(points, aretes):
 
 def sans_bigones(trav):
     """Annule les traversées successives d'une même arête : entre elles, le lacet et l'arête bordent un bigone vide
-    (les sommets des arêtes sont des trous). Reste la suite minimale, la même pour deux dessins du même lacet."""
-    pile = []
+    (les sommets des arêtes sont des trous). Renvoie (la suite minimale, la même pour deux dessins du même lacet ;
+    les bigones les plus extérieurs, (position d'entrée, position de sortie, milieu des deux traversées))."""
+    pile, bigones = [], []
     for r in trav:
-        if pile and pile[-1][1] == r[1]: pile.pop()
+        if pile and pile[-1][1] == r[1]:
+            q = pile.pop()
+            bigones.append((q[0], r[0], (q[2] + r[2]) / 2))
         else: pile.append(r)
-    return pile
+    bigones.sort(key=lambda b: b[0])
+    exterieurs = []
+    for b in bigones:
+        if exterieurs and b[1] <= exterieurs[-1][1]: continue # contenu dans le précédent
+        exterieurs.append(b)
+    return pile, exterieurs
 
-def decoupe(points, trav):
-    """Morceaux de la polyligne entre traversées successives."""
-    morceaux, avant, p_avant = [], 0.0, points[0]
-    for pos, _, p in trav + [(len(points) - 1.0, None, points[-1])]:
-        interieurs = [points[v] for v in range(math.floor(avant) + 1, math.ceil(pos)) if avant < v < pos]
-        morceaux.append(np.array([p_avant] + interieurs + [p]))
-        avant, p_avant = pos, p
-    return morceaux
+def extrait(points, a, b):
+    """Morceau de la polyligne entre les positions a <= b (indice de segment + fraction)."""
+    def en(pos):
+        k = min(int(pos), len(points) - 2)
+        return points[k] + (pos - k) * (points[k + 1] - points[k])
+    interieurs = [points[v] for v in range(math.floor(a) + 1, math.ceil(b)) if a < v < b]
+    return np.array([en(a)] + interieurs + [en(b)])
 
 def raccorde(depart, arrivee, aretes, poids):
     """Mélange de deux dessins du même lacet, morceau par morceau entre traversées correspondantes des arêtes ;
-    None si les suites de traversées diffèrent."""
-    td, ta = sans_bigones(traversees(depart, aretes)), sans_bigones(traversees(arrivee, aretes))
+    None si les suites minimales de traversées diffèrent. Un bigone d'un dessin (aller-retour par-dessus une arête)
+    est apparié au point de l'autre dessin le plus proche de son milieu : pendant le raccord, il se résorbe vers ce
+    point au lieu de décaler tout le morceau (le mélange par longueur d'arc faisait des bosses qui se croisaient)."""
+    (td, bd), (ta, ba) = sans_bigones(traversees(depart, aretes)), sans_bigones(traversees(arrivee, aretes))
     if [a for _, a, _ in td] != [a for _, a, _ in ta]: return None
-    return np.concatenate([melange(p, q, poids) for p, q in zip(decoupe(depart, td), decoupe(arrivee, ta))])
+    dessins = (depart, arrivee)
+    cumuls = [np.concatenate(([0], np.cumsum(np.hypot(*np.diff(p, axis=0).T)))) for p in dessins]
+    def longueur(q, pos): # abscisse curviligne de la position pos du dessin q
+        k = min(int(pos), len(cumuls[q]) - 2)
+        return cumuls[q][k] + (pos - k) * (cumuls[q][k + 1] - cumuls[q][k])
+    def position(q, l): # inverse
+        k = int(np.clip(np.searchsorted(cumuls[q], l) - 1, 0, len(cumuls[q]) - 2))
+        return k + (l - cumuls[q][k]) / max(cumuls[q][k + 1] - cumuls[q][k], 1e-12)
+    coupes = [[0.0] + [r[0] for r in t] + [len(p) - 1.0] for t, p in ((td, depart), (ta, arrivee))]
+    morceaux = []
+    for j in range(len(coupes[0]) - 1):
+        bornes = [(c[j], c[j + 1]) for c in coupes]
+        lb = [(longueur(q, bornes[q][0]), longueur(q, bornes[q][1])) for q in (0, 1)]
+        def fraction(q, pos): return (longueur(q, pos) - lb[q][0]) / max(lb[q][1] - lb[q][0], 1e-12)
+        # bigones des deux dessins dans ce morceau, rangés par la fraction de longueur de leur milieu
+        evenements = sorted([(fraction(q, (b[0] + b[1]) / 2), q, b)
+                             for q, bs in enumerate((bd, ba)) for b in bs if bornes[q][0] < b[0] < bornes[q][1]],
+                            key=lambda e: e[0])
+        listes = [[bornes[0][0]], [bornes[1][0]]]
+        for f, q, (entree, sortie, _) in evenements:
+            autre = 1 - q
+            # le point de l'autre dessin à la même fraction de longueur du morceau
+            t = position(autre, lb[autre][0] + f * (lb[autre][1] - lb[autre][0]))
+            if entree < listes[q][-1] or t < listes[autre][-1]: continue # chevauche l'événement précédent
+            listes[q] += [entree, sortie]
+            listes[autre] += [t, t]
+        for q in (0, 1): listes[q].append(bornes[q][1])
+        for k in range(len(listes[0]) - 1):
+            morceaux.append(melange(extrait(depart, listes[0][k], listes[0][k + 1]),
+                                    extrait(arrivee, listes[1][k], listes[1][k + 1]), poids))
+    return np.concatenate(morceaux)
 
 
 def nb_croisements(lignes, clou, rayon=12):
@@ -374,15 +417,19 @@ def nb_croisements(lignes, clou, rayon=12):
     return total
 
 
-def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400, images=48, fenetre=0.3,
+def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.3,
                   verifie=False, **options):
-    """GIF animé (puis MP4) : pour chaque lettre, l'état k sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés
-    autour de la verticale pendant la fenêtre (part du mouvement). verifie : relit les mots et compte les croisements
-    entre lacets sur chaque image (lent) ; renvoie la liste des anomalies."""
+    """Film (GIF animé, ou MP4 si fichier finit par .mp4, écrit par ffmpeg à 25 images/s) : pour chaque lettre,
+    l'état k sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la verticale pendant la fenêtre (part du
+    mouvement). marge : le dessin est fait dans le cadre intérieur, à cette distance des quatre bords (en cours de
+    demi-tour, des arcs peuvent déborder du cadre intérieur sur les côtés). options : celles de peint, dont
+    largeur_brin en pixels (indépendant de la taille de l'image). verifie : relit les mots et compte les croisements
+    entre lacets sur chaque image ; renvoie la liste des anomalies."""
     nb_trous = max(map(operator.abs, tresse), default=5) + 1
+    h_int, l_int = hauteur - 2 * marge, largeur - 2 * marge
     cle = etat_de_tresse([], nb_trous)
     # première image : l'image clé, dessinée elle aussi par la carte (descentes en géodésiques)
-    premiere = Lettre(cle, etat_de_tresse(tresse[:1], nb_trous), tresse[0], hauteur, largeur)
+    premiere = Lettre(cle, etat_de_tresse(tresse[:1], nb_trous), tresse[0], h_int, l_int)
     axe, _ = premiere.aretes(0)
     dessins = [(premiere.dessin(0, 0.0), premiere.trous_ecran(0), premiere.clou,
                 [np.array(a) for a in axe] + [np.array(a) for a in premiere.aretes(0)[1][:3]])]
@@ -390,7 +437,7 @@ def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400
     anomalies = []
     for k, sigma in enumerate(tresse):
         suivante = etat_de_tresse(tresse[:k + 1], nb_trous)
-        lettre = Lettre(cle, suivante, sigma, hauteur, largeur)
+        lettre = Lettre(cle, suivante, sigma, h_int, l_int)
         mots = [calcule_autofn_de_tresse(tresse[:k + j], nb_trous) for j in (0, 1)]
         for n in range(1, images + 1):
             s = lisse(n / images)
@@ -432,14 +479,30 @@ def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400
         cle = suivante
         durees[-1] = pause
     durees[-1] = 3 * pause
-    images_pil = [en_image_pil(peint(m, t, c, hauteur, largeur, axe=a, **options)) for m, t, c, a in dessins]
-    images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
+
+    decalage = np.array((marge, marge))
+    def surface(m, t, c, a):
+        axe = [(x[0] + decalage, x[1]) if isinstance(x, tuple) else x + decalage for x in a]
+        return peint([l + decalage for l in m], t + decalage, c + decalage, hauteur, largeur, axe=axe, **options)
+    if fichier.endswith('.mp4'):
+        # écrit au fil du rendu : à grande taille, toutes les images d'un GIF ne tiendraient pas en mémoire
+        ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
+                                   '-s', f'{largeur}x{hauteur}', '-r', '25', '-i', '-', *ENCODEUR, fichier],
+                                  stdin=subprocess.PIPE)
+        for d, ms in zip(dessins, durees):
+            donnees = bytes(surface(*d).get_data())
+            for _ in range(max(1, round(ms / 40))): ffmpeg.stdin.write(donnees)
+        ffmpeg.stdin.close()
+        ffmpeg.wait()
+    else:
+        images_pil = [en_image_pil(surface(*d)) for d in dessins]
+        images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
     return anomalies
 
 
 if __name__ == "__main__":
-    # depuis la racine du dépôt
-    anomalies = film_conforme([4, 3, -1, -1, 2, -4, 1], './imgs/film_conforme_43m1m12m41.gif', largeur_brin=3,
-                              verifie=True)
-    print(len(anomalies), "anomalies :", anomalies[:20])
-    gif_en_mp4('./imgs/film_conforme_43m1m12m41.gif')
+    # depuis la racine du dépôt : 800 × 800, marges de 60 pixels, traits fins
+    for tresse, nom, brin in (([4, 3, -1, -1, 2, -4, 1], '43m1m12m41', 3), ([1, -2, 1, -2, 1, -2, 3, -1, 2], 'charge', 2)):
+        anomalies = film_conforme(tresse, f'./imgs/film_conforme_{nom}.mp4', hauteur=800, largeur=800, marge=60,
+                                  largeur_brin=brin, verifie=True)
+        print(nom, ":", len(anomalies), "anomalies", anomalies[:20])

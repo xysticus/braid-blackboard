@@ -287,13 +287,19 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     - Raccord autour de la verticale (`fenetre` = 0,3 du mouvement) : les cinq segments L–A, A–B, B–R, L–B, A–R ont
       leurs sommets aux trous, donc la suite minimale des traversées d'un lacet est la même dans les deux dessins.
       `traversees` + `sans_bigones` (deux traversées successives d'une même arête bordent un bigone vide : on les
-      annule) donnent les morceaux correspondants, mélangés un à un (`raccorde`).
+      annule) donnent les morceaux correspondants, mélangés un à un (`raccorde`). Un bigone d'un dessin est apparié
+      au point de l'autre dessin à la même fraction de longueur du morceau : il se résorbe vers ce point. (Mélanger
+      tout le morceau par longueur d'arc faisait des bosses ; apparier au point le plus proche, des encoches.)
     - Si les arcs sortent par le haut en cours de demi-tour, l'aplatissement est réduit pour l'image (`reduction`).
+    - Taille : 800 × 800 avec des marges de 60 px (`marge` : dessin fait dans le cadre intérieur puis décalé), traits
+      de 3 px (référence) et 2 px (chargée), comme à 400 × 400. MP4 écrit directement par un tube vers ffmpeg.
+    - `Carte.image` part d'un point du bord loin des antécédents des sommets : partir d'une singularité rendait
+      l'intégration bruitée et le Newton du clou oscillait.
     - `verifie=True` relit les mots et compte les croisements entre lacets (`nb_croisements`, paquets de segments
-      à rectangles englobants). Tresse de référence : 0 anomalie, 82 s. Tresse chargée `[1,-2,1,-2,1,-2,3,-1,2]` :
-      3 images à 2 croisements, au milieu du raccord (seule étape sans garantie : le mélange), 70 s.
-    - Limites : légers resserrements près des coins convexes (convergence des géodésiques) ; pas d'ajustement en
-      largeur (sur la tresse chargée, les derniers arcs touchent le bord droit).
+      à rectangles englobants). Tresse de référence : 0 anomalie. Tresse chargée `[1,-2,1,-2,1,-2,3,-1,2]` :
+      7 images à quelques croisements, au milieu du raccord des lettres 6 et 7 (seule étape sans garantie : le
+      mélange ; encoches près des trous qui tournent, brins extérieurs tassés). Environ 1 min 30 pour les deux.
+    - Limites : légers resserrements près des coins convexes (convergence des géodésiques).
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
@@ -358,7 +364,7 @@ Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relat
 python programmes/Triangulation.py   # le film actuel : vérifie les assert, écrit imgs/film_triangule_*.mp4
 python -c "import sys; sys.path.insert(0, 'programmes'); import Triangulation as T; T.film_triangule([1, 2, -1], 'imgs/f.mp4')"   # un autre film
 python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif, imgs/film_continu_*.gif (film algébrique) et imgs/film_simultane_*.gif, plus leurs .mp4
-python programmes/Conforme.py        # film par représentation conforme : imgs/film_conforme_*.gif et .mp4 (avec vérification)
+python programmes/Conforme.py        # film par représentation conforme : imgs/film_conforme_*.mp4, 800 × 800 (avec vérification)
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```
