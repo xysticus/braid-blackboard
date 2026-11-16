@@ -292,6 +292,8 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       au point de l'autre dessin à la même fraction de longueur du morceau : il se résorbe vers ce point. (Mélanger
       tout le morceau par longueur d'arc faisait des bosses ; apparier au point le plus proche, des encoches.)
     - Si les arcs sortent par le haut en cours de demi-tour, l'aplatissement est réduit pour l'image (`reduction`).
+    - Rendu : seulement les lacets et les trous (`construction=True` trace aussi l'axe et la ligne brisée en gris :
+      leurs changements brusques donnaient une sensation râpeuse) ; pas de pause entre les lettres.
     - Taille : 800 × 800 avec des marges de 60 px (`marge` : dessin fait dans le cadre intérieur puis décalé), traits
       de 3 px (référence) et 2 px (chargée), comme à 400 × 400. MP4 écrit directement par un tube vers ffmpeg.
     - `Carte.image` part d'un point du bord loin des antécédents des sommets : partir d'une singularité rendait
