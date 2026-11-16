@@ -323,3 +323,27 @@ image clé), largeurs toujours positives (deux trous ne s'inversent jamais). Le 
 deux places qui glissent, à vitesse angulaire constante. Le mouvement des arcs, très doux (« soft », dit
 l'utilisateur), vient d'un seul mouvement continu, d'une seule manière de dessiner et de l'absence de clou. Reste :
 la piste 1 bis avec ces arcs entre pointes.
+
+### Essai fait (2026-11-16) : la piste 1 bis avec les arcs entre pointes
+
+`programmes/Geodesiques.py`, `FilmArcs(..., hyperbolique=True)`, `film_arcs(..., hyperbolique=True)` →
+`imgs/film_geodesiques_*.mp4`.
+
+- Métrique : chaque triangle de Delaunay, dans son cercle circonscrit, est un triangle idéal du modèle de Klein
+  (distance de Hilbert, demi-logarithme d'un birapport avec les points où la droite coupe le cercle). Le long d'une
+  arête commune, les deux triangles induisent la même distance (Hilbert sur un segment ne dépend que de ses
+  extrémités) : recollement tel quel, sans coordonnées de cisaillement à calculer ; tous les sommets sont des pointes.
+- Géodésique d'un arc : même suite d'arêtes (celle de la triangulation mobile), pieds choisis pour minimiser la
+  longueur hyperbolique (descente coordonnée par coordonnée, section dorée sur la fraction de chaque pied ; aux bouts,
+  la pointe remplacée par un point à ε sur la bissectrice du coin). Dans le film, deux tours par sous-pas au lieu de
+  `Film.tend`.
+- Résultats : l'ordre des pieds sur les arêtes se conserve tout seul (0 changement : des arcs disjoints ont des
+  géodésiques disjointes), mots relus justes après chaque lettre sur les deux tresses d'essai. Plus lent (film de la
+  tresse de référence en 50 s au lieu de quelques secondes).
+- Allure : chaque trou est une pointe qui repousse les brins ; ils gardent une distance naturelle aux trous et les
+  contournent par de larges courbes, sans écart imposé (la tension euclidienne les plaque contre les trous). Dessin :
+  cordes de Klein (droites dans chaque triangle), coudes arrondis comme d'habitude. Essai écarté : tracer dans chaque
+  triangle l'arc orthogonal au cercle circonscrit (géodésique de Poincaré du même disque) : bosses et boucles près des
+  trous, chaque triangle ayant son propre cercle.
+- À voir : la métrique dépend de la triangulation (elle change à chaque retournement d'arête de Delaunay ; est-ce
+  visible ?), et du bord convexe hors de l'image, dont les sommets sont aussi des pointes.

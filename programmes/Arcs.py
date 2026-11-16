@@ -75,7 +75,7 @@ class FilmArcs(Film):
     """Les arcs f_i → m_i sur la triangulation mobile. On ne garde de `Film` que le maillage, la tension et le dessin
     (le clou est neutralisé : y_axe = -inf)."""
 
-    def __init__(self, tresse, hauteur=800, largeur=800, ecart=6):
+    def __init__(self, tresse, hauteur=800, largeur=800, ecart=6, hyperbolique=False):
         self.hauteur, self.largeur = hauteur, largeur
         self.n = n = max(map(operator.abs, tresse), default=1) + 1
         self.y_trous, self.y_fixes = 0.42 * hauteur, hauteur - 60
@@ -107,7 +107,15 @@ class FilmArcs(Film):
             self.courbes.append(coupe_arc(points, self.maillage, f, m))
         self.ecart = ecart
         self.dispositions, self.etape, self.y_axe = [(None, ecart)], 0, -math.inf # neutralise le clou de Film
-        for _ in range(100): self.tend(0.3, ecart)
+        # tension : euclidienne (`Film.tend`, alignement des voisins et écart minimal) ou hyperbolique (géodésiques de la
+        # métrique de Klein de la triangulation, `Geodesiques` : les brins se rangent d'eux-mêmes)
+        self.geodesiques = None
+        if hyperbolique:
+            from Geodesiques import Geodesiques
+            self.geodesiques = Geodesiques(self)
+            self.geodesiques.tend(tours=60)
+        else:
+            for _ in range(100): self.tend(0.3, ecart)
 
     def places_au_temps(self, T):
         """Abscisses des n places de l'axe au temps T (T = k : image clé k)."""
@@ -133,7 +141,8 @@ class FilmArcs(Film):
                 self.maillage.pos[a], self.maillage.pos[b] = (x[i + 1], self.y_trous), (x[i], self.y_trous)
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
-            self.tend(taux, self.ecart)
+            if self.geodesiques: self.geodesiques.tend(tours=2, precision=1e-5)
+            else: self.tend(taux, self.ecart)
             if rendu and pas % sous_pas == 0: rendu(self)
         self.places[i], self.places[i + 1] = b, a
         self.numero += 1
@@ -201,6 +210,7 @@ def verifie_arcs(tresse, **options):
 
 
 def film_arcs(tresse, fichier, rubans=False, pause=0.5, **options):
+    """options : celles de FilmArcs, dont hyperbolique=True (géodésiques)."""
     """Film MP4 (AV1, 25 images/s) des arcs (ou de leurs rubans), écrit au fil du calcul par ffmpeg."""
     film = FilmArcs(tresse, **options)
     l, h = film.largeur, film.hauteur
