@@ -40,6 +40,8 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
 - `programmes/Triangulation.py` : **le film actuel** (triangulation mobile, point 11 plus bas), `film_triangule`.
 - `programmes/Conforme.py` : film par représentation conforme (point 13 plus bas), `film_conforme`.
 - `programmes/Raccord.py` : raccord par triangulation mobile du film conforme (`raccord='triangulation'`).
+- `programmes/Arcs.py` : essai sans clou, des arcs entre trous fixes et trous voyageurs (piste 1 ter de
+  `pistes_film_conforme.md`), `film_arcs`.
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas.

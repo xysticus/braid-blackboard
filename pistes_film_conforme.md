@@ -282,3 +282,38 @@ croisement serait un théorème (des lacets disjoints ont des géodésiques disj
 **Premier pas possible.** Sur une image fixe : calculer les coordonnées de cisaillement de la triangulation de
 Delaunay des trous et du clou, tendre un lacet (donné par sa suite d'arêtes) en géodésique de la surface idéale, et le
 dessiner ; comparer à l'image clé en demi-cercles.
+
+## Piste 1 ter : sans clou, des arcs entre trous (idée de l'utilisateur, « quotienter » le clou)
+
+**Idée.** Le lacet x_i (du clou autour du trou i) est le bord d'un voisinage mince de l'arc qui va du clou au trou i :
+l'image de l'arc par la tresse donne celle du lacet. On remplace le clou par n trous fixes f_1 ... f_n, rangés là où
+était le clou (ils peuvent glisser sur leur ligne pour la mise en page), et chaque lacet par l'arc de f_i au trou
+voyageur m_i. La tresse ne fait bouger que les trous voyageurs ; tant que les trous fixes restent groupés près du bord,
+l'action sur ces arcs équivaut à l'action d'Artin sur F_n. Ce sont les diagrammes de courbes (Fenn, Greene, Rolfsen,
+Rourke, Wiest ; livre de Dehornoy, de mémoire).
+
+**Ce qu'on y gagnerait.**
+
+- Plus de point base : tous les objets vont d'un trou à un trou (plus de traversées d'arêtes du clou à retirer, de
+  descentes, de départ perpendiculaire, de lacets qui se rejoignent tous en un point). Un arc peut tourner autour de
+  ses extrémités sans changer de classe : ses traversées des arêtes de ses bouts, en tête et en queue, ne comptent pas.
+- La piste 1 bis devient naturelle : un arc entre deux pointes a un représentant géodésique unique, et les arcs entre
+  pointes sont exactement les arêtes des triangulations idéales.
+- Deux fois moins de traits : un arc est un brin, un lacet deux.
+
+**Ce que ça change.** On voit n arcs accrochés à leur trou fixe au lieu de boucles qui reviennent au clou ; si l'on
+tient aux boucles, on dessine le bord d'un ruban autour de chaque arc (deux rubans d'arcs disjoints sont disjoints).
+Le mot d'un arc se lit sur son ruban comme celui du lacet.
+
+**Premier essai.** Dans la triangulation mobile (`Triangulation.py`, isotopie garantie) : trous fixes sur une ligne en
+bas, arcs de départ verticaux, demi-tours des trous voyageurs, arcs dessinés seuls ou en rubans.
+
+**Premier essai fait (2026-11-16)** : `programmes/Arcs.py`, `film_arcs` → `imgs/film_arcs_*.mp4` (arcs seuls) et
+`imgs/film_rubans_*.mp4` (rubans). `FilmArcs` réutilise de `Film` le maillage, la tension et le dessin en congés (clou
+neutralisé), avec un maillage de Delaunay des trous voyageurs et fixes (`maillage_du_raccord`, clou facultatif). Arcs
+de départ verticaux ; demi-tours à place fixe (trous régulièrement espacés, pas encore de disposition proportionnelle).
+Mots relus sur les rubans (`lit_mot`, demi-droites des trous voyageurs) justes après chaque lettre, sur la tresse de
+référence et la tresse chargée ; calcul très rapide (0,5 s pour la tresse chargée sans dessin, 7 s pour les deux films).
+Le ruban est parcouru côté droit à l'aller (sinon on lit les mots inverses) ; sa demi-largeur est le tiers de l'écart
+entre brins. Reste : disposition proportionnelle (les arcs tendus se tassent contre quelques trous), et la suite
+naturelle, la piste 1 bis avec ces arcs entre pointes.

@@ -26,7 +26,8 @@ from tresses import deux_arcs
 
 def maillage_du_raccord(trous, clou, largeur, hauteur, marge=40, par_cote=6):
     """Maillage de Delaunay dont les sommets sont un bord convexe (rectangle bombé de `marge` pixels hors de l'image,
-    `par_cote` points par côté), les trous puis le clou. Renvoie (maillage, indices des trous, indice du clou)."""
+    `par_cote` points par côté), les trous puis le clou (s'il y en a un). Renvoie (maillage, indices des trous,
+    indice du clou ou None)."""
     x0, y0, x1, y1 = -marge, -marge, largeur + marge, hauteur + marge
     bord = []
     for k in range(par_cote): # le bord tourne dans le sens horaire de l'écran ; bombé pour être strictement convexe
@@ -47,7 +48,7 @@ def maillage_du_raccord(trous, clou, largeur, hauteur, marge=40, par_cote=6):
     ordre = sorted(range(len(trous)), key=lambda p: (trous[p][0], trous[p][1]))
     indices = [None] * len(trous)
     for p in ordre: indices[p] = insere(m, trous[p])
-    i_clou = insere(m, clou)
+    i_clou = None if clou is None else insere(m, clou)
     m.delaunay([])
     return m, indices, i_clou
 
