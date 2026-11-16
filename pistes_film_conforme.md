@@ -376,3 +376,8 @@ le bouquet actuel doit son existence au clou (les lacets qui en partent font les
 bas, on se rapproche du clou. Trop serrés (14 px), les arêtes qui descendent d'un trou voyageur vers les trous fixes
 forment des triangles très minces où la tension se dérègle : les brins qui contournent le trou y sont tirés en pointe
 (une « goutte »). À 30 px, plus de goutte.
+
+**Trous fixes groupés au bout gauche de l'axe** (`FilmArcs(..., fixes='gauche')`, films `imgs/film_rubans_gauche_*.mp4`) :
+f_n le plus à gauche, f_1 le plus près du premier trou ; l'arc de f_k à m_k passe sous m_1 ... m_(k-1), comme le lacet
+x_k depuis le clou (arcs de départ en demi-ellipses emboîtées sous l'axe, intervalles [f_k, m_k] emboîtés). Mots
+relus justes après chaque lettre sur six tresses, dont la tresse chargée. Rien d'accroché en bas.

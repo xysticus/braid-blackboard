@@ -75,12 +75,15 @@ class FilmArcs(Film):
     """Les arcs f_i → m_i sur la triangulation mobile. On ne garde de `Film` que le maillage, la tension et le dessin
     (le clou est neutralisé : y_axe = -inf)."""
 
-    def __init__(self, tresse, hauteur=800, largeur=800, ecart=6, hyperbolique=False, ecart_fixes=None):
-        """ecart_fixes : écart en pixels entre les trous fixes, groupés au milieu du bas (par défaut, régulièrement
-        répartis sur la largeur) : plus il est petit, plus on se rapproche du clou."""
+    def __init__(self, tresse, hauteur=800, largeur=800, ecart=6, hyperbolique=False, ecart_fixes=None, fixes='bas'):
+        """fixes : 'bas' (trous fixes sur une ligne en bas, arcs de départ droits) ou 'gauche' (trous fixes groupés
+        sur l'axe, à gauche de tous les trous voyageurs, f_n le plus à gauche : l'arc de f_k à m_k passe sous m_1 ...
+        m_(k-1), comme le lacet x_k depuis le clou ; arcs de départ en demi-ellipses emboîtées sous l'axe).
+        ecart_fixes : écart en pixels entre les trous fixes (en bas : groupés au milieu, par défaut régulièrement
+        répartis sur la largeur ; à gauche : 20 par défaut)."""
         self.hauteur, self.largeur = hauteur, largeur
         self.n = n = max(map(operator.abs, tresse), default=1) + 1
-        self.y_trous, self.y_fixes = 0.42 * hauteur, hauteur - 60
+        self.y_trous, self.y_fixes = (0.42 if fixes == 'bas' else 0.3) * hauteur, hauteur - 60
         # espacement proportionnel : à chaque image clé, largeur de chaque intervalle de l'axe (extrémités comprises)
         # proportionnelle à 1 + le nombre d'arcs qui le traversent (la moitié de celui des lacets) ; entre les images
         # clés, les largeurs glissent par une interpolation lisse et monotone (vitesse continue d'une lettre à l'autre,
@@ -96,17 +99,27 @@ class FilmArcs(Film):
         self.largeurs = np.array(largeurs)
         self.pentes = pchip(self.largeurs)
         self.marge = 30
+        self.marge_gauche = 30 if fixes == 'bas' else 30 + n * (ecart_fixes or 20)
         voyageurs = [(x, self.y_trous) for x in self.places_au_temps(0)]
-        if ecart_fixes is None: fixes = [((k + 1) * largeur / (n + 1) + 0.37, self.y_fixes) for k in range(n)]
-        else: fixes = [(largeur / 2 + (k - (n - 1) / 2) * ecart_fixes + 0.37, self.y_fixes) for k in range(n)]
-        self.maillage, indices, _ = maillage_du_raccord(voyageurs + fixes, None, largeur, hauteur)
+        if fixes == 'gauche':
+            e = ecart_fixes or 20
+            places_fixes = [(15 + (n - 1 - k) * e, self.y_trous) for k in range(n)] # f_1 à droite, f_n à gauche
+        elif ecart_fixes is None: places_fixes = [((k + 1) * largeur / (n + 1) + 0.37, self.y_fixes) for k in range(n)]
+        else: places_fixes = [(largeur / 2 + (k - (n - 1) / 2) * ecart_fixes + 0.37, self.y_fixes) for k in range(n)]
+        self.maillage, indices, _ = maillage_du_raccord(voyageurs + places_fixes, None, largeur, hauteur)
         self.voyageurs, self.fixes = indices[:n], indices[n:]
         self.places = list(self.voyageurs) # le trou voyageur à chaque place de l'axe, de gauche à droite
         self.numero = 0 # lettres déjà faites
-        # arcs de départ : de f_i (régulièrement espacés en bas) à m_i, en ligne droite
+        # arcs de départ : de f_i à m_i, en ligne droite (trous fixes en bas) ou en demi-ellipse sous l'axe (à gauche :
+        # les intervalles [f_k, m_k] sont emboîtés, donc les demi-ellipses de même aplatissement ne se croisent pas)
         self.courbes = []
         for f, m in zip(self.fixes, self.voyageurs):
-            points = np.linspace(self.maillage.pos[f], self.maillage.pos[m], 200)
+            p, q = self.maillage.pos[f], self.maillage.pos[m]
+            if fixes == 'gauche':
+                c, r = (p[0] + q[0]) / 2, (q[0] - p[0]) / 2
+                phi = np.linspace(math.pi, 0, 300)
+                points = np.column_stack((c + r * np.cos(phi), self.y_trous + 0.8 * r * np.sin(phi)))
+            else: points = np.linspace(p, q, 200)
             self.courbes.append(coupe_arc(points, self.maillage, f, m))
         self.ecart = ecart
         self.dispositions, self.etape, self.y_axe = [(None, ecart)], 0, -math.inf # neutralise le clou de Film
@@ -124,7 +137,8 @@ class FilmArcs(Film):
         """Abscisses des n places de l'axe au temps T (T = k : image clé k)."""
         w = np.maximum(hermite(self.largeurs, self.pentes, T), 1e-6)
         w = w / w.sum()
-        return self.marge + (self.largeur - 2 * self.marge) * np.cumsum(w)[:-1]
+        gauche = getattr(self, 'marge_gauche', self.marge)
+        return gauche + (self.largeur - gauche - self.marge) * np.cumsum(w)[:-1]
 
     def lettre(self, sigma, images=60, sous_pas=3, taux=0.15, rendu=None):
         """Demi-tour des trous aux places i et i+1 (σ_i), à vitesse angulaire constante, autour du milieu des deux

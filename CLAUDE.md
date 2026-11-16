@@ -43,7 +43,8 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
 - `programmes/Arcs.py` : essai sans clou, des arcs entre trous fixes et trous voyageurs (piste 1 ter de
   `pistes_film_conforme.md`), `film_arcs` ; `hyperbolique=True` tend les arcs en géodésiques
   (`programmes/Geodesiques.py`, piste 1 bis : métrique de Klein des triangles de Delaunay) ; `DiagrammeCourbes` :
-  le diagramme de courbes (arcs = segments de l'axe, un seul point fixe à gauche), dessin `lisere=True`.
+  le diagramme de courbes (arcs = segments de l'axe, un seul point fixe à gauche), dessin `lisere=True` ;
+  `fixes='gauche'` : trous fixes groupés au bout gauche de l'axe au lieu d'en bas ; `ecart_fixes` (≥ 30 px en bas).
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas.
