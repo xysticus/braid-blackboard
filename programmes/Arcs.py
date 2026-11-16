@@ -311,9 +311,23 @@ def film_arcs(tresse, fichier, rubans=False, pause=0.5, lisere=False, classe=Non
     ffmpeg.wait()
 
 
+TRESSES = (([4, 3, -1, -1, 2, -4, 1], '43m1m12m41'), ([1, -2, 1, -2, 1, -2, 3, -1, 2], 'charge'))
+
+# les méthodes : (vérification, options du film)
+METHODES = {
+    'rubans': (lambda t: verifie_arcs(t, ecart_fixes=30), dict(rubans=True, ecart_fixes=30)),
+    'rubans_gauche': (lambda t: verifie_arcs(t, fixes='gauche'), dict(rubans=True, fixes='gauche')),
+    'diagramme': (verifie_diagramme, dict(classe=DiagrammeCourbes, lisere=True)),
+}
+
 if __name__ == "__main__":
-    assert verifie_arcs([1])
-    assert verifie_arcs([1, -2, 1])
-    assert verifie_arcs([4, 3, -1, -1, 2, -4, 1])
-    film_arcs([4, 3, -1, -1, 2, -4, 1], './imgs/film_arcs_43m1m12m41.mp4')
-    film_arcs([4, 3, -1, -1, 2, -4, 1], './imgs/film_rubans_43m1m12m41.mp4', rubans=True)
+    # depuis la racine du dépôt : python programmes/Arcs.py [rubans] [rubans_gauche] [diagramme] (toutes par défaut) ;
+    # vérifie les mots puis écrit imgs/<méthode>/film_*.mp4
+    import os, sys
+    for methode in sys.argv[1:] or list(METHODES):
+        verifie, options = METHODES[methode]
+        os.makedirs(f'./imgs/{methode}', exist_ok=True)
+        for tresse, nom in TRESSES:
+            assert verifie(tresse), f"{methode} : mots faux sur {tresse}"
+            film_arcs(tresse, f'./imgs/{methode}/film_{nom}.mp4', **options)
+            print(methode, nom, 'fait')

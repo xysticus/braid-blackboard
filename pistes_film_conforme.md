@@ -381,3 +381,6 @@ forment des triangles très minces où la tension se dérègle : les brins qui c
 f_n le plus à gauche, f_1 le plus près du premier trou ; l'arc de f_k à m_k passe sous m_1 ... m_(k-1), comme le lacet
 x_k depuis le clou (arcs de départ en demi-ellipses emboîtées sous l'axe, intervalles [f_k, m_k] emboîtés). Mots
 relus justes après chaque lettre sur six tresses, dont la tresse chargée. Rien d'accroché en bas.
+
+**À examiner (remarque de l'utilisateur)** : `imgs/rubans/film_charge.mp4`, à la fin, hémisphère sud au niveau du
+troisième trou : un petit effet de bossage disgracieux sur les brins.

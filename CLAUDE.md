@@ -47,7 +47,10 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   `fixes='gauche'` : trous fixes groupés au bout gauche de l'axe au lieu d'en bas ; `ecart_fixes` (≥ 30 px en bas).
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
-  les nouvelles sorties ne le sont pas.
+  les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
+  `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README (introduction, mathématiques, commandes) et un
+  `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés) y sont écrits par `python programmes/Conforme.py` et
+  `python programmes/Arcs.py [rubans] [rubans_gauche] [diagramme]`.
 
 ## L'algorithme actuel du méandre (`AutoMorphPNG.py`)
 
@@ -271,8 +274,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
     clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
 
-13. **Film par représentation conforme** (`programmes/Conforme.py`, `film_conforme` → `imgs/film_conforme_*.gif`
-    et `.mp4`). Idée de l'utilisateur (2026-11-16) : relier les trous qui tournent aux trous voisins par des segments,
+13. **Film par représentation conforme** (`programmes/Conforme.py`, `film_conforme` → `imgs/conforme/film_*.mp4`). Idée de l'utilisateur (2026-11-16) : relier les trous qui tournent aux trous voisins par des segments,
     et s'en servir comme pieds d'arcs, pour tendre les lacets « flasques » du film simultané.
     - Pendant σ_i, l'axe se plie en ligne brisée L–A–B–R (A, B : trous i, i+1 ; L, R : voisins, ou points virtuels
       au bord de l'image). Elle reste simple de 0 jusqu'à juste avant la fin du demi-tour, où L–A passe par B ; ses
@@ -379,7 +381,8 @@ Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relat
 python programmes/Triangulation.py   # le film actuel : vérifie les assert, écrit imgs/film_triangule_*.mp4
 python -c "import sys; sys.path.insert(0, 'programmes'); import Triangulation as T; T.film_triangule([1, 2, -1], 'imgs/f.mp4')"   # un autre film
 python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif, imgs/film_continu_*.gif (film algébrique) et imgs/film_simultane_*.gif, plus leurs .mp4
-python programmes/Conforme.py        # film par représentation conforme : imgs/film_conforme_*.mp4, 800 × 800 (avec vérification)
+python programmes/Conforme.py        # film conforme : imgs/conforme/film_*.mp4, 800 × 800 (avec vérification)
+python programmes/Arcs.py            # rubans, rubans_gauche, diagramme (ou l'une d'elles en argument) : imgs/<méthode>/film_*.mp4
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```

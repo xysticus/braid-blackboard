@@ -534,8 +534,10 @@ def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400
 
 
 if __name__ == "__main__":
-    # depuis la racine du dépôt : 800 × 800, marges de 60 pixels, traits fins
+    # depuis la racine du dépôt : imgs/conforme/film_*.mp4, 800 × 800, marges de 60 pixels, traits fins
+    import os
+    os.makedirs('./imgs/conforme', exist_ok=True)
     for tresse, nom, brin in (([4, 3, -1, -1, 2, -4, 1], '43m1m12m41', 3), ([1, -2, 1, -2, 1, -2, 3, -1, 2], 'charge', 2)):
-        anomalies = film_conforme(tresse, f'./imgs/film_conforme_{nom}.mp4', hauteur=800, largeur=800, marge=60,
+        anomalies = film_conforme(tresse, f'./imgs/conforme/film_{nom}.mp4', hauteur=800, largeur=800, marge=60,
                                   largeur_brin=brin, verifie=True)
         print(nom, ":", len(anomalies), "anomalies", anomalies[:20])

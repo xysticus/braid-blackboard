@@ -62,39 +62,18 @@ La différence est que le film ne fait que la première opération, sans fondu :
 déformation continue du plan (une isotopie), et c'est ce qui garde leur topologie exacte. Les premiers essais, qui
 mélangeaient linéairement deux dessins (une sorte de fondu), créaient des croisements entre lacets.
 
-## Le film conforme
+## Les films par méthode
 
-Une autre manière de faire le film, qui garde l'allure des images fixes : des arcs posés perpendiculairement sur
-l'axe, sans courbe libre.
+Chaque méthode a son répertoire, avec un README qui présente ses mathématiques et les commandes pour fabriquer ses
+films :
 
-```
-python programmes/Conforme.py   # depuis la racine du dépôt : écrit imgs/film_conforme_*.mp4 (800 × 800)
-```
-
-<p align="center"><img src="imgs/simultane_conforme.jpg" alt="Le même instant de la même tresse : à gauche des
-lacets ondulés, à droite des lacets tendus" width="660"></p>
-
-<p align="center"><em>Le même instant de la tresse σ₄σ₃σ₁⁻¹σ₁⁻¹σ₂σ₄⁻¹σ₁, au milieu du demi-tour de σ₂ : à gauche
-le film simultané, où deux dessins sont mélangés pendant tout le demi-tour, à droite le film conforme.</em></p>
-
-Le principe :
-
-- pendant que les trous A et B tournent, l'axe se plie en ligne brisée : il va de chaque trou voisin à l'un des deux
-  trous qui tournent, et passe par le segment qui les relie. Les lacets traversent ces segments, et leurs points
-  de traversée servent de pieds aux arcs ;
-- au début du demi-tour, l'axe plié passe par A puis B, et porte exactement les points de l'image de départ ; à la
-  fin, il passe par B puis A, et porte ceux de l'image d'arrivée. Quand les deux trous sont à la verticale l'un de
-  l'autre, on passe d'un dessin à l'autre, morceau par morceau entre les traversées de ces segments ;
-- pour tracer les arcs sur l'axe plié, on utilise une **représentation conforme**, une transformation du plan qui
-  conserve les angles (formule de Schwarz–Christoffel) : elle envoie le demi-plan sur la région au-dessus (ou
-  au-dessous) de la ligne brisée. On trace des demi-cercles dans le demi-plan, comme dans les images fixes, et la
-  transformation les emporte sur la ligne brisée. Les arcs arrivent donc perpendiculairement aux segments, et deux
-  arcs ne peuvent pas se croiser ;
-- les demi-cercles sont les « droites » du demi-plan de Poincaré : leurs images sont les chemins les plus tendus
-  possible, et les lacets ne sont plus flasques. Les descentes vers le clou sont, elles aussi, de ces géodésiques ;
-- le passage d'un dessin à l'autre, à mi-chemin, se fait sur une triangulation mobile, comme dans le film des
-  méandres : les deux dessins y sont transportés par la déformation du plan, puis, autour des deux trous qui
-  tournent, tendus en droites arrondies dont les pieds glissent sur les arêtes sans changer d'ordre ;
-- comme pour la triangulation, les mots du groupe libre et l'absence de croisements sont vérifiés sur chaque image.
+- [Le film conforme](imgs/conforme/README.md) : les lacets en arcs posés perpendiculairement sur l'axe, emportés par une
+  représentation conforme pendant les demi-tours ;
+- [Le diagramme de courbes](imgs/diagramme/README.md) : les segments de l'axe, emportés par la tresse ; un invariant
+  complet, avec deux fois moins de traits que les lacets ;
+- [Les rubans](imgs/rubans/README.md) : les lacets sans clou, bords de rubans tendus entre des trous fixes en bas et les
+  trous voyageurs ;
+- [Les rubans, trous fixes à gauche](imgs/rubans_gauche/README.md) : la même chose, les trous fixes groupés au bout
+  gauche de l'axe.
 
 Mon livre de chevet sur les tresses : "[Le calcul des tresses](https://www.decitre.fr/livres/le-calcul-des-tresses-9782916352794.html)", [Patrick Dehornoy](https://www.decitre.fr/auteur/198862/Patrick+Dehornoy), Calvage & Mounet, Collection.-Nano
