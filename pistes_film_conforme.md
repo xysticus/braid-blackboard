@@ -154,3 +154,35 @@ propres que la torsion actuelle, mais toujours une couronne.
 
 Ce qui reste de la seconde idée : vérifier si les brins lointains sont assez proches de demi-cercles pour être
 remplacés par des demi-cercles exacts, sans en attendre de place en plus.
+
+### Passer provisoirement à la triangulation pendant le raccord (idée de l'utilisateur)
+
+Plutôt que de mélanger les deux dessins pendant la fenêtre de raccord, passer le temps de la fenêtre à la
+triangulation mobile, dont on sait qu'elle fonctionne. C'est la piste 2 avec des triangles et des cordes à la
+place des cartes conformes.
+
+- Pendant la fenêtre, un maillage dont les sommets sont les trous, le clou et des points du bord (comme dans
+  `Triangulation.py`).
+- Au début de la fenêtre, on coupe le dessin conforme de départ par les arêtes du maillage : chaque lacet devient
+  une suite de pieds sur les arêtes. Même chose à la fin pour le dessin d'arrivée.
+- Les sommets étant des trous, la suite des arêtes traversées par un lacet, après annulation des bigones
+  (`sans_bigones`), est la même dans les deux dessins : les pieds se correspondent un à un.
+- Chaque pied glisse sur son arête de sa place de départ à sa place d'arrivée ; l'ordre des pieds d'une arête est
+  le même aux deux bouts, donc il est gardé.
+- Dans chaque triangle, les pieds sont reliés par des cordes droites : un triangle est convexe, et deux cordes dont
+  les extrémités ne s'entrelacent pas ne se croisent pas. Aucun croisement par construction : c'est une vraie
+  isotopie, plus un mélange.
+
+Ce que ça coûte :
+
+- l'allure change pendant la fenêtre (lignes brisées avec congés, comme le film triangulé, au lieu des arcs
+  conformes) ; à l'entrée et à la sortie, la ligne brisée approche le dessin conforme si le maillage est assez fin,
+  il resterait un petit saut à juger en mouvement ;
+- les trous bougent pendant la fenêtre : retournements d'arête quand un triangle s'aplatit (`Maillage` sait le
+  faire, il faut le brancher sur ces pieds) ;
+- `Film` (de `Triangulation.py`) part d'une tresse et gère lui-même ses états et sa tension ; il faudrait en
+  extraire le maillage et le dessin, et piloter les pieds de l'extérieur (glissement imposé, sans tension).
+  C'est le gros du travail.
+
+Ce qu'on y gagne : les images fautives de la tresse chargée disparaissent, avec une garantie, au prix d'un passage
+d'environ 0,3 s par lettre à l'allure du film triangulé.
