@@ -172,10 +172,11 @@ class Pousse(Film):
         centre = self.centre(n, t)
         cercle = lisse(montee * 1.6 - 0.6) # le demi-cercle prend la disposition de la fleur en fin de montée
         rotation = g['sens'] * 2 * math.pi * g['tours'] * bourgeon
+        ouverture = getattr(self, 'ouverture_cage', 320) # angle de la cage de sépales (le bas reste ouvert)
         resultat = []
         for j in range(m):
             demi = math.pi - math.pi * j / (m - 1)
-            final = math.radians(250 - 320 * j / (m - 1))
+            final = math.radians(90 + ouverture / 2 - ouverture * j / (m - 1))
             a = (1 - cercle) * demi + cercle * final
             if j % 2 == 0: # sépale
                 rayon = (1 - cercle) * g['rayon_bourgeon'] + cercle * g['rayon_sepales']
@@ -298,18 +299,18 @@ class PousseDiagramme(Pousse):
         self.y_sol = hauteur # hauteurs des têtes comptées depuis le bas de l'image
         self.y_graine = hauteur - 40 * e
         self.premier = np.cumsum([0] + [g['trous'] for g in groupes])
-        # le rang de la graine : un point au sol avant chaque plante et un à la fin
+        # le rang de la graine : chaque plante entre ses deux points au sol (gauche, droite)
         rang = [] # ('sol', indice) ou ('trou', indice dans la numérotation des trous)
         for n, g in enumerate(groupes):
-            rang.append(('sol', n))
+            rang.append(('sol', 2 * n))
             rang += [('trou', k) for k in range(self.premier[n], self.premier[n + 1])]
-        rang.append(('sol', len(groupes)))
+            rang.append(('sol', 2 * n + 1))
         pas_rang = 10 * e
         x0 = largeur / 2 - (len(rang) - 1) / 2 * pas_rang
         position = {r: (x0 + i * pas_rang, self.y_graine) for i, r in enumerate(rang)}
         self.graine = np.array([position[('trou', k)] for k in range(nb)])
-        sols = [position[('sol', n)] for n in range(len(groupes) + 1)]
-        self.maillage, indices, _ = maillage_du_raccord(list(self.graine) + sols, None, largeur, hauteur)
+        self.sols_depart = np.array([position[('sol', i)] for i in range(2 * len(groupes))])
+        self.maillage, indices, _ = maillage_du_raccord(list(self.graine) + list(self.sols_depart), None, largeur, hauteur)
         self.trous, self.sols = indices[:nb], indices[nb:]
         sommet = {r: (self.trous[r[1]] if r[0] == 'trou' else self.sols[r[1]]) for r in rang}
         # arcs de départ : segments du rang, un peu bombés vers le haut pour la découpe (la tension les redresse)
@@ -320,15 +321,33 @@ class PousseDiagramme(Pousse):
             u = np.linspace(0, 1, 100)
             points = p + u[:, None] * (q - p) - np.column_stack((0 * u, 3 * e * np.sin(np.pi * u)))
             self.courbes.append(coupe_arc(points, self.maillage, a, b))
-            if 'sol' in (r1[0], r2[0]):
+            if r1[0] == 'sol' and r2[0] == 'sol': self.sortes.append(('sol', None)) # entre deux plantes, au sol
+            elif 'sol' in (r1[0], r2[0]):
                 trou = r1 if r1[0] == 'trou' else r2
-                n = int(np.searchsorted(self.premier, trou[1], side='right') - 1)
-                self.sortes.append(('tige', n))
+                self.sortes.append(('tige', int(np.searchsorted(self.premier, trou[1], side='right') - 1)))
             else:
-                n = int(np.searchsorted(self.premier, r1[1], side='right') - 1)
-                self.sortes.append(('plante', n))
+                self.sortes.append(('plante', int(np.searchsorted(self.premier, r1[1], side='right') - 1)))
         self.dispositions, self.etape, self.y_axe = [(None, self.ecart)], 0, -math.inf # pas de clou
         for _ in range(60): self.tend(0.3, self.ecart, portee_sinus=3 * self.ecart)
+
+    ouverture_cage = 340 # sépales du bas resserrés au pied de la fleur : les deux arcs de la tige se rejoignent
+
+    def sols_au_temps(self, t):
+        """Positions des points au sol : quand les trous de la plante ont quitté le rang de la graine, ses deux points
+        au sol glissent l'un vers l'autre jusqu'au pied de sa tige (rien ne les sépare plus : pas de croisement), pour
+        que la tige ne soit pas creuse."""
+        resultat = self.sols_depart.copy()
+        for n, g in enumerate(self.groupes):
+            montee = self.phases(g, t)[0]
+            glisse = lisse((montee - 0.2) / 0.4)
+            pied = self.graine[self.premier[n]:self.premier[n + 1]].mean(axis=0)
+            for c, signe in ((2 * n, -1), (2 * n + 1, 1)):
+                arrivee = pied + (signe * ECART_PIED * self.e / 2, 0)
+                resultat[c] = (1 - glisse) * self.sols_depart[c] + glisse * arrivee
+        return resultat
+
+    def cibles(self, t):
+        return list(self.trous) + list(self.sols), np.vstack((self.choregraphie(t), self.sols_au_temps(t)))
 
     def deplace(self, sommets, cibles, pas_max, taux=None):
         depart = self.maillage.pos[sommets].copy()
@@ -338,6 +357,37 @@ class PousseDiagramme(Pousse):
             assert self.maillage.valide(), "triangle retourné : diminuer pas_max"
             self.maillage.delaunay(self.courbes)
             self.tend(self.taux if taux is None else taux, self.ecart, portee_sinus=3 * self.ecart)
+
+    def limbe(self, ctx, points, g):
+        """Le limbe d'une feuille : un fuseau autour de son arc, nul aux deux bouts, le plus large au milieu
+        (largeur_limbe × la longueur de la feuille, 0,22 par défaut), rempli de vert et cerné de vert sombre."""
+        e = self.e
+        points = points[np.concatenate(([True], np.hypot(*np.diff(points, axis=0).T) > 1e-9))]
+        if len(points) < 2: return
+        long = np.concatenate(([0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))))
+        # l'arc d'une feuille est souvent un seul segment : on le rééchantillonne pour donner sa forme au fuseau
+        s = np.linspace(0, long[-1], 60)
+        points = np.column_stack((np.interp(s, long, points[:, 0]), np.interp(s, long, points[:, 1])))
+        long = s
+        d = np.gradient(points, axis=0)
+        d /= np.maximum(np.hypot(*d.T), 1e-12)[:, None]
+        normale = np.column_stack((-d[:, 1], d[:, 0]))
+        u = long / max(long[-1], 1e-9)
+        largeur = g.get('largeur_limbe', 0.22) * long[-1] * np.sin(np.pi * u) ** 0.8
+        # fuseau symétrique : les deux bords bombent de part et d'autre de la nervure
+        contour = np.concatenate((points + 0.5 * largeur[:, None] * normale, (points - 0.5 * largeur[:, None] * normale)[::-1]))
+        ctx.move_to(*contour[0])
+        for p in contour[1:]: ctx.line_to(*p)
+        ctx.close_path()
+        ctx.set_source_rgb(0.36, 0.66, 0.32)
+        ctx.fill_preserve()
+        ctx.set_source_rgb(0.16, 0.40, 0.16)
+        ctx.set_line_width(1.6 * e)
+        ctx.stroke()
+        ctx.move_to(*points[0]) # la nervure
+        for p in points[1:]: ctx.line_to(*p)
+        ctx.set_line_width(1.0 * e)
+        ctx.stroke()
 
     def dessine(self, t, lumiere=1.0):
         """Image au temps t : fond bleu clair ; tiges et feuilles vertes ; dans le secteur de chaque fleur, les arcs
@@ -360,8 +410,12 @@ class PousseDiagramme(Pousse):
             ctx.stroke()
         for k, points in enumerate(self.polylignes()):
             sorte, n = self.sortes[k]
+            if sorte == 'sol': continue # arc entre deux plantes, au sol
             g = self.groupes[n]
-            if sorte == 'tige' or g['sorte'] == 'feuille':
+            if sorte == 'plante' and g['sorte'] == 'feuille':
+                self.limbe(ctx, points, g)
+                continue
+            if sorte == 'tige':
                 ctx.set_source_rgb(*vert)
                 trait(points)
                 continue
@@ -389,6 +443,9 @@ class PousseDiagramme(Pousse):
             trait(points)
             ctx.restore()
         return surface
+
+
+ECART_PIED = 8 # écart en pixels (image de 800 de large) entre les deux points au sol d'une plante, au pied de sa tige
 
 
 def fleur(tete, depart, couleur, sens=1, nutation=18, **reglages):

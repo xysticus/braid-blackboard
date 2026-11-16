@@ -376,6 +376,11 @@ emportés par la chorégraphie de `Pousse`. Les arcs qui touchent le sol font le
 sépales du bas) ; dans une fleur, les arcs vont d'un sépale à un pétale : chaque pétale est la pointe d'un V entre deux
 sépales, et le tour des pétales dans la cage enroule ces V en couches (pétales striés) ; dans une feuille, le limbe est
 l'arc entre ses deux trous. Calcul en 2 s (7 s pour le film), contre 35 s pour le bouquet en lacets.
+Retouches (demandes de l'utilisateur) : chaque plante entre deux points au sol, qui glissent l'un vers l'autre jusqu'au
+pied de sa tige quand ses trous ont quitté le rang (`sols_au_temps`, écart `ECART_PIED` = 8 px) ; les arcs entre deux
+plantes, au sol, ne sont pas dessinés ; la cage de sépales est plus fermée en bas (340° au lieu de 320°) pour que les
+deux arcs d'une tige se rejoignent sous la fleur ; les feuilles sont des fuseaux remplis autour de leur arc, avec une
+nervure (`limbe` ; l'arc d'une feuille n'a souvent que deux points, il faut le rééchantillonner).
 
 **Trous fixes rapprochés** (`FilmArcs(..., ecart_fixes=30)`, film `imgs/film_rubans_charge.mp4`) : groupés au milieu du
 bas, on se rapproche du clou. Trop serrés (14 px), les arêtes qui descendent d'un trou voyageur vers les trous fixes
