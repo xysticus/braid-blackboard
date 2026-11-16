@@ -312,8 +312,8 @@ assert verifie_action([1, -2, 1, -2, 1, -2, 3, -1, 2])
 
 
 def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_couleur=True, axe=None):
-    '''Surface Cairo du dessin donné en polylignes ; axe : polyligne de l'axe (ou liste de morceaux),
-    tracée en gris sous les lacets.'''
+    '''Surface Cairo du dessin donné en polylignes ; axe : polyligne de l'axe (ou liste de morceaux, chacun
+    éventuellement donné avec son opacité : (polyligne, opacité)), tracée en gris sous les lacets.'''
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, largeur, hauteur)
     ctx = cairo.Context(surface)
     ctx.set_source_rgb(1, 1, 1)
@@ -322,8 +322,11 @@ def peint(polylignes, trous, clou, hauteur=400, largeur=400, largeur_brin=4, en_
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     if axe is not None:
         ctx.set_line_width(max(1.5, 0.8 * largeur_brin))
-        ctx.set_source_rgb(.45, .45, .45)
         for morceau in (axe if isinstance(axe, list) else [axe]):
+            opacite = 1
+            if isinstance(morceau, tuple): morceau, opacite = morceau
+            if opacite <= 0: continue
+            ctx.set_source_rgba(.45, .45, .45, opacite)
             ctx.move_to(*morceau[0])
             for p in morceau[1:]: ctx.line_to(*p)
             ctx.stroke()

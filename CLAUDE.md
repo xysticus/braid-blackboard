@@ -38,6 +38,7 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
 - `programmes/NouvAutoMorph.py` : films successifs à partir de l'état (image par image, algébrique, simultané, essais
   en arcs) : voir plus bas. `from tresses import *` ; lancé (`__main__`), il écrit ses images et ses films.
 - `programmes/Triangulation.py` : **le film actuel** (triangulation mobile, point 11 plus bas), `film_triangule`.
+- `programmes/Conforme.py` : film par représentation conforme (point 13 plus bas), `film_conforme`.
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas.
@@ -264,6 +265,36 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
     clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
 
+13. **Film par représentation conforme** (`programmes/Conforme.py`, `film_conforme` → `imgs/film_conforme_*.gif`
+    et `.mp4`). Idée de l'utilisateur (2026-11-16) : relier les trous qui tournent aux trous voisins par des segments,
+    et s'en servir comme pieds d'arcs, pour tendre les lacets « flasques » du film simultané.
+    - Pendant σ_i, l'axe se plie en ligne brisée L–A–B–R (A, B : trous i, i+1 ; L, R : voisins, ou points virtuels
+      au bord de l'image). Elle reste simple de 0 jusqu'à juste avant la fin du demi-tour, où L–A passe par B ; ses
+      pieds sont exactement les points de l'image clé k. L–B–A–R porte de même l'image clé k+1, de juste après le
+      début jusqu'à la fin. Un changement à mi-chemin est inévitable : un cadre fixe (l'axe entier + le segment qui
+      tourne, la « croix ») donne des descriptions différentes depuis k et depuis k+1, à chaque lettre (vérifié).
+    - Dessin d'un état sur sa ligne brisée : `Carte`, Schwarz–Christoffel du demi-plan sur la région au-dessus (et,
+      par symétrie, au-dessous). Antécédents des sommets par Newton sur les longueurs des côtés ; tables du bord avec
+      changement de variable aux singularités ; images par intégration de dz/dw le long du chemin, l'erreur répartie
+      entre les deux pieds connus. Un arc est l'image du demi-cercle entre les antécédents de ses pieds : perpendiculaire
+      aux segments, jamais de croisement (bijection conforme). Sur l'axe droit la carte est une translation : les
+      images clés sont les demi-cercles habituels (0,02 px près).
+    - Descentes au clou : la géodésique du demi-plan du bas, arc du cercle orthogonal à l'axe passant par le pied et
+      l'antécédent du clou (deux se recoupent seulement au clou ; aucune ne croise un arc du bas tant que le clou est
+      hors des demi-cercles, vérifié par `assert`). Les images clés de ce film ont donc des descentes en arcs.
+      Essais écartés : descentes verticales dans le demi-plan (les pieds près d'un coin convexe ont des antécédents
+      serrés, leurs descentes restaient collées jusqu'au clou) ; glissement en S sous les arcs (crans).
+    - Raccord autour de la verticale (`fenetre` = 0,3 du mouvement) : les cinq segments L–A, A–B, B–R, L–B, A–R ont
+      leurs sommets aux trous, donc la suite minimale des traversées d'un lacet est la même dans les deux dessins.
+      `traversees` + `sans_bigones` (deux traversées successives d'une même arête bordent un bigone vide : on les
+      annule) donnent les morceaux correspondants, mélangés un à un (`raccorde`).
+    - Si les arcs sortent par le haut en cours de demi-tour, l'aplatissement est réduit pour l'image (`reduction`).
+    - `verifie=True` relit les mots et compte les croisements entre lacets (`nb_croisements`, paquets de segments
+      à rectangles englobants). Tresse de référence : 0 anomalie, 82 s. Tresse chargée `[1,-2,1,-2,1,-2,3,-1,2]` :
+      3 images à 2 croisements, au milieu du raccord (seule étape sans garantie : le mélange), 70 s.
+    - Limites : légers resserrements près des coins convexes (convergence des géodésiques) ; pas d'ajustement en
+      largeur (sur la tresse chargée, les derniers arcs touchent le bord droit).
+
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1
 de l'image k : le dessin du préfixe suivant est bien l'image du dessin courant par la torsion.
@@ -327,6 +358,7 @@ Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relat
 python programmes/Triangulation.py   # le film actuel : vérifie les assert, écrit imgs/film_triangule_*.mp4
 python -c "import sys; sys.path.insert(0, 'programmes'); import Triangulation as T; T.film_triangule([1, 2, -1], 'imgs/f.mp4')"   # un autre film
 python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif, imgs/film_continu_*.gif (film algébrique) et imgs/film_simultane_*.gif, plus leurs .mp4
+python programmes/Conforme.py        # film par représentation conforme : imgs/film_conforme_*.gif et .mp4 (avec vérification)
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 jupyter lab ipynbks/                  # notebooks
 ```
