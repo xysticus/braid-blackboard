@@ -248,3 +248,37 @@ forme dure 4 ou 5 images. Trois corrections pour garder 0 anomalie :
   et chaque morceau est mélangé avec celui du même triangle, convexe, dont les trous sont les sommets.
 
 0 anomalie (mots, croisements) sur les deux tresses d'essai.
+
+## Piste 1 bis : une triangulation de Delaunay partout, vue comme une surface hyperbolique (idée de l'utilisateur)
+
+**Idée.** Garder la triangulation mobile tout le temps et partout (comme `Triangulation.py`, dont la topologie est
+garantie par l'isotopie), mais dessiner les lacets en arcs, en se servant des cercles circonscrits des triangles de
+Delaunay (vides de tout autre sommet).
+
+**Le lien.** Les sommets étant des trous, on peut les voir comme des pointes à l'infini d'une surface hyperbolique.
+Dans son cercle circonscrit, un triangle de Delaunay est un triangle idéal (sommets à l'infini) du plan hyperbolique :
+en modèle de Klein, ses côtés droits sont des géodésiques, et les géodésiques d'un lacet sont des cordes (nos cordes de
+raccord) ; en modèle de Poincaré, les géodésiques sont des arcs orthogonaux au cercle, mais les côtés du triangle idéal
+sont alors eux aussi des arcs, pas les arêtes droites. Théorie connue (de mémoire, à vérifier) : coordonnées de Penner,
+triangulations idéales, Rivin ; « applications conformes discrètes » et polyèdres hyperboliques idéaux (Bobenko,
+Pinkall, Springborn), où les retournements de Delaunay assurent l'existence de l'uniformisation discrète.
+
+**Ce qu'on y gagnerait.** La version discrète de la piste 1, sans équation aux dérivées partielles : à chaque instant
+un dessin unique et tendu de chaque lacet (sa géodésique), plus de ligne brisée ni de raccord, et l'absence de
+croisement serait un théorème (des lacets disjoints ont des géodésiques disjointes).
+
+**Difficultés.**
+
+- Recollement d'un triangle à l'autre : les deux triangles d'une arête ont deux cercles circonscrits différents ; pour
+  qu'un lacet se continue à travers l'arête, il faut le recollement des triangles idéaux, donné par les coordonnées de
+  cisaillement (logarithme d'un birapport des quatre sommets du quadrilatère). Il faut donc calculer la géodésique sur
+  la surface recollée, puis la redessiner dans les triangles, pas dessiner chaque triangle à part.
+- Arcs et triangles : un arc de Poincaré entre deux points de deux côtés peut bomber au-delà du triangle près d'un
+  sommet ; la garantie « deux cordes dont les pieds ne s'entrelacent pas ne se croisent pas » ne se transpose pas
+  telle quelle à un dessin par triangles.
+- Le clou est un point base, pas une pointe : les lacets y aboutissent (arcs géodésiques d'une pointe à elle-même
+  autour des trous, ou clou traité comme une pointe supplémentaire).
+
+**Premier pas possible.** Sur une image fixe : calculer les coordonnées de cisaillement de la triangulation de
+Delaunay des trous et du clou, tendre un lacet (donné par sa suite d'arêtes) en géodésique de la surface idéale, et le
+dessiner ; comparer à l'image clé en demi-cercles.
