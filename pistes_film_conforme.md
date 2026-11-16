@@ -133,3 +133,24 @@ Les deux idées vont dans le même sens : remplacer une carte unique pour tout l
 chacune avec son axe (horizontal immobile, horizontal plié, ou celui de A–B qui tourne), et des pieds posés sur
 les bords des régions. Les arcs restent sans croisement dans chaque région par la règle des demi-cercles. Il reste
 à faire bouger les bords des régions, et les pieds dessus, sans jamais changer l'ordre des pieds.
+
+### Conclusion : un disque et sa couronne ne gagnent rien
+
+Objection de l'utilisateur, juste : ces régions sont un disque qui tourne dans une couronne, et à la jointure les
+pieds des brins sont bien obligés de bouger dans la couronne. On ne gagnerait que si, pour chaque lettre, on
+trouvait un disque et une couronne qui n'interfèrent pas. C'est impossible, pour deux raisons :
+
+- **le bord du disque est toujours traversé.** Un cercle qui entoure seulement A et B laisse le clou dehors ; tout
+  lacet qui tourne autour de A ou de B part du clou et y revient, donc le traverse au moins deux fois ;
+- **le demi-tour agit justement sur ces brins.** Tourner A et B d'un demi-tour dans le disque, c'est un demi-twist
+  de Dehn le long de ce cercle : il laisse en place ce qui est dedans et ce qui est dehors, et enroule tout ce qui
+  le traverse. Cet enroulement est l'action de σ_i ; on ne choisit que l'endroit où on le met.
+
+Le film simultané le concentre dans une couronne étroite (brins tordus, puis mélange : ondulations). Le film
+conforme le répartit sur toute la région, et c'est pour ça que ses lacets paraissent tendus. Un découpage disque +
+couronne, même avec de vrais demi-cercles dedans et dehors, remettrait toute la torsion dans la couronne ; le mieux
+y serait des spirales régulières (les droites de l'anneau vu comme un rectangle dont on recolle deux côtés), plus
+propres que la torsion actuelle, mais toujours une couronne.
+
+Ce qui reste de la seconde idée : vérifier si les brins lointains sont assez proches de demi-cercles pour être
+remplacés par des demi-cercles exacts, sans en attendre de place en plus.
