@@ -371,3 +371,8 @@ trous voyageurs, ils seraient dans le disque d'un demi-tour et l'on calculerait 
 
 **À faire (idée de l'utilisateur)** : refaire le bouquet avec le diagramme de courbes (qui donne beaucoup de formes) ;
 le bouquet actuel doit son existence au clou (les lacets qui en partent font les tiges).
+
+**Trous fixes rapprochés** (`FilmArcs(..., ecart_fixes=30)`, film `imgs/film_rubans_charge.mp4`) : groupés au milieu du
+bas, on se rapproche du clou. Trop serrés (14 px), les arêtes qui descendent d'un trou voyageur vers les trous fixes
+forment des triangles très minces où la tension se dérègle : les brins qui contournent le trou y sont tirés en pointe
+(une « goutte »). À 30 px, plus de goutte.

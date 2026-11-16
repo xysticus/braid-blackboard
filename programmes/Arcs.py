@@ -75,7 +75,9 @@ class FilmArcs(Film):
     """Les arcs f_i → m_i sur la triangulation mobile. On ne garde de `Film` que le maillage, la tension et le dessin
     (le clou est neutralisé : y_axe = -inf)."""
 
-    def __init__(self, tresse, hauteur=800, largeur=800, ecart=6, hyperbolique=False):
+    def __init__(self, tresse, hauteur=800, largeur=800, ecart=6, hyperbolique=False, ecart_fixes=None):
+        """ecart_fixes : écart en pixels entre les trous fixes, groupés au milieu du bas (par défaut, régulièrement
+        répartis sur la largeur) : plus il est petit, plus on se rapproche du clou."""
         self.hauteur, self.largeur = hauteur, largeur
         self.n = n = max(map(operator.abs, tresse), default=1) + 1
         self.y_trous, self.y_fixes = 0.42 * hauteur, hauteur - 60
@@ -95,7 +97,8 @@ class FilmArcs(Film):
         self.pentes = pchip(self.largeurs)
         self.marge = 30
         voyageurs = [(x, self.y_trous) for x in self.places_au_temps(0)]
-        fixes = [((k + 1) * largeur / (n + 1) + 0.37, self.y_fixes) for k in range(n)] # pas à la verticale exacte
+        if ecart_fixes is None: fixes = [((k + 1) * largeur / (n + 1) + 0.37, self.y_fixes) for k in range(n)]
+        else: fixes = [(largeur / 2 + (k - (n - 1) / 2) * ecart_fixes + 0.37, self.y_fixes) for k in range(n)]
         self.maillage, indices, _ = maillage_du_raccord(voyageurs + fixes, None, largeur, hauteur)
         self.voyageurs, self.fixes = indices[:n], indices[n:]
         self.places = list(self.voyageurs) # le trou voyageur à chaque place de l'axe, de gauche à droite
