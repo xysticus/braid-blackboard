@@ -418,14 +418,14 @@ def nb_croisements(lignes, clou, rayon=12):
 
 
 def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.3,
-                  verifie=False, raccord='melange', **options):
+                  verifie=False, raccord='triangulation', **options):
     """Film (GIF animé, ou MP4 si fichier finit par .mp4, écrit par ffmpeg à 25 images/s) : pour chaque lettre,
     l'état k sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la verticale pendant la fenêtre (part du
     mouvement). marge : le dessin est fait dans le cadre intérieur, à cette distance des quatre bords (en cours de
     demi-tour, des arcs peuvent déborder du cadre intérieur sur les côtés). options : celles de peint, dont
     largeur_brin en pixels (indépendant de la taille de l'image). verifie : relit les mots et compte les croisements
-    entre lacets sur chaque image ; renvoie la liste des anomalies. raccord : 'melange' (les deux dessins mélangés
-    morceau par morceau, `raccorde`) ou 'triangulation' (les deux dessins transportés sur une triangulation mobile,
+    entre lacets sur chaque image ; renvoie la liste des anomalies. raccord : 'triangulation' (par défaut) ou 'melange' (les deux dessins mélangés
+    morceau par morceau, `raccorde`, sans garantie) ; 'triangulation' (les deux dessins transportés sur une triangulation mobile,
     puis tendus en cordes dont les pieds glissent : `Raccord.RaccordTriangule`)."""
     nb_trous = max(map(operator.abs, tresse), default=5) + 1
     h_int, l_int = hauteur - 2 * marge, largeur - 2 * marge

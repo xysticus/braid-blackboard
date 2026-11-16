@@ -92,8 +92,9 @@ Le principe :
   arcs ne peuvent pas se croiser ;
 - les demi-cercles sont les « droites » du demi-plan de Poincaré : leurs images sont les chemins les plus tendus
   possible, et les lacets ne sont plus flasques. Les descentes vers le clou sont, elles aussi, de ces géodésiques ;
+- le passage d'un dessin à l'autre, à mi-chemin, se fait sur une triangulation mobile, comme dans le film des
+  méandres : les deux dessins y sont transportés par la déformation du plan, puis, autour des deux trous qui
+  tournent, tendus en droites arrondies dont les pieds glissent sur les arêtes sans changer d'ordre ;
 - comme pour la triangulation, les mots du groupe libre et l'absence de croisements sont vérifiés sur chaque image.
-  Seul le passage d'un dessin à l'autre, à mi-chemin, n'est pas garanti : sur les tresses très chargées, quelques
-  images y montrent de petits défauts.
 
 Mon livre de chevet sur les tresses : "[Le calcul des tresses](https://www.decitre.fr/livres/le-calcul-des-tresses-9782916352794.html)", [Patrick Dehornoy](https://www.decitre.fr/auteur/198862/Patrick+Dehornoy), Calvage & Mounet, Collection.-Nano

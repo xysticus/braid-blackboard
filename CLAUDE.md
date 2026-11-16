@@ -301,7 +301,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       7 images à quelques croisements, au milieu du raccord des lettres 6 et 7 (seule étape sans garantie : le
       mélange ; encoches près des trous qui tournent, brins extérieurs tassés). Environ 1 min 30 pour les deux.
     - Limites : légers resserrements près des coins convexes (convergence des géodésiques).
-    - `raccord='triangulation'` (`programmes/Raccord.py`, essai du 2026-11-16) : pendant la fenêtre, les deux dessins
+    - `raccord='triangulation'`, **raccord par défaut** (`programmes/Raccord.py`, essai du 2026-11-16) : pendant la fenêtre, les deux dessins
       sont transportés sur une triangulation mobile (trous, clou, bord convexe hors de l'image), les pieds glissent
       sur les arêtes ; cordes seulement dans les triangles qui touchent les trous qui tournent (ou contiennent un
       bigone), coudes des cordes arrondis par des congés (`arrondit`), mélange direct ailleurs. 0 croisement sur les
