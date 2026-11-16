@@ -210,3 +210,8 @@ d'environ 0,3 s par lettre à l'allure du film triangulé.
   lointains, sont des mélanges vérifiés numériquement. Coût visuel : autour des deux trous, des polygones pendant une
   image ou deux au cœur de la fenêtre (le maillage n'a que les trous pour sommets : les cordes sont longues). Un
   premier essai, tout en cordes sur toute la fenêtre, était bien plus anguleux.
+- Congés (demande de l'utilisateur) : les morceaux en cordes consécutifs d'un lacet forment une suite tracée comme
+  une ligne brisée dont les coudes sur les pieds sont arrondis (`arrondit`, comme `Film.polyligne`) ; les deux bouts
+  de la suite, où elle rejoint un morceau courbe, ne bougent pas. Les images du cœur de la fenêtre n'ont plus de
+  polygones, seulement de légers coins aux bouts des suites. Toujours 0 croisement sur les deux tresses (les congés
+  ne sont pas garantis, vérifiés numériquement).

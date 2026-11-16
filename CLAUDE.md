@@ -304,8 +304,8 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     - `raccord='triangulation'` (`programmes/Raccord.py`, essai du 2026-11-16) : pendant la fenêtre, les deux dessins
       sont transportés sur une triangulation mobile (trous, clou, bord convexe hors de l'image), les pieds glissent
       sur les arêtes ; cordes seulement dans les triangles qui touchent les trous qui tournent (ou contiennent un
-      bigone), mélange direct ailleurs. 0 croisement sur les deux tresses d'essai, au prix d'une ou deux images
-      anguleuses près des trous qui tournent. Détails dans `pistes_film_conforme.md`.
+      bigone), coudes des cordes arrondis par des congés (`arrondit`), mélange direct ailleurs. 0 croisement sur les
+      deux tresses d'essai ; près des trous qui tournent, une ou deux images en droites et arcs. Détails dans `pistes_film_conforme.md`.
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1

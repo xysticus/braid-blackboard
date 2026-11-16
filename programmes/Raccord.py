@@ -21,6 +21,7 @@ import math
 import numpy as np
 
 from Triangulation import Maillage, croix
+from tresses import deux_arcs
 
 
 def maillage_du_raccord(trous, clou, largeur, hauteur, marge=40, par_cote=6):
@@ -177,6 +178,25 @@ def tend_en_cordes(points, coupes, poids):
     return np.concatenate([morceaux[0]] + [m[1:] for m in morceaux[1:]])
 
 
+def arrondit(points, part=0.5):
+    """La ligne brisée des points, chaque coude arrondi par un congé : arc de cercle tangent aux deux segments, qui en
+    prend au plus `part` du plus court (comme `Film.polyligne` du film triangulé). Les deux bouts ne bougent pas."""
+    dessin = [points[0]]
+    for a, v, b in zip(points[:-2], points[1:-1], points[2:]):
+        la, lb = math.hypot(*(a - v)), math.hypot(*(b - v))
+        if la < 1e-9 or lb < 1e-9:
+            dessin.append(v)
+            continue
+        ua, ub = (a - v) / la, (b - v) / lb
+        if ua @ ub < -1 + 1e-9: # pas de coude
+            dessin.append(v)
+            continue
+        c = part * min(la, lb)
+        dessin.extend(deux_arcs(v + c * ua, -ua, v + c * ub, ub))
+    dessin.append(points[-1])
+    return np.array(dessin)
+
+
 class RaccordTriangule:
     """Raccord d'une lettre entre les temps s_a (dessin de départ, réduction r_a) et s_b (dessin d'arrivée, r_b).
     positions(s, r) : positions à l'écran des trous physiques au temps s avec la réduction r. temps : les temps des
@@ -226,7 +246,8 @@ class RaccordTriangule:
         - Avant phases[0] : le dessin de départ transporté ; après phases[3] : celui d'arrivée.
         - Les pieds glissent sur leurs arêtes entre phases[1] et phases[2] (l'ordre sur chaque arête est gardé).
         - Les morceaux d'un triangle qui touche un des deux trous qui tournent, ou qui contient un bigone, passent
-          tous par la corde (le choix se fait par triangle : une corde et une courbe du même triangle se croiseraient) : il se tend de phases[0] à phases[1], reste une corde pendant le glissement (deux cordes d'un même
+          tous par la corde (le choix se fait par triangle : une corde et une courbe du même triangle se croiseraient),
+          les coudes des cordes consécutives arrondis par des congés (`arrondit`) : il se tend de phases[0] à phases[1], reste une corde pendant le glissement (deux cordes d'un même
           triangle dont les pieds ne s'entrelacent pas ne se croisent pas), et se courbe de phases[2] à phases[3].
         - Les morceaux des autres triangles, loin du demi-tour, passent directement du morceau de départ à celui d'arrivée pendant
           le glissement : le mélange de deux courbes d'un triangle reste dans ce triangle (il est convexe).
@@ -259,23 +280,36 @@ class RaccordTriangule:
                 morceaux.append((triangle, reechantillonne(morceau(D, bornes_d[m], bornes_d[m + 1]), 60),
                                  reechantillonne(morceau(A, bornes_a[m], bornes_a[m + 1]), 60)))
             decoupes.append(morceaux)
-        # second passage : les formes
+        # second passage : les formes. Les morceaux en cordes consécutifs d'un lacet forment une suite, tracée comme
+        # une ligne brisée dont les coudes (sur les pieds) sont arrondis par des congés ; ses deux bouts, où elle
+        # rejoint des morceaux courbes, ne bougent pas
         resultat = []
         for l, morceaux in enumerate(decoupes):
             if morceaux is None:
                 resultat.append(self.depart[j][l] if poids < 0.5 else self.arrivee[j][l])
                 continue
-            formes = []
-            for triangle, pd, pa in morceaux:
-                debut = (1 - glisse) * pd[0] + glisse * pa[0] # les pieds, à leur place glissée
-                fin = (1 - glisse) * pd[-1] + glisse * pa[-1]
-                if triangle in en_cordes:
-                    corde = np.linspace(debut, fin, 60)
-                    if glisse == 0: forme = (1 - tension) * pd + tension * corde
-                    elif glisse == 1: forme = (1 - courbe) * corde + courbe * pa
-                    else: forme = corde
+            formes, m = [], 0
+            while m < len(morceaux):
+                triangle, pd, pa = morceaux[m]
+                if triangle not in en_cordes:
+                    formes.append((1 - glisse) * pd + glisse * pa)
+                    m += 1
+                    continue
+                suite = []
+                while m < len(morceaux) and morceaux[m][0] in en_cordes:
+                    suite.append(morceaux[m])
+                    m += 1
+                pieds = [(1 - glisse) * suite[0][1][0] + glisse * suite[0][2][0]] + \
+                        [(1 - glisse) * pd[-1] + glisse * pa[-1] for _, pd, pa in suite]
+                cordes = arrondit(np.array(pieds))
+                if 0 < glisse < 1: forme = cordes
                 else:
-                    forme = (1 - glisse) * pd + glisse * pa
+                    courbes = np.concatenate([suite[0][1 if glisse == 0 else 2]] +
+                                             [x[1 if glisse == 0 else 2][1:] for x in suite[1:]])
+                    n = max(len(courbes), len(cordes))
+                    c, r = reechantillonne(courbes, n), reechantillonne(cordes, n)
+                    poids_cordes = tension if glisse == 0 else 1 - courbe
+                    forme = (1 - poids_cordes) * c + poids_cordes * r
                 formes.append(forme)
             resultat.append(np.concatenate([formes[0]] + [x[1:] for x in formes[1:]]))
         return resultat, anomalies
