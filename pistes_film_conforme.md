@@ -97,3 +97,39 @@ Il reste à régler :
 **Difficultés.** Beaucoup de cas particuliers à traiter à la main (bigones, entrée et sortie de la fenêtre), mais
 avec des outils qu'on a déjà (`Carte`, `traversees`, `sans_bigones`), et sans nouveau calcul lourd. C'est la piste
 la plus courte pour supprimer les défauts actuels ; la piste 1 est la plus propre.
+
+## Idées à creuser (2026-11-16)
+
+### Changer d'axe, au moins localement : l'axe des deux trous qui tournent
+
+Dans le repère qui tourne avec A et B, le bloc (les trous A, B et les arcs dont les deux pieds sont sur A–B) ne
+bouge pas. L'axe naturel près du bloc est donc la droite qui porte A–B, et loin du bloc c'est l'axe horizontal.
+Avec cet axe local, les arcs du bloc seraient de vrais demi-cercles sur A–B, qui tournent d'un bloc. Aujourd'hui,
+la carte conforme les déforme un peu, parce qu'elle part de la ligne brisée entière.
+
+Ça a un sens, mais seulement par morceaux. Une représentation conforme égale à une rotation sur un ouvert est
+cette rotation partout (prolongement analytique) : on ne peut pas avoir une seule carte qui tourne près du bloc et
+ne bouge pas au loin. Il faut donc découper le plan en régions (un disque autour du bloc où l'on tourne, le reste
+où l'on garde l'axe horizontal) et raccorder sur le bord. C'est la couronne du film simultané, mais avec des
+pieds posés sur le bord au lieu d'une torsion libre. Ça rejoint la piste 2 (redessiner par régions), avec un
+découpage différent : le disque du bloc au lieu des triangles du quadrilatère.
+
+### Garder en vrais demi-cercles les brins que le mouvement ne concerne pas
+
+Les arcs dont les deux pieds sont loin du bloc, et qui ne l'entourent pas, n'ont aucune raison de bouger. La carte
+conforme est globale : loin de la ligne brisée elle tend vers une translation, mais elle les déforme quand même un
+peu et change leur espacement. Les tracer en demi-cercles exacts, fixes, garderait les images clés intactes là où
+il ne se passe rien, et laisserait plus de place au reste.
+
+Ça a un sens, avec une précaution. Les arcs qui entourent le bloc (au-dessus de A et B à la fois) sont concernés :
+ils doivent s'écarter quand un trou monte. Ceux qui restent sont à l'abri : un arc dont les pieds sont tous deux à
+gauche de L (ou à droite de R) et qui n'entoure pas L (ou R). Mais un demi-cercle exact et un arc conforme voisin
+ne sont plus garantis disjoints, puisqu'ils ne viennent pas de la même carte. Il faudrait soit vérifier que la
+carte est assez proche de la translation à cet endroit, soit (plus propre) découper là aussi le plan : une région
+« immobile » où l'on dessine des demi-cercles, et la carte conforme seulement dans la région qui contient le bloc,
+avec son bord comme nouvel axe.
+
+Les deux idées vont dans le même sens : remplacer une carte unique pour tout le plan par un découpage en régions,
+chacune avec son axe (horizontal immobile, horizontal plié, ou celui de A–B qui tourne), et des pieds posés sur
+les bords des régions. Les arcs restent sans croisement dans chaque région par la règle des demi-cercles. Il reste
+à faire bouger les bords des régions, et les pieds dessus, sans jamais changer l'ordre des pieds.
