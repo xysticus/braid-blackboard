@@ -369,8 +369,13 @@ trous voyageurs, ils seraient dans le disque d'un demi-tour et l'on calculerait 
   tension euclidienne, avec son écart minimal, reste la bonne pour les tresses chargées ; les géodésiques ne valent
   que pour les tresses légères.
 
-**À faire (idée de l'utilisateur)** : refaire le bouquet avec le diagramme de courbes (qui donne beaucoup de formes) ;
-le bouquet actuel doit son existence au clou (les lacets qui en partent font les tiges).
+**Bouquet en diagramme de courbes (idée de l'utilisateur, fait)** : `Bouquet.PousseDiagramme`, film
+`imgs/bouquet_diagramme.mp4`. Plus de clou : la graine est l'axe du diagramme, un rang « point au sol, trous de la
+plante 1, point au sol, trous de la plante 2, …, point au sol » ; les arcs sont les segments entre points consécutifs,
+emportés par la chorégraphie de `Pousse`. Les arcs qui touchent le sol font les tiges (deux par plante, depuis ses
+sépales du bas) ; dans une fleur, les arcs vont d'un sépale à un pétale : chaque pétale est la pointe d'un V entre deux
+sépales, et le tour des pétales dans la cage enroule ces V en couches (pétales striés) ; dans une feuille, le limbe est
+l'arc entre ses deux trous. Calcul en 2 s (7 s pour le film), contre 35 s pour le bouquet en lacets.
 
 **Trous fixes rapprochés** (`FilmArcs(..., ecart_fixes=30)`, film `imgs/film_rubans_charge.mp4`) : groupés au milieu du
 bas, on se rapproche du clou. Trop serrés (14 px), les arêtes qui descendent d'un trou voyageur vers les trous fixes

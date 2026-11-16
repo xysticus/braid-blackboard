@@ -271,6 +271,10 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     constante (une variation d'une image à l'autre faisait clignoter). Essai abandonné à la demande de l'utilisateur (copie hors dépôt) : une calanque (cailloux de
     calcaire faits de lacets enroulés, sable, pluie, bulbe d'où sortent les plantes), traits épais, fond noir. `insere_sommet` (sommet ajouté dans un triangle, cordes
     recoupées) et l'anneau de satellites ne servent plus (ils arrondissaient les corolles de la première version).
+    **Bouquet en diagramme de courbes** (`PousseDiagramme`, `film_bouquet(..., classe=PousseDiagramme)` →
+    `imgs/bouquet_diagramme.mp4`) : la graine est l'axe d'un diagramme de courbes, points au sol entre les plantes ;
+    arcs du sol aux sépales du bas (tiges), sépale-pétale-sépale dans les fleurs (pétales en V, striés par le
+    bourgeon), limbe des feuilles. Voir `pistes_film_conforme.md`.
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
     clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
 

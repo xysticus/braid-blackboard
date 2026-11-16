@@ -278,6 +278,119 @@ class Pousse(Film):
         return surface
 
 
+class PousseDiagramme(Pousse):
+    """Le bouquet en diagramme de courbes : plus de clou ni de lacets, mais des arcs d'un trou à l'autre.
+    La graine est l'axe du diagramme : un rang de points, point fixe au sol, trous de la plante 1, point au sol, trous de
+    la plante 2, ..., point au sol ; les arcs sont les segments entre points consécutifs de ce rang, et la chorégraphie
+    des plantes (celle de `Pousse`) les emporte. Les arcs qui touchent un point au sol font les tiges (deux par plante,
+    depuis ses sépales du bas) ; dans une fleur, les arcs vont alternativement d'un sépale à un pétale : chaque pétale
+    est la pointe d'un V entre deux sépales ; dans une feuille, l'arc entre ses deux trous est le limbe."""
+
+    def __init__(self, groupes, hauteur=1080, largeur=810, ecart=None, taux=0.12):
+        from Raccord import maillage_du_raccord
+        from Arcs import coupe_arc
+        self.groupes = groupes
+        for g in groupes: g['trous'] = 2 if g['sorte'] == 'feuille' else 2 * g['petales'] + 1
+        nb = sum(g['trous'] for g in groupes)
+        self.hauteur, self.largeur = hauteur, largeur
+        self.e = e = largeur / 800
+        self.ecart, self.taux = ecart or 3 * e, taux
+        self.y_sol = hauteur # hauteurs des têtes comptées depuis le bas de l'image
+        self.y_graine = hauteur - 40 * e
+        self.premier = np.cumsum([0] + [g['trous'] for g in groupes])
+        # le rang de la graine : un point au sol avant chaque plante et un à la fin
+        rang = [] # ('sol', indice) ou ('trou', indice dans la numérotation des trous)
+        for n, g in enumerate(groupes):
+            rang.append(('sol', n))
+            rang += [('trou', k) for k in range(self.premier[n], self.premier[n + 1])]
+        rang.append(('sol', len(groupes)))
+        pas_rang = 10 * e
+        x0 = largeur / 2 - (len(rang) - 1) / 2 * pas_rang
+        position = {r: (x0 + i * pas_rang, self.y_graine) for i, r in enumerate(rang)}
+        self.graine = np.array([position[('trou', k)] for k in range(nb)])
+        sols = [position[('sol', n)] for n in range(len(groupes) + 1)]
+        self.maillage, indices, _ = maillage_du_raccord(list(self.graine) + sols, None, largeur, hauteur)
+        self.trous, self.sols = indices[:nb], indices[nb:]
+        sommet = {r: (self.trous[r[1]] if r[0] == 'trou' else self.sols[r[1]]) for r in rang}
+        # arcs de départ : segments du rang, un peu bombés vers le haut pour la découpe (la tension les redresse)
+        self.courbes, self.sortes = [], []
+        for r1, r2 in zip(rang[:-1], rang[1:]):
+            a, b = sommet[r1], sommet[r2]
+            p, q = self.maillage.pos[a], self.maillage.pos[b]
+            u = np.linspace(0, 1, 100)
+            points = p + u[:, None] * (q - p) - np.column_stack((0 * u, 3 * e * np.sin(np.pi * u)))
+            self.courbes.append(coupe_arc(points, self.maillage, a, b))
+            if 'sol' in (r1[0], r2[0]):
+                trou = r1 if r1[0] == 'trou' else r2
+                n = int(np.searchsorted(self.premier, trou[1], side='right') - 1)
+                self.sortes.append(('tige', n))
+            else:
+                n = int(np.searchsorted(self.premier, r1[1], side='right') - 1)
+                self.sortes.append(('plante', n))
+        self.dispositions, self.etape, self.y_axe = [(None, self.ecart)], 0, -math.inf # pas de clou
+        for _ in range(60): self.tend(0.3, self.ecart, portee_sinus=3 * self.ecart)
+
+    def deplace(self, sommets, cibles, pas_max, taux=None):
+        depart = self.maillage.pos[sommets].copy()
+        n = max(1, math.ceil(np.hypot(*(np.asarray(cibles) - depart).T).max() / pas_max))
+        for s in range(1, n + 1):
+            self.maillage.pos[sommets] = depart + (cibles - depart) * s / n
+            assert self.maillage.valide(), "triangle retourné : diminuer pas_max"
+            self.maillage.delaunay(self.courbes)
+            self.tend(self.taux if taux is None else taux, self.ecart, portee_sinus=3 * self.ecart)
+
+    def dessine(self, t, lumiere=1.0):
+        """Image au temps t : fond bleu clair ; tiges et feuilles vertes ; dans le secteur de chaque fleur, les arcs
+        blancs au centre puis de la couleur de la fleur (à l'éclosion)."""
+        l, h, e = self.largeur, self.hauteur, self.e
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, l, h)
+        ctx = cairo.Context(surface)
+        fond = cairo.LinearGradient(0, 0, 0, h)
+        fond.add_color_stop_rgb(0, *(np.array((0.62, 0.80, 0.95)) * lumiere))
+        fond.add_color_stop_rgb(1, *(np.array((0.82, 0.91, 0.98)) * lumiere))
+        ctx.set_source(fond)
+        ctx.paint()
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+        ctx.set_line_width(2.2 * e)
+        vert, blanc = np.array((0.26, 0.56, 0.24)), np.array((1.0, 1.0, 1.0))
+        def trait(points):
+            ctx.move_to(*points[0])
+            for p in points[1:]: ctx.line_to(*p)
+            ctx.stroke()
+        for k, points in enumerate(self.polylignes()):
+            sorte, n = self.sortes[k]
+            g = self.groupes[n]
+            if sorte == 'tige' or g['sorte'] == 'feuille':
+                ctx.set_source_rgb(*vert)
+                trait(points)
+                continue
+            ctx.save() # hors du secteur de la fleur : vert
+            ctx.rectangle(0, 0, l, h)
+            self.secteur_de_fleur(ctx, n, t)
+            ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+            ctx.clip()
+            ctx.set_source_rgb(*vert)
+            trait(points)
+            ctx.restore()
+            eclosion = self.phases(g, t)[2]
+            centre, rf = self.centre(n, t), g['rayon_fleur'] * e
+            interieur = (1 - eclosion) * vert + eclosion * blanc
+            exterieur = (1 - eclosion) * vert + eclosion * np.array(g['couleur'])
+            motif = cairo.RadialGradient(*centre, 0, *centre, 2.6 * rf)
+            motif.add_color_stop_rgb(0, *interieur)
+            motif.add_color_stop_rgb(0.21, *interieur)
+            motif.add_color_stop_rgb(0.42, *exterieur)
+            motif.add_color_stop_rgb(1, *exterieur)
+            ctx.save()
+            self.secteur_de_fleur(ctx, n, t)
+            ctx.clip()
+            ctx.set_source(motif)
+            trait(points)
+            ctx.restore()
+        return surface
+
+
 def fleur(tete, depart, couleur, sens=1, nutation=18, **reglages):
     r = dict(sorte='fleur', tete=tete, depart=depart, couleur=couleur, sens=sens, nutation=nutation, petales=4,
              duree_montee=5.0, duree_bourgeon=2.0, duree_eclosion=3.5, tours=1, rayon_bourgeon=20, rayon_sepales=52,
@@ -304,10 +417,11 @@ BOUQUET = [
     feuille((700, 120), 1.8, math.radians(30)),
 ]
 
-def film_bouquet(fichier, groupes=BOUQUET, duree=13.5, images_par_seconde=25, saccade=2, pause=2.0, **options):
+def film_bouquet(fichier, groupes=BOUQUET, duree=13.5, images_par_seconde=25, saccade=2, pause=2.0, classe=None,
+                 **options):
     '''Film MP4 du bouquet. saccade : chaque image calculée est montrée ce nombre de fois (aspect image par image des
     films de plantes qui poussent) ; lumière constante (une variation d'une image à l'autre faisait clignoter).'''
-    pousse = Pousse(groupes, **options)
+    pousse = (classe or Pousse)(groupes, **options)
     l, h = pousse.largeur, pousse.hauteur
     ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
                                '-s', f'{l}x{h}', '-r', str(images_par_seconde), '-i', '-', *ENCODEUR, fichier],
@@ -340,4 +454,6 @@ def image_bouquet(fichier, largeur_mm=152, hauteur_mm=205, dpi=300, t=13.5, grou
 
 
 if __name__ == "__main__":
-    film_bouquet('./imgs/bouquet.mp4')
+    import copy
+    film_bouquet('./imgs/bouquet.mp4', groupes=copy.deepcopy(BOUQUET))
+    film_bouquet('./imgs/bouquet_diagramme.mp4', groupes=copy.deepcopy(BOUQUET), classe=PousseDiagramme)
