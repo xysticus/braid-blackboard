@@ -285,7 +285,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       hors des demi-cercles, vérifié par `assert`). Les images clés de ce film ont donc des descentes en arcs.
       Essais écartés : descentes verticales dans le demi-plan (les pieds près d'un coin convexe ont des antécédents
       serrés, leurs descentes restaient collées jusqu'au clou) ; glissement en S sous les arcs (crans).
-    - Raccord autour de la verticale (`fenetre` = 0,3 du mouvement) : les cinq segments L–A, A–B, B–R, L–B, A–R ont
+    - Raccord autour de la verticale (`fenetre` = 0,5 du mouvement depuis le raccord par triangulation ; 0,3 avant) : les cinq segments L–A, A–B, B–R, L–B, A–R ont
       leurs sommets aux trous, donc la suite minimale des traversées d'un lacet est la même dans les deux dessins.
       `traversees` + `sans_bigones` (deux traversées successives d'une même arête bordent un bigone vide : on les
       annule) donnent les morceaux correspondants, mélangés un à un (`raccorde`). Un bigone d'un dessin est apparié
@@ -307,7 +307,8 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       sont transportés sur une triangulation mobile (trous, clou, bord convexe hors de l'image), les pieds glissent
       sur les arêtes ; cordes seulement dans les triangles qui touchent les trous qui tournent (ou contiennent un
       bigone), coudes des cordes arrondis par des congés (`arrondit`), jonctions avec les arcs conformes tangentes (paire d'arcs),
-      mélange direct ailleurs. 0 croisement sur les
+      mélange direct ailleurs. Fenêtre de 0,5 et phases étalées sur toute la fenêtre (le raccord serré au milieu
+      donnait une sensation râpeuse) ; mélanges triangle par triangle (sinon un lacet passait par-dessus un trou). 0 croisement sur les
       deux tresses d'essai ; près des trous qui tournent, une ou deux images en droites et arcs. Détails dans `pistes_film_conforme.md`.
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc

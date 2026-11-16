@@ -417,7 +417,7 @@ def nb_croisements(lignes, clou, rayon=12):
     return total
 
 
-def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.3,
+def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.5,
                   verifie=False, raccord='triangulation', construction=False, **options):
     """Film (GIF animé, ou MP4 si fichier finit par .mp4, écrit par ffmpeg à 25 images/s) : pour chaque lettre,
     l'état k sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la verticale pendant la fenêtre (part du

@@ -119,28 +119,24 @@ def coupe(points, triangles, pos, clou, brutes=False):
     donc les traversées des arêtes du clou en tête et en queue de la suite ne comptent pas, on les retire (le lacet
     rejoint alors le clou par une corde dans un triangle de l'étoile du clou)."""
     aretes = {tuple(sorted(e)) for t in triangles for e in ((a, b) for a in t for b in t if a < b)}
-    p, q = points[:-1], points[1:]
-    r = q - p
     trouves = []
     for (u, v) in aretes:
         s = pos[v] - pos[u]
-        den = r[:, 0] * s[1] - r[:, 1] * s[0]
-        ok = np.abs(den) > 1e-12
-        den = np.where(ok, den, 1)
-        du = pos[u] - p
-        t = (du[:, 0] * s[1] - du[:, 1] * s[0]) / den
-        w = (du[:, 0] * r[:, 1] - du[:, 1] * r[:, 0]) / den
-        sel = ok & (t >= 0) & (t < 1) & (w > 0) & (w < 1)
-        if clou in (u, v): sel[0] = sel[-1] = False
-        for k in np.nonzero(sel)[0]: trouves.append((k + t[k], (u, v), w[k]))
+        longueur = math.hypot(*s)
+        # côté de chaque point par rapport à la droite de l'arête ; un point posé sur l'arête (pied d'un arc, à
+        # l'arrondi près) compte toujours du même côté : une traversée est un changement de côté, jamais doublée ni
+        # manquée par un pied posé exactement sur l'arête
+        cote = (s[0] * (points[:, 1] - pos[u][1]) - s[1] * (points[:, 0] - pos[u][0])) / longueur
+        dessus = cote >= -1e-7
+        k = np.nonzero(dessus[:-1] != dessus[1:])[0]
+        if len(k) == 0: continue
+        t = cote[k] / (cote[k] - cote[k + 1])
+        X = points[k] + t[:, None] * (points[k + 1] - points[k])
+        w = ((X - pos[u]) @ s) / (longueur * longueur)
+        for kk, tt, ww in zip(k, t, w):
+            if 1e-9 < ww < 1 - 1e-9: trouves.append((kk + tt, (u, v), ww))
     trouves.sort(key=lambda x: x[0])
-    # un pied posé exactement sur une arête peut être vu deux fois : fin d'un segment et début du suivant, ou deux
-    # points confondus de la polyligne (raccord de deux arcs) ; on le reconnaît à sa place sur l'arête
-    propres = []
-    for x in trouves:
-        if propres and propres[-1][1] == x[1] and abs(propres[-1][2] - x[2]) < 1e-7 and x[0] - propres[-1][0] < 2.5:
-            continue
-        propres.append(x)
+    propres = trouves
     pile = []
     for x in propres:
         if pile and pile[-1][1] == x[1]: pile.pop()
@@ -178,19 +174,25 @@ def tend_en_cordes(points, coupes, poids):
     return np.concatenate([morceaux[0]] + [m[1:] for m in morceaux[1:]])
 
 
-def arrondit(points, part=0.5, depart=None, arrivee=None):
+def arrondit(points, part=0.5, depart=None, arrivee=None, trous=None):
     """La ligne brisée des points, chaque coude arrondi par un congé : arc de cercle tangent aux deux segments, qui en
     prend au plus `part` du plus court (comme `Film.polyligne` du film triangulé). Les deux bouts ne bougent pas.
     depart (arrivee) : direction unitaire de la courbe qui arrive au premier point (qui part du dernier) ; le début
     du premier segment (la fin du dernier) est alors remplacé par une paire d'arcs tangente à cette courbe et au
-    segment, sur au plus `part` du segment : plus de coin à la jonction."""
+    segment, sur au plus `part` du segment : plus de coin à la jonction. trous : chaque arrondi (congé ou paire
+    d'arcs) reste dans un disque centré sur son coude de rayon 0,9 × la distance du coude au trou le plus proche :
+    il ne passe jamais de l'autre côté d'un trou, et la règle étant continue, deux brins voisins enroulés autour du
+    même trou ont des arrondis voisins, emboîtés."""
     points = [np.asarray(p, dtype=float) for p in points]
+    trous = np.zeros((0, 2)) if trous is None else np.asarray(trous, dtype=float)
+    def rayon_libre(v): return 0.9 * np.hypot(*(trous - v).T).min() if len(trous) else math.inf
     dessin = [points[0]]
     if depart is not None and len(points) > 1:
         corde = points[1] - points[0]
         lg = math.hypot(*corde)
         if lg > 1e-9 and depart @ (corde / lg) < 1 - 1e-9:
-            dessin = list(deux_arcs(points[0], depart, points[0] + part * corde, corde / lg))
+            c = min(part * lg, rayon_libre(points[0]) / 2) # une paire d'arcs ne sort pas d'un disque de rayon ~ 2c
+            dessin = list(deux_arcs(points[0], depart, points[0] + c * corde / lg, corde / lg))
     for a, v, b in zip(points[:-2], points[1:-1], points[2:]):
         la, lb = math.hypot(*(a - v)), math.hypot(*(b - v))
         if la < 1e-9 or lb < 1e-9:
@@ -200,16 +202,41 @@ def arrondit(points, part=0.5, depart=None, arrivee=None):
         if ua @ ub < -1 + 1e-9: # pas de coude
             dessin.append(v)
             continue
-        c = part * min(la, lb)
+        c = min(part * min(la, lb), rayon_libre(v))
         dessin.extend(deux_arcs(v + c * ua, -ua, v + c * ub, ub))
     if arrivee is not None and len(points) > 1:
         corde = points[-1] - points[-2]
         lg = math.hypot(*corde)
         if lg > 1e-9 and arrivee @ (corde / lg) < 1 - 1e-9:
-            dessin.extend(deux_arcs(points[-1] - part * corde, corde / lg, points[-1], arrivee))
+            c = min(part * lg, rayon_libre(points[-1]) / 2)
+            dessin.extend(deux_arcs(points[-1] - c * corde / lg, corde / lg, points[-1], arrivee))
             return np.array(dessin)
     dessin.append(points[-1])
     return np.array(dessin)
+
+
+def decoupe_aux_aretes(points, aretes, pos):
+    """Coupe la polyligne là où elle traverse successivement les arêtes données (une traversée par arête, dans
+    l'ordre) ; renvoie les morceaux (un de plus que d'arêtes), ou None si une traversée manque."""
+    morceaux, debut = [], 0.0
+    for (u, v) in aretes:
+        s = pos[v] - pos[u]
+        cote = s[0] * (points[:, 1] - pos[u][1]) - s[1] * (points[:, 0] - pos[u][0])
+        dessus = cote >= 0
+        trouve = None
+        for k in range(int(debut), len(points) - 1):
+            if dessus[k] != dessus[k + 1]:
+                t = cote[k] / (cote[k] - cote[k + 1])
+                X = points[k] + t * (points[k + 1] - points[k])
+                w = ((X - pos[u]) @ s) / (s @ s)
+                if 0 < w < 1 and k + t > debut:
+                    trouve = k + t
+                    break
+        if trouve is None: return None
+        morceaux.append(morceau(points, debut, trouve))
+        debut = trouve
+    morceaux.append(morceau(points, debut, len(points) - 1.0))
+    return morceaux
 
 
 class RaccordTriangule:
@@ -220,7 +247,7 @@ class RaccordTriangule:
     arcs (voir `lignes`)."""
 
     def __init__(self, positions, clou, largeur, hauteur, s_a, r_a, depart, s_b, r_b, arrivee, temps, tournants,
-                 sous_pas=8, phases=(0.3, 0.42, 0.58, 0.7)):
+                 sous_pas=8, phases=(0.0, 0.35, 0.65, 1.0)):
         self.clou_ecran = np.asarray(clou, dtype=float)
         def reduction(s): return r_a + (r_b - r_a) * (s - s_a) / (s_b - s_a)
         # tous les temps du transport : ceux des images, et des sous-pas entre eux
@@ -293,7 +320,8 @@ class RaccordTriangule:
                 # morceaux sont alors traités de la même façon (une corde et une courbe du même triangle se croiseraient)
                 if bigone or triangle & self.tournants: en_cordes.add(triangle)
                 morceaux.append((triangle, reechantillonne(morceau(D, bornes_d[m], bornes_d[m + 1]), 60),
-                                 reechantillonne(morceau(A, bornes_a[m], bornes_a[m + 1]), 60)))
+                                 reechantillonne(morceau(A, bornes_a[m], bornes_a[m + 1]), 60),
+                                 cd[m][1] if m < len(cd) else None)) # arête du pied de fin du morceau
             decoupes.append(morceaux)
         # second passage : les formes. Les morceaux en cordes consécutifs d'un lacet forment une suite, tracée comme
         # une ligne brisée dont les coudes (sur les pieds) sont arrondis par des congés ; ses deux bouts, où elle
@@ -310,7 +338,7 @@ class RaccordTriangule:
                     d = pts[-1] - pts[k]
                     if math.hypot(*d) > 1e-6: return (d / math.hypot(*d)) * (1 if not au_debut else -1)
                 return None
-            courbes = {m: (1 - glisse) * pd + glisse * pa for m, (triangle, pd, pa) in enumerate(morceaux)
+            courbes = {m: (1 - glisse) * pd + glisse * pa for m, (triangle, pd, pa, _) in enumerate(morceaux)
                        if triangle not in en_cordes}
             formes, m = [], 0
             while m < len(morceaux):
@@ -322,19 +350,27 @@ class RaccordTriangule:
                 while m < len(morceaux) and m not in courbes: m += 1
                 suite = morceaux[debut:m]
                 pieds = [(1 - glisse) * suite[0][1][0] + glisse * suite[0][2][0]] + \
-                        [(1 - glisse) * pd[-1] + glisse * pa[-1] for _, pd, pa in suite]
+                        [(1 - glisse) * pd[-1] + glisse * pa[-1] for _, pd, pa, _ in suite]
                 # jonctions avec les morceaux courbes voisins : leurs tangentes aux pieds
                 avant = tangente(courbes[debut - 1], False) if debut - 1 in courbes else None
                 apres = tangente(courbes[m], True) if m in courbes else None
-                cordes = arrondit(np.array(pieds), depart=avant, arrivee=apres)
+                cordes = arrondit(np.array(pieds), depart=avant, arrivee=apres, trous=pos[self.i_trous])
                 if 0 < glisse < 1: forme = cordes
                 else:
-                    vraies = np.concatenate([suite[0][1 if glisse == 0 else 2]] +
-                                            [x[1 if glisse == 0 else 2][1:] for x in suite[1:]])
-                    n = max(len(vraies), len(cordes))
-                    c, r = reechantillonne(vraies, n), reechantillonne(cordes, n)
+                    # mélange triangle par triangle : les cordes arrondies sont coupées là où elles traversent les
+                    # arêtes des pieds, et chaque morceau est mélangé avec le morceau du même triangle ; le mélange de
+                    # deux courbes d'un triangle reste dans ce triangle, il ne passe jamais par-dessus un trou (un
+                    # mélange d'un seul tenant le long de la suite le pouvait)
+                    q = 1 if glisse == 0 else 2
                     poids_cordes = tension if glisse == 0 else 1 - courbe
-                    forme = (1 - poids_cordes) * c + poids_cordes * r
+                    parts = decoupe_aux_aretes(cordes, [x[3] for x in suite[:-1]], pos)
+                    if parts is None: # repli : cordes droites, sans arrondi
+                        parts = [np.array((x[q][0], x[q][-1])) for x in suite]
+                    melanges = []
+                    for x, r in zip(suite, parts):
+                        n = max(len(x[q]), len(r))
+                        melanges.append((1 - poids_cordes) * reechantillonne(x[q], n) + poids_cordes * reechantillonne(r, n))
+                    forme = np.concatenate([melanges[0]] + [y[1:] for y in melanges[1:]])
                 formes.append(forme)
             resultat.append(np.concatenate([formes[0]] + [x[1:] for x in formes[1:]]))
         return resultat, anomalies

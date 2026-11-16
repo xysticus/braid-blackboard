@@ -228,3 +228,23 @@ demi-droite extérieure (à gauche de L ou à droite de R) et les demi-cercles e
 qui passent près du bloc, là où les brins ne sont espacés que de quelques pixels. Conclusion : pas la peine. Loin du
 bloc, la carte conforme donne déjà des demi-cercles à l'œil, et forcer les demi-cercles exacts là où elle s'en écarte
 risquerait des croisements.
+
+### Adoucir le raccord (2026-11-16)
+
+La sensation râpeuse venait de phases trop courtes : la fenêtre (30 % du mouvement) ne durait qu'une dizaine
+d'images, et la mise en cordes resserrée au milieu en prenait à peine plus d'une. Fenêtre portée à 50 %, phases
+étalées sur toute la fenêtre (tension 0 → 0,35, glissement 0,35 → 0,65, courbure 0,65 → 1) : chaque changement de
+forme dure 4 ou 5 images. Trois corrections pour garder 0 anomalie :
+
+- traversées : un pied posé sur une arête était, selon l'arrondi du transport (plus long), compté dans un dessin et
+  manqué dans l'autre ; chaque point est maintenant classé d'un côté de l'arête (un point sur l'arête compte toujours
+  du même côté), une traversée est un changement de côté ;
+- arrondis : un congé (ou une paire d'arcs de jonction) reste dans un disque centré sur son coude de rayon 0,9 × la
+  distance au trou le plus proche ; règle continue, donc arrondis voisins emboîtés (un resserrement au cas par cas
+  faisait se croiser deux brins voisins) ;
+- mélange triangle par triangle : mélanger d'un seul tenant une suite de cordes arrondies avec les arcs d'arrivée
+  faisait passer le lacet par-dessus un trou autour duquel il s'enroule (mots faux), même si les deux courbes étaient
+  du bon côté ; les cordes arrondies sont coupées là où elles traversent les arêtes des pieds (`decoupe_aux_aretes`),
+  et chaque morceau est mélangé avec celui du même triangle, convexe, dont les trous sont les sommets.
+
+0 anomalie (mots, croisements) sur les deux tresses d'essai.
