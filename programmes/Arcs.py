@@ -131,7 +131,7 @@ class FilmArcs(Film):
             self.geodesiques = Geodesiques(self)
             self.geodesiques.tend(tours=60)
         else:
-            for _ in range(100): self.tend(0.3, ecart)
+            for _ in range(100): self.tend(0.3, ecart, portee_sinus=3 * ecart)
 
     def places_au_temps(self, T):
         """Abscisses des n places de l'axe au temps T (T = k : image clé k)."""
@@ -159,7 +159,8 @@ class FilmArcs(Film):
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
             if self.geodesiques: self.geodesiques.tend(tours=2, precision=1e-5)
-            else: self.tend(taux, self.ecart)
+            else: self.tend(taux, self.ecart, portee_sinus=3 * self.ecart) # sinus mesuré à distance : pas de marches dans
+                # les éventails de triangles minces (bossage)
             if rendu and pas % sous_pas == 0: rendu(self)
         self.places[i], self.places[i + 1] = b, a
         self.numero += 1
@@ -264,7 +265,7 @@ class DiagrammeCourbes(FilmArcs):
             self.geodesiques = Geodesiques(self)
             self.geodesiques.tend(tours=60)
         else:
-            for _ in range(100): self.tend(0.3, ecart)
+            for _ in range(100): self.tend(0.3, ecart, portee_sinus=3 * ecart)
 
     def mots(self):
         """Mot relu sur le ruban du premier arc (du point fixe au premier trou), qui est le lacet x_1 : la seule

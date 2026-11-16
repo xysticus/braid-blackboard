@@ -382,5 +382,13 @@ f_n le plus à gauche, f_1 le plus près du premier trou ; l'arc de f_k à m_k p
 x_k depuis le clou (arcs de départ en demi-ellipses emboîtées sous l'axe, intervalles [f_k, m_k] emboîtés). Mots
 relus justes après chaque lettre sur six tresses, dont la tresse chargée. Rien d'accroché en bas.
 
-**À examiner (remarque de l'utilisateur)** : `imgs/rubans/film_charge.mp4`, à la fin, hémisphère sud au niveau du
-troisième trou : un petit effet de bossage disgracieux sur les brins.
+**Bossage (remarque de l'utilisateur, réglé)** : `imgs/rubans/film_charge.mp4`, à la fin, au sud du troisième trou, les
+brins faisaient des marches. Sous ce trou, les arêtes qui descendent vers les trous fixes forment un éventail de
+triangles très minces ; un brin y a ses pieds à un ou deux pixels les uns des autres. La tension espace deux brins
+voisins d'écart / sinus le long d'une arête traversée en biais, et le sinus était mesuré avec les voisins immédiats :
+direction bruitée, sinus sous-estimé, écart gonflé, chaque brin poussé un peu plus loin que le précédent. Remède :
+`Film.tend(..., portee_sinus)` mesure le sinus avec les premiers points du brin à au moins cette distance (3 × l'écart
+dans `Arcs.py`), l'alignement gardant les voisins immédiats. Essais écartés : prendre aussi pour l'alignement des
+voisins à distance (autour d'un trou où les brins s'enroulent serré, ces voisins sont de l'autre côté du trou et
+tirent les brins par-dessus : dessin emmêlé) ; arrondir le dessin par Chaikin (le défaut est dans les pieds, pas dans
+le dessin). Le film des méandres garde l'ancien comportement (option à 0 par défaut, empreinte inchangée).

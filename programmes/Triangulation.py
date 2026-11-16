@@ -264,7 +264,7 @@ class Film:
         i1, i2 = haut[0], haut[-1]
         return [(range(1, i1), passage(i1 - 1, i1)), (range(i2 + 1, len(pts) - 1), passage(i2 + 1, i2))]
 
-    def tend(self, taux, ecart, degagement=None):
+    def tend(self, taux, ecart, degagement=None, portee_sinus=0):
         '''Un pas de tension des lacets. Chaque point est tiré, d'une fraction taux du chemin, vers sa cible sur son
         arête : l'endroit où ses deux voisins sont alignés avec lui (le brin se tend). Puis, arête par arête,
         les points gardent leur ordre et restent à `ecart` pixels les uns des autres perpendiculairement aux brins
@@ -272,11 +272,16 @@ class Film:
         défaut ecart) pixels des sommets (projection d'une régression monotone bornée), moins si l'arête est trop
         courte.
         Les brins se tassent donc à écart fixe là où ils sont tirés, près des trous, et laissent du vide au-delà ;
-        l'ordre sur chaque arête ne change pas, donc aucun croisement.'''
+        l'ordre sur chaque arête ne change pas, donc aucun croisement.
+        portee_sinus : si elle est positive, le sinus de l'angle de traversée est mesuré avec les premiers points du
+        brin, de part et d'autre, à au moins `portee_sinus` pixels (l'alignement garde les voisins immédiats). Dans un
+        éventail de triangles très minces, les voisins immédiats sont à un ou deux pixels : la direction qu'ils donnent
+        est bruitée, le sinus sous-estimé, l'écart le long de l'arête gonfle et les brins font des marches.'''
         degagement = ecart if degagement is None else degagement
         pos = self.maillage.pos
         par_arete = {}
         for k, courbe in enumerate(self.courbes):
+            points = [self.maillage.position(n) for n in courbe] if portee_sinus > 0 else None
             for i, n in enumerate(courbe):
                 if n[0] != 'e': continue
                 u, v, w = n[1], n[2], n[3]
@@ -285,7 +290,15 @@ class Film:
                 den = croix(d, q - p)
                 cible = croix(p - pos[u], q - p) / den if abs(den) > 1e-9 else w
                 # sinus de l'angle sous lequel le brin traverse l'arête
-                sinus = abs(den) / max(math.hypot(*d) * math.hypot(*(q - p)), 1e-12)
+                if portee_sinus > 0:
+                    a = i - 1
+                    while a > 0 and math.hypot(*(points[a] - points[i])) < portee_sinus: a -= 1
+                    b = i + 1
+                    while b < len(courbe) - 1 and math.hypot(*(points[b] - points[i])) < portee_sinus: b += 1
+                    corde = points[b] - points[a]
+                    sinus = abs(croix(d, corde)) / max(math.hypot(*d) * math.hypot(*corde), 1e-12)
+                else:
+                    sinus = abs(den) / max(math.hypot(*d) * math.hypot(*(q - p)), 1e-12)
                 par_arete.setdefault((u, v), []).append((w + taux * (min(max(cible, 0), 1) - w), k, i, sinus))
         for (u, v), liste in par_arete.items():
             longueur = math.hypot(*(pos[v] - pos[u]))
