@@ -186,3 +186,27 @@ Ce que ça coûte :
 
 Ce qu'on y gagne : les images fautives de la tresse chargée disparaissent, avec une garantie, au prix d'un passage
 d'environ 0,3 s par lettre à l'allure du film triangulé.
+
+### Essai fait (2026-11-16) : la triangulation pendant le raccord, en cordes près des trous seulement
+
+`programmes/Raccord.py`, `film_conforme(..., raccord='triangulation')`.
+
+- Maillage : un bord convexe hors de l'image, les trous, le clou (`maillage_du_raccord`), de Delaunay, les arêtes
+  retournées entre deux pas. Transport du dessin par l'application affine par triangles (`transporte`) : une vraie
+  isotopie. Le dessin de départ est transporté vers l'avant sur la fenêtre, le dessin d'arrivée vers l'arrière ; au
+  bord de la fenêtre on retrouve exactement les dessins conformes, sans saut.
+- À chaque image, les deux dessins sont coupés par les arêtes (`coupe`), bigones annulés : mêmes suites d'arêtes,
+  pieds en correspondance. Deux pièges : le clou est le point base, pas un trou (un lacet peut tourner autour en
+  partant), donc les traversées des arêtes du clou en tête et en queue ne comptent pas ; les pieds des arcs conformes
+  sont des points doublés posés exactement sur l'axe, d'où de faux bigones si l'on ne reconnaît pas le doublon à sa
+  place sur l'arête.
+- Passage : les pieds glissent sur leurs arêtes (ordre gardé). Un triangle qui touche un des deux trous qui tournent,
+  ou qui contient un bigone, passe en cordes (tension, glissement en cordes, courbure) ; les autres triangles mélangent
+  directement leurs morceaux de départ et d'arrivée, qui y restent (triangle convexe). Le choix se fait par triangle :
+  un essai par morceau faisait croiser une corde et une courbe du même triangle (30 croisements). Phases resserrées au
+  milieu de la fenêtre (0,3 → 0,42 tension, 0,42 → 0,58 glissement, 0,58 → 0,7 courbure).
+- Résultat : 0 croisement et mots justes sur toutes les images des deux tresses d'essai (le mélange : 7 images fautives
+  sur la tresse chargée). Garanti pendant le glissement ; la tension et la courbure, et le mélange des triangles
+  lointains, sont des mélanges vérifiés numériquement. Coût visuel : autour des deux trous, des polygones pendant une
+  image ou deux au cœur de la fenêtre (le maillage n'a que les trous pour sommets : les cordes sont longues). Un
+  premier essai, tout en cordes sur toute la fenêtre, était bien plus anguleux.

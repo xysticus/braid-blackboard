@@ -39,6 +39,7 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   en arcs) : voir plus bas. `from tresses import *` ; lancé (`__main__`), il écrit ses images et ses films.
 - `programmes/Triangulation.py` : **le film actuel** (triangulation mobile, point 11 plus bas), `film_triangule`.
 - `programmes/Conforme.py` : film par représentation conforme (point 13 plus bas), `film_conforme`.
+- `programmes/Raccord.py` : raccord par triangulation mobile du film conforme (`raccord='triangulation'`).
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas.
@@ -300,6 +301,11 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       7 images à quelques croisements, au milieu du raccord des lettres 6 et 7 (seule étape sans garantie : le
       mélange ; encoches près des trous qui tournent, brins extérieurs tassés). Environ 1 min 30 pour les deux.
     - Limites : légers resserrements près des coins convexes (convergence des géodésiques).
+    - `raccord='triangulation'` (`programmes/Raccord.py`, essai du 2026-11-16) : pendant la fenêtre, les deux dessins
+      sont transportés sur une triangulation mobile (trous, clou, bord convexe hors de l'image), les pieds glissent
+      sur les arêtes ; cordes seulement dans les triangles qui touchent les trous qui tournent (ou contiennent un
+      bigone), mélange direct ailleurs. 0 croisement sur les deux tresses d'essai, au prix d'une ou deux images
+      anguleuses près des trous qui tournent. Détails dans `pistes_film_conforme.md`.
 
 Convention de composition : `calcule_autofn_de_tresse` parcourt la tresse à l'envers, donc
 auto(`tresse[:k+1]`) = φ_σ ∘ auto(`tresse[:k]`) avec σ = `tresse[k]`. L'image k+1 s'obtient en tordant les trous i, i+1

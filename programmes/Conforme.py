@@ -418,13 +418,15 @@ def nb_croisements(lignes, clou, rayon=12):
 
 
 def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.3,
-                  verifie=False, **options):
+                  verifie=False, raccord='melange', **options):
     """Film (GIF animé, ou MP4 si fichier finit par .mp4, écrit par ffmpeg à 25 images/s) : pour chaque lettre,
     l'état k sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la verticale pendant la fenêtre (part du
     mouvement). marge : le dessin est fait dans le cadre intérieur, à cette distance des quatre bords (en cours de
     demi-tour, des arcs peuvent déborder du cadre intérieur sur les côtés). options : celles de peint, dont
     largeur_brin en pixels (indépendant de la taille de l'image). verifie : relit les mots et compte les croisements
-    entre lacets sur chaque image ; renvoie la liste des anomalies."""
+    entre lacets sur chaque image ; renvoie la liste des anomalies. raccord : 'melange' (les deux dessins mélangés
+    morceau par morceau, `raccorde`) ou 'triangulation' (les deux dessins transportés sur une triangulation mobile,
+    puis tendus en cordes dont les pieds glissent : `Raccord.RaccordTriangule`)."""
     nb_trous = max(map(operator.abs, tresse), default=5) + 1
     h_int, l_int = hauteur - 2 * marge, largeur - 2 * marge
     cle = etat_de_tresse([], nb_trous)
@@ -439,31 +441,60 @@ def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400
         suivante = etat_de_tresse(tresse[:k + 1], nb_trous)
         lettre = Lettre(cle, suivante, sigma, h_int, l_int)
         mots = [calcule_autofn_de_tresse(tresse[:k + j], nb_trous) for j in (0, 1)]
+        temps = [lisse(n / images) for n in range(images + 1)]
+        poids_de = [lisse(min(1, max(0, (s - (0.5 - fenetre / 2)) / fenetre))) for s in temps]
+        dans_fenetre = [n for n in range(1, images + 1) if 0 < poids_de[n] < 1]
+        precedent = None # (temps, réduction, lacets) de la dernière image avant la fenêtre
+        triangule = None
         for n in range(1, images + 1):
-            s = lisse(n / images)
-            poids = lisse(min(1, max(0, (s - (0.5 - fenetre / 2)) / fenetre)))
+            s, poids = temps[n], poids_de[n]
             def dessins_de_s():
                 return [lettre.dessin(e, s) if p > 0 else None for e, p in ((0, 1 - poids), (1, poids))]
-            # si les arcs sortent par le haut, on aplatit davantage (les dessins dans le demi-plan n'en dépendent
-            # pas, sauf la place du clou) : continu, et sans effet aux images clés, qui tiennent dans le cadre
-            lettre.reduction = 1.0
-            essais = dessins_de_s()
-            y_min = min(l[:, 1].min() for d in essais if d is not None for l in d)
-            if y_min < 10:
-                lettre.reduction = (lettre.y_axe - 10) / (lettre.y_axe - y_min)
-                essais = dessins_de_s()
-            axe, (LA, AB, BR, LB, AR) = lettre.aretes(s)
-            if poids == 0: lignes = essais[0]
-            elif poids == 1: lignes = essais[1]
+            def dessins_reduits(e_seul=None):
+                # si les arcs sortent par le haut, on aplatit davantage (les dessins dans le demi-plan n'en dépendent
+                # pas, sauf la place du clou) : continu, et sans effet aux images clés, qui tiennent dans le cadre
+                lettre.reduction = 1.0
+                essais = dessins_de_s() if e_seul is None else [lettre.dessin(e_seul, s)]
+                y_min = min(l[:, 1].min() for d in essais if d is not None for l in d)
+                if y_min < 10:
+                    lettre.reduction = (lettre.y_axe - 10) / (lettre.y_axe - y_min)
+                    essais = dessins_de_s() if e_seul is None else [lettre.dessin(e_seul, s)]
+                return essais
+            if raccord == 'triangulation' and 0 < poids < 1:
+                if triangule is None:
+                    from Raccord import RaccordTriangule
+                    n_b = dans_fenetre[-1] + 1
+                    s_sauve = s
+                    s = temps[n_b]
+                    arrivee = dessins_reduits(1)[0]
+                    r_b = lettre.reduction
+                    s = s_sauve
+                    def positions(t, r):
+                        lettre.reduction = r
+                        return [tuple(x) for x in lettre.trous_ecran(t)]
+                    triangule = RaccordTriangule(positions, lettre.clou, l_int, h_int, precedent[0], precedent[1],
+                                                 precedent[2], temps[n_b], r_b, arrivee,
+                                                 [temps[m] for m in dans_fenetre], (lettre.i - 1, lettre.i))
+                lettre.reduction = triangule.reduction(s)
+                lignes, erreurs = triangule.lignes(dans_fenetre.index(n), poids)
+                anomalies += [(k, n, l, e) for l, e in erreurs]
+                axe, (LA, AB, BR, LB, AR) = lettre.aretes(s)
             else:
-                dep, arr = essais
-                lignes = []
-                for l, (p, q) in enumerate(zip(dep, arr)):
-                    r = raccorde(p, q, axe + [LA, AB, BR, LB, AR], poids)
-                    if r is None:
-                        anomalies.append((k, n, l, 'traversées différentes'))
-                        r = p if poids < 0.5 else q
-                    lignes.append(r)
+                essais = dessins_reduits()
+                axe, (LA, AB, BR, LB, AR) = lettre.aretes(s)
+                if poids == 0:
+                    lignes = essais[0]
+                    precedent = (s, lettre.reduction, lignes)
+                elif poids == 1: lignes = essais[1]
+                else:
+                    dep, arr = essais
+                    lignes = []
+                    for l, (p, q) in enumerate(zip(dep, arr)):
+                        r = raccorde(p, q, axe + [LA, AB, BR, LB, AR], poids)
+                        if r is None:
+                            anomalies.append((k, n, l, 'traversées différentes'))
+                            r = p if poids < 0.5 else q
+                        lignes.append(r)
             trous = lettre.trous_ecran(s)
             if verifie:
                 en_ordre = sorted(trous.tolist())
