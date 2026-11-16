@@ -45,6 +45,8 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   (`programmes/Geodesiques.py`, piste 1 bis : métrique de Klein des triangles de Delaunay) ; `DiagrammeCourbes` :
   le diagramme de courbes (arcs = segments de l'axe, un seul point fixe à gauche), dessin `lisere=True` ;
   `fixes='gauche'` : trous fixes groupés au bout gauche de l'axe au lieu d'en bas ; `ecart_fixes` (≥ 30 px en bas).
+- `programmes/Escargot.py` : un escargot fait de rubans (trous fixes à gauche, chorégraphie libre : anneau qui tourne
+  pour la coquille, tête, yeux), `film_escargot` → `imgs/escargot/film.mp4`.
 - `programmes/tortue.py` : simple exemple turtle, hors sujet.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,

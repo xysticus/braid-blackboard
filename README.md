@@ -74,6 +74,8 @@ films :
 - [Les rubans](imgs/rubans/README.md) : les lacets sans clou, bords de rubans tendus entre des trous fixes en bas et les
   trous voyageurs ;
 - [Les rubans, trous fixes à gauche](imgs/rubans_gauche/README.md) : la même chose, les trous fixes groupés au bout
-  gauche de l'axe.
+  gauche de l'axe ;
+- [L'escargot](imgs/escargot/README.md) : les rubans à gauche avec une chorégraphie libre, coquille en spirale et
+  antennes.
 
 Mon livre de chevet sur les tresses : "[Le calcul des tresses](https://www.decitre.fr/livres/le-calcul-des-tresses-9782916352794.html)", [Patrick Dehornoy](https://www.decitre.fr/auteur/198862/Patrick+Dehornoy), Calvage & Mounet, Collection.-Nano
