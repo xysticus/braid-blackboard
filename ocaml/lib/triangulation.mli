@@ -1,15 +1,16 @@
 (** Triangulation mobile : étape 2 du plan OCaml (voir [plan_ocaml.md]).
     Traduction de la classe [Maillage] et de [maillage_initial] de [programmes/Triangulation.py] : triangles,
     orientation, critère de Delaunay, retournement d'arête (flip) et mise à jour des courbes posées sur les arêtes.
-    Le mouvement des trous, la tension et le dessin viendront à l'étape 3.
+    Le mouvement des trous, la tension et le dessin sont dans [Film] (étape 3).
 
     Choix : structure {e persistante}. Le Python modifie le maillage et les courbes en place ([retourne]) ; ici
-    [retourne] et [delaunay] rendent un nouveau maillage et de nouvelles courbes. Les positions des sommets ne
-    changent pas dans cette étape. *)
+    [retourne] et [delaunay] rendent un nouveau maillage et de nouvelles courbes, et [deplace] un maillage aux
+    sommets déplacés. *)
 
 (** {1 Géométrie} *)
 
-type point = { x : float; y : float }
+type point = Geometrie.point = { x : float; y : float }
+(** Le même type que [Geometrie.point] (égalité de types exposée : on peut passer l'un pour l'autre). *)
 
 val croix : point -> point -> float
 (** Produit vectoriel (déterminant) de deux vecteurs : > 0 si on tourne dans le sens direct de u vers v. *)
@@ -73,6 +74,10 @@ module Maillage : sig
 
   val cree : point array -> Triangle.t list -> t
   (** Le constructeur [Maillage(pos, triangles)]. *)
+
+  val deplace : t -> point array -> t
+  (** Le même maillage, sommets à de nouvelles positions (le Python écrit dans [m.pos]). Les orientations
+      notées à la création des triangles restent : [valide] dit ensuite si un triangle s'est retourné. *)
 
   val triangles : t -> Triangle.t list
 

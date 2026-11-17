@@ -97,3 +97,28 @@ val calcule_autofn_de_tresse : ?nb_trous:int -> tresse -> automorphisme
 val tresse_de_entiers : int list -> tresse
 val mot_de_fn_de_entiers : int list -> mot_de_fn
 val entiers_de_mot : 'a lettre list -> int list
+
+(** {1 Relecture d'un mot sur un dessin} *)
+
+val lit_mot : Geometrie.point array -> Geometrie.point list -> Reduit.t
+(** [lit_mot points trous] : le mot de F_n d'une polyligne. On note x_j (ou x_j⁻¹) à chaque traversée de gauche à
+    droite (ou de droite à gauche) de la demi-droite qui monte du trou j (les trous sont numérotés à partir de 1,
+    dans l'ordre de la liste), puis on réduit. *)
+
+(** {1 Arcs de cercle raccordés} *)
+
+val linspace : float -> float -> int -> float array
+(** [linspace a b n] : n valeurs régulières de a à b (le [np.linspace] du Python). *)
+
+val arc_de_cercle : ?pas:float -> Geometrie.point -> Geometrie.point -> Geometrie.point -> Geometrie.point array
+(** [arc_de_cercle p t m] : polyligne de l'arc de cercle qui part de p dans la direction t (unitaire) et arrive en m,
+    un point tous les [pas] pixels environ (1,5 par défaut). La corde [p; m] si l'arc est plat. *)
+
+val raccord_egal :
+  Geometrie.point -> Geometrie.point -> Geometrie.point -> Geometrie.point -> Geometrie.point option
+(** Point de raccord de la paire d'arcs de p0 (direction t0) à p1 (direction t1), à égale distance des deux
+    tangentes extrêmes ; [None] si les données sont alignées. *)
+
+val deux_arcs : Geometrie.point -> Geometrie.point -> Geometrie.point -> Geometrie.point -> Geometrie.point array
+(** Polyligne de p0 (direction t0) à p1 (direction t1) : deux arcs de cercle raccordés avec la même tangente
+    (le [deux_arcs] du Python sans son argument [raccord], qui ne sert pas au film). *)

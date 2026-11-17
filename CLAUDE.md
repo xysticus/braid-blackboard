@@ -50,8 +50,12 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
 - `ocaml/` : réécriture en OCaml (`plan_ocaml.md`), sous WSL. Étape 1 faite : `lib/tresses.ml` (lettres, mots
   réduits en type privé `Reduit.t`, action d'Artin). Étape 2 faite : `lib/triangulation.ml` (`Maillage` en
   structure persistante, arêtes et triangles en types privés rangés, noeuds de courbe en type somme,
-  `maillage_initial`). `dune test` dans `ocaml/` compare au Python (`test/reference_python.txt` et
-  `test/reference_triangulation.json`, écrits par `python ocaml/test/genere_reference*.py`). Travailler dans le clone
+  `maillage_initial`). Étape 3 faite : `lib/film.ml` (mouvement des trous, `tend`, `polyligne` en congés, `mots` ;
+  `lit_mot` et `deux_arcs` dans `lib/tresses.ml`, points dans `lib/geometrie.ml`), sauf `Film.__init__` : l'état de
+  départ vient du Python (étape 3 bis du plan, le méandre). Une lettre jouée en OCaml depuis un état du Python
+  redonne l'état suivant du Python à 1e-15 près ; 0,3 s pour les deux films d'essai (6 s en Python).
+  `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par
+  `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy
   (`http_proxy`, `https_proxy`) est dans `~/.profile` de WSL.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,

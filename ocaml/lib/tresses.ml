@@ -98,3 +98,65 @@ let calcule_autofn_de_tresse ?nb_trous tresse =
 let tresse_de_entiers l : tresse = List.map lettre_de_entier l
 let mot_de_fn_de_entiers l : mot_de_fn = List.map lettre_de_entier l
 let entiers_de_mot l = List.map entier_de_lettre l
+
+(* Relecture d'un mot sur un dessin. *)
+
+open Geometrie
+
+(* Chaque trou envoie une demi-droite vers le haut (y décroissant à l'écran). Un segment qui la traverse de gauche
+   à droite note x_j, de droite à gauche x_j⁻¹ ; un segment peut en traverser plusieurs : on les note dans l'ordre
+   où il les rencontre (place sur le segment). *)
+let lit_mot (points : point array) (trous : point list) =
+  let lettres_du_segment p q =
+    List.mapi (fun j t -> (j + 1, t)) trous
+    |> List.filter_map (fun (j, t) ->
+           if (p.x < t.x) <> (q.x < t.x) then
+             let place = (t.x -. p.x) /. (q.x -. p.x) in
+             if p.y +. ((q.y -. p.y) *. place) < t.y then Some (place, if q.x >= t.x then j else -j) else None
+           else None)
+    |> List.sort compare |> List.map snd
+  in
+  let n = Array.length points in
+  let mot = List.concat (List.init (max 0 (n - 1)) (fun k -> lettres_du_segment points.(k) points.(k + 1))) in
+  Reduit.simplifie (mot_de_fn_de_entiers mot)
+
+(* Arcs de cercle. *)
+
+(* linspace du Python : n valeurs de a à b, la dernière exactement b. *)
+let linspace a b n =
+  let pas = (b -. a) /. float (n - 1) in
+  Array.init n (fun k -> if k = n - 1 then b else a +. (float k *. pas))
+
+let arc_de_cercle ?(pas = 1.5) p t m =
+  let w = m -: p in
+  let corde = norme w in
+  let phi = 2. *. Float.atan2 (croix t w) (scalaire t w) in
+  if corde < 1e-9 || Float.abs (Float.sin (phi /. 2.)) < 1e-9 then [| p; m |]
+  else
+    let rayon = corde /. (2. *. Float.sin (phi /. 2.)) in
+    let centre = p +: (rayon *: { x = -.t.y; y = t.x }) in
+    let d = p -: centre in
+    let n = max 3 (int_of_float (Float.ceil (Float.abs (rayon *. phi) /. pas))) in
+    Array.map
+      (fun a -> centre +: { x = (Float.cos a *. d.x) -. (Float.sin a *. d.y); y = (Float.sin a *. d.x) +. (Float.cos a *. d.y) })
+      (linspace 0. phi n)
+
+let raccord_egal p0 t0 p1 t1 =
+  let v = p1 -: p0 and t = t0 +: t1 in
+  let a = 2. *. (1. -. scalaire t0 t1) in
+  let d =
+    if Float.abs a > 1e-9 then
+      let vt = scalaire v t in
+      Some ((-.vt +. Float.sqrt ((vt *. vt) +. (a *. scalaire v v))) /. a)
+    else if Float.abs (scalaire v t1) > 1e-9 then Some (scalaire v v /. (4. *. scalaire v t1))
+    else None
+  in
+  Option.map (fun d -> 0.5 *: (p0 +: (d *: t0) +: p1 -: (d *: t1))) d
+
+let deux_arcs p0 t0 p1 t1 =
+  match raccord_egal p0 t0 p1 t1 with
+  | None -> [| p0; p1 |]
+  | Some j ->
+    let retour = arc_de_cercle p1 (oppose t1) j in
+    let n = Array.length retour in
+    Array.append (arc_de_cercle p0 t0 j) (Array.init n (fun k -> retour.(n - 1 - k)))

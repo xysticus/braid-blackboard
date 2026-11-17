@@ -1,10 +1,10 @@
 (* Triangulation mobile. Voir triangulation.mli pour le rôle de chaque fonction. *)
 
-type point = { x : float; y : float }
+open Geometrie
 
-let ( -: ) p q = { x = p.x -. q.x; y = p.y -. q.y }
-let croix u v = (u.x *. v.y) -. (u.y *. v.x)
-let scalaire u v = (u.x *. v.x) +. (u.y *. v.y)
+type point = Geometrie.point = { x : float; y : float }
+
+let croix = Geometrie.croix
 
 type sommet = int
 
@@ -51,6 +51,11 @@ module Maillage = struct
   let cree pos triangles =
     let signes = List.fold_left (fun s t -> Triangles.add t (signe_selon pos t) s) Triangles.empty triangles in
     { pos; signes }
+
+  (* Les orientations notées à la création restent : c'est ce qui permet à valide de voir un triangle retourné. *)
+  let deplace m pos =
+    if Array.length pos <> Array.length m.pos then invalid_arg "Maillage.deplace : nombre de sommets";
+    { m with pos }
 
   let triangles m = List.map fst (Triangles.bindings m.signes)
 
