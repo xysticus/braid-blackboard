@@ -1,33 +1,63 @@
 (** Tresses et groupe libre : étape 1 du plan OCaml (voir [plan_ocaml.md]).
     Traduction de la partie algébrique de [programmes/tresses.py] : mots de F_n, réduction, action d'Artin. *)
 
-(** {1 Lettres}
+(** {1 Lettres et alphabets}
 
-    Une lettre est un générateur ou son inverse. Le même type sert aux deux alphabets :
-    x_i, x_i⁻¹ pour les mots de F_n, σ_i, σ_i⁻¹ pour les tresses. En Python ce sont des entiers non nuls
-    ([i] ou [-i]) : ici, l'entier nul n'a pas de représentant. *)
+    Une lettre est un générateur ou son inverse. Deux alphabets : x_i, x_i⁻¹ pour les mots de F_n, σ_i, σ_i⁻¹ pour
+    les tresses. En Python ce sont des entiers non nuls ([i] ou [-i]) : ici, l'entier nul n'a pas de représentant.
+
+    Le paramètre ['alphabet] de [lettre] est un {e type fantôme} : il n'apparaît dans aucun champ, il n'existe qu'à la
+    compilation. [x lettre] et [sigma lettre] ont la même représentation, mais le compilateur refuse de les confondre :
+    une tresse passée là où l'on attend un mot de F_n est une erreur de type, par exemple
+
+    {[
+      let t : tresse = tresse_de_entiers [ 1; -2 ]
+      let _ = Reduit.de_mot t
+    ]}
+    {v
+Error: The value t has type tresse = sigma lettre list
+       but an expression was expected of type mot = x lettre list
+       Type sigma lettre is not compatible with type x lettre
+       Type sigma is not compatible with type x
+    v}
+    (message abrégé : le compilateur préfixe chaque type par [Ardoise.Tresses.] ; l'exemple complet est dans
+    [ocaml/exemples/confusion.ml]).
+
+    Les fonctions qui ne dépendent pas de l'alphabet ([inverse_lettre], [inverse], [entiers_de_mot]) sont
+    polymorphes en ['alphabet] : écrites une fois, elles servent aux deux. *)
+
+type x
+(** L'alphabet de F_n. Type vide : il ne sert qu'à étiqueter. *)
+
+type sigma
+(** L'alphabet des tresses. *)
 
 type signe = Plus | Moins
 
-type lettre = { indice : int; signe : signe }
+type 'alphabet lettre = { indice : int; signe : signe }
 (** [indice] ≥ 1. *)
 
-val inverse_lettre : lettre -> lettre
+val inverse_lettre : 'a lettre -> 'a lettre
 
-val lettre_de_entier : int -> lettre
-(** [lettre_de_entier 3] = x_3, [lettre_de_entier (-3)] = x_3⁻¹. Lève [Invalid_argument] sur 0. *)
+val lettre_de_entier : int -> 'a lettre
+(** [lettre_de_entier 3] = x_3 ou σ_3 selon le type attendu, [lettre_de_entier (-3)] = x_3⁻¹ ou σ_3⁻¹.
+    Lève [Invalid_argument] sur 0. *)
 
-val entier_de_lettre : lettre -> int
+val entier_de_lettre : 'a lettre -> int
 
 (** {1 Mots de F_n} *)
 
-type mot = lettre list
+type mot = x lettre list
 
-val inverse : mot -> mot
-(** (a b c)⁻¹ = c⁻¹ b⁻¹ a⁻¹. *)
+val inverse : 'a lettre list -> 'a lettre list
+(** (a b c)⁻¹ = c⁻¹ b⁻¹ a⁻¹, dans les deux alphabets. *)
 
-(** Les mots réduits (sans x x⁻¹ ni x⁻¹ x côte à côte). Le type est privé : on ne peut en fabriquer un
-    qu'en réduisant, donc tout [Reduit.t] est réduit. On peut le lire comme une liste (coercion [:>]). *)
+(** Les mots réduits de F_n (sans x x⁻¹ ni x⁻¹ x côte à côte) : la forme normale de F_n, deux mots réduits
+    sont égaux ssi ils représentent le même élément. Rien de tel pour les tresses (relations σ₁σ₂σ₁ = σ₂σ₁σ₂,
+    σ₁σ₃ = σ₃σ₁) : [Reduit] n'accepte que l'alphabet [x].
+
+    Le type est privé : on ne peut en fabriquer un qu'en réduisant, donc tout [Reduit.t] est réduit. On peut le lire
+    comme un [mot] (coercion [:>]). *)
 module Reduit : sig
   type t = private mot
 
@@ -42,7 +72,7 @@ end
 
 (** {1 Tresses et action d'Artin} *)
 
-type tresse = lettre list
+type tresse = sigma lettre list
 (** σ_i est [{indice = i; signe = Plus}]. *)
 
 type automorphisme = Reduit.t array
@@ -51,7 +81,7 @@ type automorphisme = Reduit.t array
 val identite : int -> automorphisme
 (** [identite n] : x_i ↦ x_i pour i = 1..n. *)
 
-val agit : lettre -> automorphisme -> automorphisme
+val agit : sigma lettre -> automorphisme -> automorphisme
 (** Composition par l'automorphisme d'Artin de σ (le [conjugaison_locale] du Python, sans effet de bord) :
     σ_i⁺ : (u, v) ↦ (u v u⁻¹, u), σ_i⁻ : (u, v) ↦ (v, v⁻¹ u v), où u, v sont les images de x_i, x_(i+1). *)
 
@@ -62,4 +92,5 @@ val auto_de_tresse : ?nb_trous:int -> tresse -> automorphisme
 (** {1 Entrées et sorties en entiers, pour comparer au Python} *)
 
 val tresse_de_entiers : int list -> tresse
-val entiers_de_mot : mot -> int list
+val mot_de_entiers : int list -> mot
+val entiers_de_mot : 'a lettre list -> int list

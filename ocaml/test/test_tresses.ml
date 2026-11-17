@@ -4,7 +4,7 @@
 open Ardoise.Tresses
 
 let entiers_de_reduit (r : Reduit.t) = entiers_de_mot (r :> mot)
-let reduit_entiers l = entiers_de_reduit (Reduit.de_mot (List.map lettre_de_entier l))
+let reduit_entiers l = entiers_de_reduit (Reduit.de_mot (mot_de_entiers l))
 let mot_entiers = Alcotest.(list int)
 
 let test_reduction () =

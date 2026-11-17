@@ -1,12 +1,19 @@
 (* Tresses et groupe libre. Voir tresses.mli pour le rôle de chaque fonction. *)
 
+(* Deux types vides, déclarés sans définition : ils sont distincts et n'ont aucune valeur. Ils ne servent qu'à
+   étiqueter les lettres (type fantôme). *)
+type x
+type sigma
+
 type signe = Plus | Moins
 
-type lettre = { indice : int; signe : signe }
+type 'alphabet lettre = { indice : int; signe : signe }
 
 let oppose = function Plus -> Moins | Moins -> Plus
 
-let inverse_lettre l = { l with signe = oppose l.signe }
+(* L'annotation garde l'alphabet : sans elle, la mise à jour { l with ... } pourrait changer le paramètre
+   fantôme, qui n'apparaît dans aucun champ (l'interface l'interdirait de toute façon). *)
+let inverse_lettre (l : 'a lettre) : 'a lettre = { l with signe = oppose l.signe }
 
 let lettre_de_entier i =
   if i > 0 then { indice = i; signe = Plus }
@@ -16,7 +23,7 @@ let lettre_de_entier i =
 let entier_de_lettre { indice; signe } =
   match signe with Plus -> indice | Moins -> -indice
 
-type mot = lettre list
+type mot = x lettre list
 
 (* Renverser et inverser chaque lettre, en une seule passe : rev_map renverse déjà. *)
 let inverse m = List.rev_map inverse_lettre m
@@ -43,7 +50,7 @@ module Reduit = struct
   let inverse = inverse
 end
 
-type tresse = lettre list
+type tresse = sigma lettre list
 
 type automorphisme = Reduit.t array
 
@@ -77,5 +84,7 @@ let auto_de_tresse ?nb_trous tresse =
   (* fold_right parcourt la tresse à l'envers : auto(σ₁…σ_k) = φ_σ₁ ∘ … ∘ φ_σ_k appliqué à l'identité. *)
   List.fold_right agit tresse (identite n)
 
-let tresse_de_entiers = List.map lettre_de_entier
-let entiers_de_mot = List.map entier_de_lettre
+(* Les annotations choisissent l'alphabet : lettre_de_entier est polymorphe. *)
+let tresse_de_entiers l : tresse = List.map lettre_de_entier l
+let mot_de_entiers l : mot = List.map lettre_de_entier l
+let entiers_de_mot l = List.map entier_de_lettre l
