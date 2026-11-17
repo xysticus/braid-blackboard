@@ -78,6 +78,10 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   `ocaml/` par `opam switch create . ocaml-base-compiler.5.4.1 --deps-only --with-test --with-dev-setup` ; le hook
   de shell d'opam choisit ce switch dans `ocaml/`. Le Python tourne dans le même clone (miniforge et l'environnement
   `braid-blackboard` installés dans WSL).
+  Aussi installé sous Fedora (machine personnelle, 2026-11-17) : `sudo dnf install opam` (cairo-devel, pkgconf,
+  bubblewrap, gcc déjà présents), `opam init --bare --shell-setup --enable-shell-hook`, puis le même
+  `opam switch create .` dans `ocaml/`. `dune test` passe (40 tests) ; films de la triangulation et de l'escargot
+  identiques octet pour octet au Python avec le ffmpeg de conda (`FFMPEG=…/envs/braid-blackboard/bin/ffmpeg`).
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README (introduction, mathématiques, commandes) et un
