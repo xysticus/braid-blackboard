@@ -45,6 +45,9 @@ Python, plus rapides).
 5. **Dessin et film** : cairo2 pour le dessin, ffmpeg par un tube pour la vidéo. Fait avant l'étape 4 pour le
    film de la triangulation mobile (`ocaml/dessin/dessin.ml`, `ocaml/bin/films.ml`).
 
+6. **L'escargot** (`python/Escargot.py`) : premier film à chorégraphie libre (pas de tresse). Fait
+   (`ocaml/lib/escargot.ml`, `Dessin.cadre_escargot`, `ocaml/bin/escargot.ml`), film identique à celui du Python.
+
 Laissé de côté au début : le film conforme (`python/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
 l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `python/NouvAutoMorph.py`.
 

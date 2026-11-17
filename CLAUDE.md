@@ -65,7 +65,8 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   Étape 4 faite : `lib/raccord.ml` (`maillage_du_raccord`), `lib/arcs.ml` (`FilmArcs` et `DiagrammeCourbes` dans
   un même type `Arcs.t`, sans la tension hyperbolique ; `Film.tend_courbes` et `Film.polyligne_de_courbe`
   remplacent l'héritage), `bin/arcs.ml` → `imgs/<méthode>/film_*_ocaml.mp4`, identiques octet pour octet au
-  Python (21 s au lieu de 55). `Maillage.cherche_arete_a_retourner` parcourt les arêtes dans un ordre
+  Python (21 s au lieu de 55). Étape 6 faite : `lib/escargot.ml` (chorégraphie libre, `deplace`), `Dessin.cadre_escargot`,
+  `bin/escargot.ml` → `imgs/escargot/film_ocaml.mp4`, identique octet pour octet au Python (4,5 s au lieu de 8,4). `Maillage.cherche_arete_a_retourner` parcourt les arêtes dans un ordre
   déterministe, le même en Python et en OCaml (arêtes rangées) : l'ordre d'un set changeait les courbes quand
   plusieurs arêtes étaient à retourner au même pas.
   `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par

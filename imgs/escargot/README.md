@@ -13,7 +13,8 @@ Depuis la racine du dépôt :
 python python/Escargot.py
 ```
 
-Écrit `film.mp4` dans ce répertoire (960 × 640, 14 s, quelques secondes de calcul).
+Écrit `film.mp4` dans ce répertoire (960 × 640, 14 s, quelques secondes de calcul). La version OCaml, depuis
+`ocaml/` : `dune exec bin/escargot.exe` écrit `film_ocaml.mp4`, identique octet pour octet.
 
 ## La méthode
 

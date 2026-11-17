@@ -171,3 +171,100 @@ let film_arcs ?(ffmpeg = "ffmpeg") ?(rubans = false) ?(pause = 0.5) ?(lisere = f
   match Unix.close_process_out tube with
   | Unix.WEXITED 0 -> ()
   | _ -> failwith ("ffmpeg n'a pas pu écrire " ^ fichier)
+
+(* L'escargot. *)
+
+let cadre_escargot (escargot : Escargot.t) t =
+  let l = escargot.largeur and h = escargot.hauteur and e = escargot.e in
+  let surface = Cairo.Image.create Cairo.Image.ARGB32 ~w:(int_of_float l) ~h:(int_of_float h) in
+  let ctx = Cairo.create surface in
+  let fond = Cairo.Pattern.create_linear ~x0:0. ~y0:0. ~x1:0. ~y1:h in
+  Cairo.Pattern.add_color_stop_rgb fond ~ofs:0. 0.66 0.80 0.52;
+  Cairo.Pattern.add_color_stop_rgb fond ~ofs:1. 0.38 0.58 0.30;
+  Cairo.set_source ctx fond;
+  Cairo.paint ctx;
+  Cairo.set_line_cap ctx Cairo.ROUND;
+  Cairo.set_line_join ctx Cairo.JOIN_ROUND;
+  let coquille = [| (0.47, 0.29, 0.14); (0.86, 0.75, 0.56); (0.33, 0.19, 0.09); (0.70, 0.52, 0.30) |] in
+  let chair = (0.74, 0.65, 0.52) and cerne = (0.24, 0.15, 0.08) in
+  let c = Escargot.centre_coquille escargot t in
+  let rayon =
+    Escargot.rayon_anneau escargot t
+    +. (((float escargot.anneau *. Escargot.tours_faits escargot t) +. 1.5) *. escargot.ecart)
+  in
+  let largeur = 0.8 *. escargot.ecart in
+  let trait points (r, v, b) epaisseur =
+    Cairo.set_source_rgb ctx r v b;
+    Cairo.set_line_width ctx epaisseur;
+    trace ctx points
+  in
+  let lignes = List.init escargot.n (Escargot.polyligne escargot) in
+  (* d'abord le corps (hors de la coquille), puis la coquille par-dessus ; les arcs des yeux ne montent pas dans
+     la coquille *)
+  List.iter
+    (fun dedans ->
+      List.iteri
+        (fun k points ->
+          if not (dedans && k >= escargot.anneau) then begin
+            Cairo.save ctx;
+            if dedans then Cairo.arc ctx c.x c.y ~r:rayon ~a1:0. ~a2:(2. *. Float.pi)
+            else begin
+              (* comme le Python : l'arc suit le rectangle sans nouveau chemin *)
+              Cairo.rectangle ctx 0. 0. ~w:l ~h;
+              Cairo.arc ctx c.x c.y ~r:rayon ~a1:0. ~a2:(2. *. Float.pi);
+              Cairo.set_fill_rule ctx Cairo.EVEN_ODD
+            end;
+            Cairo.clip ctx;
+            (* le corps : chair épaisse, les brins se fondent en pied *)
+            let epaisseur = if dedans then largeur else 1.5 *. escargot.ecart in
+            trait points cerne (epaisseur +. (1.6 *. e));
+            trait points (if dedans then coquille.(k mod Array.length coquille) else chair) epaisseur;
+            Cairo.restore ctx
+          end)
+        lignes)
+    [ false; true ];
+  (* les yeux *)
+  let apparition = Escargot.lisse ((t -. 9.) /. 2.) in
+  if apparition > 0. then
+    Array.iteri
+      (fun j v ->
+        if j > escargot.anneau then begin
+          let p = escargot.maillage.pos.(v) in
+          Cairo.set_source_rgba ctx 0.12 0.08 0.05 apparition;
+          Cairo.arc ctx p.x p.y ~r:(6. *. e) ~a1:0. ~a2:(2. *. Float.pi);
+          Cairo.fill ctx;
+          Cairo.set_source_rgba ctx 1. 1. 1. apparition;
+          Cairo.arc ctx (p.x +. (2. *. e)) (p.y -. (2. *. e)) ~r:(1.8 *. e) ~a1:0. ~a2:(2. *. Float.pi);
+          Cairo.fill ctx
+        end)
+      escargot.voyageurs;
+  surface
+
+let film_escargot ?(ffmpeg = "ffmpeg") ?(duree = 12.) ?(images_par_seconde = 25) ?(pause = 2.) escargot fichier =
+  let l = int_of_float escargot.Escargot.largeur and h = int_of_float escargot.hauteur in
+  let arguments =
+    [ ffmpeg; "-y"; "-loglevel"; "error"; "-f"; "rawvideo"; "-pix_fmt"; "bgra"; "-s"; Printf.sprintf "%dx%d" l h;
+      "-r"; string_of_int images_par_seconde; "-i"; "-" ]
+    @ encodeur @ [ fichier ]
+  in
+  let tube = Unix.open_process_args_out ffmpeg (Array.of_list arguments) in
+  let descr = Unix.descr_of_out_channel tube in
+  let ips = float images_par_seconde in
+  let nombre = int_of_float (Film.arrondi (duree *. ips)) in
+  let rec boucle n escargot =
+    if n <= nombre then begin
+      let t = float n /. ips in
+      let escargot =
+        if n > 0 then Escargot.deplace escargot (Escargot.choregraphie escargot t) (2. *. escargot.e) else escargot
+      in
+      let surface = cadre_escargot escargot t in
+      Cairo.Surface.flush surface;
+      let donnees = Cairo.Image.get_data8 surface in
+      for _ = 1 to if n < nombre then 1 else int_of_float (Film.arrondi (pause *. ips)) do ecrit_tout descr donnees done;
+      boucle (n + 1) escargot
+    end
+  in
+  boucle 0 escargot;
+  match Unix.close_process_out tube with
+  | Unix.WEXITED 0 -> ()
+  | _ -> failwith ("ffmpeg n'a pas pu écrire " ^ fichier)

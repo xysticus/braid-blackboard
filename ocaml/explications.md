@@ -12,7 +12,8 @@ le `.mli` le dit.
 | [`lib/film.ml`](lib/film.ml) | la classe `Film` de `python/Triangulation.py` | 3, 3 bis |
 | [`lib/raccord.ml`](lib/raccord.ml) | `maillage_du_raccord`, `insere` de `python/Raccord.py` | 4 |
 | [`lib/arcs.ml`](lib/arcs.ml) | `python/Arcs.py` : `FilmArcs`, `DiagrammeCourbes` (sans la tension hyperbolique) | 4 |
-| [`dessin/dessin.ml`](dessin/dessin.ml) | `peint`, `Film.cadre`, `film_triangule`, `FilmArcs.cadre`, `film_arcs` (cairo2, ffmpeg) | 4, 5 |
+| [`lib/escargot.ml`](lib/escargot.ml) | `python/Escargot.py` : la chorégraphie et `deplace` | 6 |
+| [`dessin/dessin.ml`](dessin/dessin.ml) | `peint`, `Film.cadre`, `film_triangule`, `FilmArcs.cadre`, `film_arcs`, `Escargot.dessine`, `film_escargot` (cairo2, ffmpeg) | 4, 5, 6 |
 
 Les tests (`dune test` dans `ocaml/`) comparent chaque fonction aux sorties du Python, écrites dans
 `test/reference_*` par `python ocaml/test/genere_reference*.py`.
@@ -481,6 +482,20 @@ près, au départ et lettre par lettre.
 `Dessin.cadre_arcs` et `Dessin.film_arcs`, et `bin/arcs.ml` (le `__main__` de `Arcs.py` : vérification des mots,
 puis `imgs/<méthode>/film_*_ocaml.mp4`). Les six films (rubans, rubans à gauche, diagramme, sur les deux tresses
 d'essai) sont identiques octet pour octet à ceux du Python, en 21 s au lieu de 55.
+
+## 9. L'escargot (`escargot.ml`, étape 6)
+
+Premier film « chorégraphie libre » en OCaml : pas de tresse, les trous voyageurs suivent des chemins donnés en
+fonction du temps (`choregraphie`), et la triangulation mobile emporte les arcs. En Python, `Escargot` hérite de
+`FilmArcs` ; ici c'est un type à part, qui n'appelle que les outils dont il a besoin : `Arcs.coupe_arc` pour les
+demi-ellipses de départ, `Raccord.maillage_du_raccord`, `Film.tend_courbes`, `Film.polyligne_de_courbe`.
+
+`deplace` amène les trous aux positions de l'image suivante en ligne droite, par sous-pas d'au plus 2 px (le plus
+long des déplacements), avec retournements d'arêtes et un pas de tension à chaque sous-pas : c'est `Arcs.lettre`
+sans le demi-tour. Les formules suivent l'ordre des opérations du Python (`a * (x, y) * e` est `(a x) e`), et le
+dessin (`Dessin.cadre_escargot`) refait les mêmes appels Cairo, jusqu'à l'arc ajouté au rectangle sans nouveau
+chemin pour le masque du corps : le film `imgs/escargot/film_ocaml.mp4` (`dune exec bin/escargot.exe`) est
+identique octet pour octet à celui du Python, en 4,5 s au lieu de 8,4.
 
 ---
 

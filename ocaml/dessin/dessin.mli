@@ -47,3 +47,15 @@ val film_arcs :
   ?ffmpeg:string -> ?rubans:bool -> ?pause:float -> ?lisere:bool -> ?images:int -> Arcs.t -> Tresses.tresse -> string -> unit
 (** [film_arcs film tresse fichier] : film MP4 à 25 images/s, [images] = 60 images par lettre. Le Python prend la
     classe et ses options ; ici on passe le film déjà construit ([Arcs.cree] ou [Arcs.cree_diagramme]). *)
+
+(** {1 L'escargot} *)
+
+val cadre_escargot : Escargot.t -> float -> Cairo.Surface.t
+(** L'image de l'escargot au temps t ([Escargot.dessine] du Python) : fond vert ; chaque arc tracé en ruban plein
+    (trait large cerné de brun sombre) : dans la coquille (disque autour de l'anneau, qui grandit avec les tours),
+    en bandes brun, beige et marron selon l'arc ; ailleurs, couleur chair ; les yeux au bout des antennes. *)
+
+val film_escargot :
+  ?ffmpeg:string -> ?duree:float -> ?images_par_seconde:int -> ?pause:float -> Escargot.t -> string -> unit
+(** [film_escargot escargot fichier] : film MP4 de [duree] = 12 s à 25 images/s, la dernière image tenue [pause] =
+    2 s ; chaque image déplace les trous vers la chorégraphie par sous-pas d'au plus 2 px. *)
