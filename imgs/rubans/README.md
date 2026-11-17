@@ -10,7 +10,7 @@ et son trou voyageur. Le mouvement est très doux : un seul mouvement continu, u
 Depuis la racine du dépôt :
 
 ```
-python programmes/Arcs.py rubans
+python python/Arcs.py rubans
 ```
 
 Écrit `film_43m1m12m41.mp4` et `film_charge.mp4` dans ce répertoire après avoir vérifié les mots (moins d'une
@@ -18,8 +18,8 @@ demi-minute). `film_arcs_43m1m12m41.mp4` montre les arcs seuls, `film_geodesique
 géodésiques hyperboliques :
 
 ```
-python -c "import sys; sys.path.insert(0, 'programmes'); import Arcs as A; A.film_arcs([4, 3, -1, -1, 2, -4, 1], 'imgs/rubans/film_arcs_43m1m12m41.mp4')"
-python -c "import sys; sys.path.insert(0, 'programmes'); import Arcs as A; A.film_arcs([4, 3, -1, -1, 2, -4, 1], 'imgs/rubans/film_geodesiques_43m1m12m41.mp4', hyperbolique=True)"
+python -c "import sys; sys.path.insert(0, 'python'); import Arcs as A; A.film_arcs([4, 3, -1, -1, 2, -4, 1], 'imgs/rubans/film_arcs_43m1m12m41.mp4')"
+python -c "import sys; sys.path.insert(0, 'python'); import Arcs as A; A.film_arcs([4, 3, -1, -1, 2, -4, 1], 'imgs/rubans/film_geodesiques_43m1m12m41.mp4', hyperbolique=True)"
 ```
 
 ## Les mathématiques
@@ -46,5 +46,5 @@ plus on se rapproche du clou ; en dessous de 30 pixels d'écart, des triangles t
 - **La vérification.** Après chaque lettre, les mots relus sur les rubans (traversées des demi-droites qui montent des
   trous voyageurs) sont comparés au calcul algébrique.
 
-Code : `programmes/Arcs.py` (`FilmArcs`), sur le moteur de `programmes/Triangulation.py` ; variante hyperbolique dans
-`programmes/Geodesiques.py`. Variante avec les trous fixes au bout de l'axe : `imgs/rubans_gauche/`.
+Code : `python/Arcs.py` (`FilmArcs`), sur le moteur de `python/Triangulation.py` ; variante hyperbolique dans
+`python/Geodesiques.py`. Variante avec les trous fixes au bout de l'axe : `imgs/rubans_gauche/`.

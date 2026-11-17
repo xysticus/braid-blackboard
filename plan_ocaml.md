@@ -27,24 +27,24 @@ Python, plus rapides).
 
 ## Le périmètre, du plus fondamental au plus visuel
 
-1. **Tresses et groupe libre** (`programmes/tresses.py`) : mots de F_n, réduction (`simplifie`), action d'Artin
+1. **Tresses et groupe libre** (`python/tresses.py`) : mots de F_n, réduction (`simplifie`), action d'Artin
    (`conjugaison_locale`, `calcule_autofn_de_tresse`). Court et purement algébrique : idéal pour commencer.
-2. **Triangulation mobile** (`programmes/Triangulation.py`, classe `Maillage`) : sommets, triangles, orientation,
+2. **Triangulation mobile** (`python/Triangulation.py`, classe `Maillage`) : sommets, triangles, orientation,
    critère de Delaunay, retournement d'arête et mise à jour des courbes (`courbe_apres_flip`). Le cœur.
 3. **Transport et tension** (`Film.tend`, `Film.polyligne`) : les trous bougent, les pieds suivent leurs arêtes, les
    brins se tendent avec un écart minimal ; dessin en droites et congés. Fait (`ocaml/lib/film.ml`).
-3 bis. **Le méandre** (`programmes/tresses.py`, partie « état ») : `calcule_arcs`, `intervalles`, `compare_points`,
+3 bis. **Le méandre** (`python/tresses.py`, partie « état ») : `calcule_arcs`, `intervalles`, `compare_points`,
    `abscisses`, `etat_de_tresse`, `dessin_etat`, `agit` et `reduit` (action de σ_i sur l'état), puis
    `noeuds_de_polyligne` et `Film.disposition`, `Film.__init__` : de quoi construire l'état de départ du film en OCaml.
    Oublié dans la première version de ce plan. Fait (`Film.cree`) ; `dessin_etat` sans ses options d'animation
    (`disque`, `fusions`, `bosses`) ni `agit` son option `detail`, qui ne servent qu'aux anciens films.
-4. **Diagramme de courbes et rubans** (`programmes/Arcs.py`) : le plus simple des films (environ 600 lignes de Python
-   en tout), avec la construction du maillage (`programmes/Raccord.py`, `maillage_du_raccord`) et la découpe d'une
+4. **Diagramme de courbes et rubans** (`python/Arcs.py`) : le plus simple des films (environ 600 lignes de Python
+   en tout), avec la construction du maillage (`python/Raccord.py`, `maillage_du_raccord`) et la découpe d'une
    polyligne par les arêtes (`coupe_arc`).
 5. **Dessin et film** : cairo2 pour le dessin, ffmpeg par un tube pour la vidéo.
 
-Laissé de côté au début : le film conforme (`programmes/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
-l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `programmes/NouvAutoMorph.py`.
+Laissé de côté au début : le film conforme (`python/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
+l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `python/NouvAutoMorph.py`.
 
 ## Comment vérifier
 

@@ -10,7 +10,7 @@ avance, les antennes se dressent.
 Depuis la racine du dépôt :
 
 ```
-python programmes/Escargot.py
+python python/Escargot.py
 ```
 
 Écrit `film.mp4` dans ce répertoire (960 × 640, 14 s, quelques secondes de calcul).
@@ -33,4 +33,4 @@ des trous voyageurs, comme le bouquet :
 Dessin : chaque arc en ruban plein cerné de brun sombre ; dans la coquille, bandes brun, beige et marron selon l'arc ;
 ailleurs, couleur chair, plus épaisse, pour que les brins se fondent en un pied.
 
-Code : `programmes/Escargot.py`.
+Code : `python/Escargot.py`.

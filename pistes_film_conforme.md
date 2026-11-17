@@ -1,6 +1,6 @@
 # Film conforme : ce qui est garanti, et les pistes pour le reste
 
-`programmes/Conforme.py`, `film_conforme`. Voir aussi le point 13 de `CLAUDE.md`.
+`python/Conforme.py`, `film_conforme`. Voir aussi le point 13 de `CLAUDE.md`.
 
 ## Où en est-on
 
@@ -189,7 +189,7 @@ d'environ 0,3 s par lettre à l'allure du film triangulé.
 
 ### Essai fait (2026-11-16) : la triangulation pendant le raccord, en cordes près des trous seulement
 
-`programmes/Raccord.py`, `film_conforme(..., raccord='triangulation')`.
+`python/Raccord.py`, `film_conforme(..., raccord='triangulation')`.
 
 - Maillage : un bord convexe hors de l'image, les trous, le clou (`maillage_du_raccord`), de Delaunay, les arêtes
   retournées entre deux pas. Transport du dessin par l'application affine par triangles (`transporte`) : une vraie
@@ -308,7 +308,7 @@ Le mot d'un arc se lit sur son ruban comme celui du lacet.
 **Premier essai.** Dans la triangulation mobile (`Triangulation.py`, isotopie garantie) : trous fixes sur une ligne en
 bas, arcs de départ verticaux, demi-tours des trous voyageurs, arcs dessinés seuls ou en rubans.
 
-**Premier essai fait (2026-11-16)** : `programmes/Arcs.py`, `film_arcs` → `imgs/film_arcs_*.mp4` (arcs seuls) et
+**Premier essai fait (2026-11-16)** : `python/Arcs.py`, `film_arcs` → `imgs/film_arcs_*.mp4` (arcs seuls) et
 `imgs/film_rubans_*.mp4` (rubans). `FilmArcs` réutilise de `Film` le maillage, la tension et le dessin en congés (clou
 neutralisé), avec un maillage de Delaunay des trous voyageurs et fixes (`maillage_du_raccord`, clou facultatif). Arcs
 de départ verticaux ; demi-tours à place fixe (trous régulièrement espacés, pas encore de disposition proportionnelle).
@@ -326,7 +326,7 @@ la piste 1 bis avec ces arcs entre pointes.
 
 ### Essai fait (2026-11-16) : la piste 1 bis avec les arcs entre pointes
 
-`programmes/Geodesiques.py`, `FilmArcs(..., hyperbolique=True)`, `film_arcs(..., hyperbolique=True)` →
+`python/Geodesiques.py`, `FilmArcs(..., hyperbolique=True)`, `film_arcs(..., hyperbolique=True)` →
 `imgs/film_geodesiques_*.mp4`.
 
 - Métrique : chaque triangle de Delaunay, dans son cercle circonscrit, est un triangle idéal du modèle de Klein

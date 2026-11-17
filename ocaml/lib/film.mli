@@ -1,5 +1,5 @@
 (** Transport et tension : étapes 3 et 3 bis du plan OCaml (voir [plan_ocaml.md]).
-    Traduction de la classe [Film] de [programmes/Triangulation.py] : les trous tournent ([trous_au_temps],
+    Traduction de la classe [Film] de [python/Triangulation.py] : les trous tournent ([trous_au_temps],
     [place], [abscisses], [chemin_des_trous], [lettre]), les points des lacets suivent leurs arêtes, les flips
     gardent la triangulation de Delaunay, les brins se tendent ([monotone], [tend]) ; dessin en droites et congés
     ([portions_du_clou], [polyligne]) et relecture des mots ([mots]).

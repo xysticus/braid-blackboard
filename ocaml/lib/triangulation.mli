@@ -1,5 +1,5 @@
 (** Triangulation mobile : étape 2 du plan OCaml (voir [plan_ocaml.md]).
-    Traduction de la classe [Maillage] et de [maillage_initial] de [programmes/Triangulation.py] : triangles,
+    Traduction de la classe [Maillage] et de [maillage_initial] de [python/Triangulation.py] : triangles,
     orientation, critère de Delaunay, retournement d'arête (flip) et mise à jour des courbes posées sur les arêtes.
     Le mouvement des trous, la tension et le dessin sont dans [Film] (étape 3).
 

@@ -10,14 +10,14 @@ l'axe, qui partent du clou et y reviennent. Le film les fait vivre pendant que l
 Depuis la racine du dépôt :
 
 ```
-python programmes/Conforme.py
+python python/Conforme.py
 ```
 
 Écrit `film_43m1m12m41.mp4` (la tresse σ₄σ₃σ₁⁻¹σ₁⁻¹σ₂σ₄⁻¹σ₁) et `film_charge.mp4` (σ₁σ₂⁻¹σ₁σ₂⁻¹σ₁σ₂⁻¹σ₃σ₁⁻¹σ₂) dans ce
 répertoire, en 800 × 800, et vérifie chaque image (environ 1 min 30). Pour une autre tresse :
 
 ```
-python -c "import sys; sys.path.insert(0, 'programmes'); import Conforme as C; C.film_conforme([1, 2, -1], 'imgs/conforme/f.mp4', hauteur=800, largeur=800, marge=60)"
+python -c "import sys; sys.path.insert(0, 'python'); import Conforme as C; C.film_conforme([1, 2, -1], 'imgs/conforme/f.mp4', hauteur=800, largeur=800, marge=60)"
 ```
 
 ## La méthode
@@ -43,7 +43,7 @@ x_1 … x_n, dessinées en demi-cercles posés sur l'axe.
   qui montent des trous) et comparés au calcul algébrique, et les croisements entre lacets sont comptés : aucune
   anomalie sur les deux tresses.
 
-Code : `programmes/Conforme.py` (cartes de Schwarz–Christoffel, dessin), `programmes/Raccord.py` (le raccord). Les
+Code : `python/Conforme.py` (cartes de Schwarz–Christoffel, dessin), `python/Raccord.py` (le raccord). Les
 pistes explorées et leurs résultats : `pistes_film_conforme.md`.
 
 <p align="center"><img src="simultane_conforme.jpg" alt="Le même instant de la même tresse : à gauche des lacets

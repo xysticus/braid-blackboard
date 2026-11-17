@@ -7,9 +7,9 @@ le `.mli` le dit.
 | Module | Traduit | Étape du plan |
 |---|---|---|
 | [`lib/geometrie.ml`](lib/geometrie.ml) | les opérations numpy sur les points | 3 |
-| [`lib/tresses.ml`](lib/tresses.ml) | `programmes/tresses.py` : groupe libre, action d'Artin, méandre, relecture, arcs | 1, 3, 3 bis |
-| [`lib/triangulation.ml`](lib/triangulation.ml) | `Maillage`, `maillage_initial`, `noeuds_de_polyligne` de `programmes/Triangulation.py` | 2, 3 bis |
-| [`lib/film.ml`](lib/film.ml) | la classe `Film` de `programmes/Triangulation.py` | 3, 3 bis |
+| [`lib/tresses.ml`](lib/tresses.ml) | `python/tresses.py` : groupe libre, action d'Artin, méandre, relecture, arcs | 1, 3, 3 bis |
+| [`lib/triangulation.ml`](lib/triangulation.ml) | `Maillage`, `maillage_initial`, `noeuds_de_polyligne` de `python/Triangulation.py` | 2, 3 bis |
+| [`lib/film.ml`](lib/film.ml) | la classe `Film` de `python/Triangulation.py` | 3, 3 bis |
 
 Les tests (`dune test` dans `ocaml/`) comparent chaque fonction aux sorties du Python, écrites dans
 `test/reference_*` par `python ocaml/test/genere_reference*.py`.

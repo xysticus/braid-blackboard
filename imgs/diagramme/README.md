@@ -10,14 +10,14 @@ s'enroulent autour des trous. Pas de clou, rien d'accroché en bas : seulement d
 Depuis la racine du dépôt :
 
 ```
-python programmes/Arcs.py diagramme
+python python/Arcs.py diagramme
 ```
 
 Écrit `film_43m1m12m41.mp4` et `film_charge.mp4` dans ce répertoire après avoir vérifié la tresse (moins d'une
 demi-minute). Les films `film_geodesiques_*.mp4` sont la variante hyperbolique :
 
 ```
-python -c "import sys; sys.path.insert(0, 'programmes'); import Arcs as A; A.film_arcs([4, 3, -1, -1, 2, -4, 1], 'imgs/diagramme/film_geodesiques_43m1m12m41.mp4', classe=A.DiagrammeCourbes, lisere=True, hyperbolique=True)"
+python -c "import sys; sys.path.insert(0, 'python'); import Arcs as A; A.film_arcs([4, 3, -1, -1, 2, -4, 1], 'imgs/diagramme/film_geodesiques_43m1m12m41.mp4', classe=A.DiagrammeCourbes, lisere=True, hyperbolique=True)"
 ```
 
 ## Les mathématiques
@@ -49,5 +49,5 @@ Greene, Rolfsen, Rourke et Wiest, puis Dehornoy, comparent les tresses (de mémo
   modèle de Klein ; les arcs y sont tendus en géodésiques. Belle sur les tresses légères, illisible sur les tresses
   chargées : des géodésiques voisines se rapprochent exponentiellement et les brins se confondent.
 
-Code : `programmes/Arcs.py` (`DiagrammeCourbes`), sur le moteur de `programmes/Triangulation.py` ;
-`programmes/Geodesiques.py` pour la variante hyperbolique.
+Code : `python/Arcs.py` (`DiagrammeCourbes`), sur le moteur de `python/Triangulation.py` ;
+`python/Geodesiques.py` pour la variante hyperbolique.

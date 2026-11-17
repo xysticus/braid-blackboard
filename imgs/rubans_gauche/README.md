@@ -10,7 +10,7 @@ en bas : rien n'est accroché en bas, et chaque ruban part de l'axe.
 Depuis la racine du dépôt :
 
 ```
-python programmes/Arcs.py rubans_gauche
+python python/Arcs.py rubans_gauche
 ```
 
 Écrit `film_43m1m12m41.mp4` et `film_charge.mp4` dans ce répertoire après avoir vérifié les mots (moins d'une
@@ -32,4 +32,4 @@ demi-ellipses emboîtées sous l'axe (leurs intervalles [f_k, m_k] sont emboît�
 Triangulation mobile, transport par isotopie, tension, rubans, glissement doux de l'espacement et vérification des
 mots : exactement comme pour les rubans (voir `imgs/rubans/README.md`).
 
-Code : `programmes/Arcs.py` (`FilmArcs(..., fixes='gauche')`).
+Code : `python/Arcs.py` (`FilmArcs(..., fixes='gauche')`).

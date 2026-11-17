@@ -9,7 +9,7 @@ import os
 import random
 import sys
 
-sys.path.insert(0, 'programmes')
+sys.path.insert(0, 'python')
 from Triangulation import Film, maillage_initial
 
 

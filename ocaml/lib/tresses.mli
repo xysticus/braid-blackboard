@@ -1,5 +1,5 @@
 (** Tresses et groupe libre : étape 1 du plan OCaml (voir [plan_ocaml.md]).
-    Traduction de la partie algébrique de [programmes/tresses.py] : mots de F_n, réduction, action d'Artin. *)
+    Traduction de la partie algébrique de [python/tresses.py] : mots de F_n, réduction, action d'Artin. *)
 
 (** {1 Lettres et alphabets}
 

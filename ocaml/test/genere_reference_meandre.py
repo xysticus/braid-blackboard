@@ -13,7 +13,7 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, 'programmes')
+sys.path.insert(0, 'python')
 from tresses import (agit, calcule_autofn_de_tresse, dessin_etat, etat_de_tresse, intervalles, normalise,
                      polylignes, reduit)
 import Triangulation

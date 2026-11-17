@@ -7,7 +7,7 @@ Un notebook pour dessiner des éléments du groupe de tresse (Artin braid group)
 <p align="center"><em>Action d'Artin du groupe des tresses sur le groupe fondamental du disque troué,
 ou croissance d'iris des calanques dans F₃₅. Il n'y a que 35 lacets.</em></p>
 
-Le bouquet est un film (`programmes/Bouquet.py`) : les trous d'un disque bougent, et les 35 lacets qui les
+Le bouquet est un film (`python/Bouquet.py`) : les trous d'un disque bougent, et les 35 lacets qui les
 entourent, transportés sans jamais se couper, poussent en tiges puis éclosent en fleurs.
 
 Exemple du dessin de la tresse ![4 -2 3 -2](CodeCogsEqn1.gif) avec l'appel `dessine_tresse([4, -2, 3, -2])`:
@@ -26,12 +26,12 @@ C'est [ipycanvas](https://github.com/martinRenou/ipycanvas) qui est utilisé pou
 
 ## Le film des méandres
 
-Au lieu d'une image figée pour une tresse donnée, `programmes/Triangulation.py` fabrique un film : à chaque lettre
+Au lieu d'une image figée pour une tresse donnée, `python/Triangulation.py` fabrique un film : à chaque lettre
 σ_i, les trous i et i+1 tournent d'un demi-tour l'un autour de l'autre et entraînent continûment les lacets, qui
 dessinent au fil du film l'automorphisme du groupe libre associé à la tresse.
 
 ```
-python programmes/Triangulation.py   # depuis la racine du dépôt : écrit imgs/film_triangule_*.mp4
+python python/Triangulation.py   # depuis la racine du dépôt : écrit imgs/film_triangule_*.mp4
 ```
 
 Le principe :

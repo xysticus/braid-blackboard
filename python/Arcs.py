@@ -322,7 +322,7 @@ METHODES = {
 }
 
 if __name__ == "__main__":
-    # depuis la racine du dépôt : python programmes/Arcs.py [rubans] [rubans_gauche] [diagramme] (toutes par défaut) ;
+    # depuis la racine du dépôt : python python/Arcs.py [rubans] [rubans_gauche] [diagramme] (toutes par défaut) ;
     # vérifie les mots puis écrit imgs/<méthode>/film_*.mp4
     import os, sys
     for methode in sys.argv[1:] or list(METHODES):

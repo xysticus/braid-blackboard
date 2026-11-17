@@ -14,7 +14,7 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, 'programmes')
+sys.path.insert(0, 'python')
 from tresses import deux_arcs
 from Triangulation import Film, monotone
 

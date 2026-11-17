@@ -28,24 +28,24 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
 
 - `ipynbks/` : notebooks historiques (ipycanvas pour le canvas HTML5, `AutoMorphCairo.ipynb` en pycairo).
   Liens Binder dans le README, ne pas casser leurs chemins.
-- `programmes/AutoMorphPNG.py` : version script complète (pycairo → PNG) de l'algorithme de dessin
+- `python/AutoMorphPNG.py` : version script complète (pycairo → PNG) de l'algorithme de dessin
   des automorphismes. Sert de référence fonctionnelle.
-- `programmes/tresses.py` : **base commune** importée par les deux scripts suivants : mots de F_n et action d'Artin
+- `python/tresses.py` : **base commune** importée par les deux scripts suivants : mots de F_n et action d'Artin
   (`calcule_autofn_de_tresse`), état d'un méandre (`intervalles`, `abscisses`, `etat_de_tresse`), action algébrique
   de σ_i (`agit`, `reduit`), dessin d'un état (`dessin_etat`, `peint`, `image_auto_de_tresse`), relecture des mots
   (`lit_mot`), arcs de cercle raccordés (`deux_arcs`), images (`en_image_pil`, `gif_en_mp4`). Ses `assert` tournent
   à chaque import (rapide).
-- `programmes/NouvAutoMorph.py` : films successifs à partir de l'état (image par image, algébrique, simultané, essais
+- `python/NouvAutoMorph.py` : films successifs à partir de l'état (image par image, algébrique, simultané, essais
   en arcs) : voir plus bas. `from tresses import *` ; lancé (`__main__`), il écrit ses images et ses films.
-- `programmes/Triangulation.py` : **le film actuel** (triangulation mobile, point 11 plus bas), `film_triangule`.
-- `programmes/Conforme.py` : film par représentation conforme (point 13 plus bas), `film_conforme`.
-- `programmes/Raccord.py` : raccord par triangulation mobile du film conforme (`raccord='triangulation'`).
-- `programmes/Arcs.py` : essai sans clou, des arcs entre trous fixes et trous voyageurs (piste 1 ter de
+- `python/Triangulation.py` : **le film actuel** (triangulation mobile, point 11 plus bas), `film_triangule`.
+- `python/Conforme.py` : film par représentation conforme (point 13 plus bas), `film_conforme`.
+- `python/Raccord.py` : raccord par triangulation mobile du film conforme (`raccord='triangulation'`).
+- `python/Arcs.py` : essai sans clou, des arcs entre trous fixes et trous voyageurs (piste 1 ter de
   `pistes_film_conforme.md`), `film_arcs` ; `hyperbolique=True` tend les arcs en géodésiques
-  (`programmes/Geodesiques.py`, piste 1 bis : métrique de Klein des triangles de Delaunay) ; `DiagrammeCourbes` :
+  (`python/Geodesiques.py`, piste 1 bis : métrique de Klein des triangles de Delaunay) ; `DiagrammeCourbes` :
   le diagramme de courbes (arcs = segments de l'axe, un seul point fixe à gauche), dessin `lisere=True` ;
   `fixes='gauche'` : trous fixes groupés au bout gauche de l'axe au lieu d'en bas ; `ecart_fixes` (≥ 30 px en bas).
-- `programmes/Escargot.py` : un escargot fait de rubans (trous fixes à gauche, chorégraphie libre : anneau qui tourne
+- `python/Escargot.py` : un escargot fait de rubans (trous fixes à gauche, chorégraphie libre : anneau qui tourne
   pour la coquille, tête, yeux), `film_escargot` → `imgs/escargot/film.mp4`.
 - `ocaml/` : réécriture en OCaml (`plan_ocaml.md`), sous WSL. Étape 1 faite : `lib/tresses.ml` (lettres, mots
   réduits en type privé `Reduit.t`, action d'Artin). Étape 2 faite : `lib/triangulation.ml` (`Maillage` en
@@ -67,8 +67,8 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README (introduction, mathématiques, commandes) et un
-  `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés) y sont écrits par `python programmes/Conforme.py` et
-  `python programmes/Arcs.py [rubans] [rubans_gauche] [diagramme]`.
+  `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés) y sont écrits par `python python/Conforme.py` et
+  `python python/Arcs.py [rubans] [rubans_gauche] [diagramme]`.
 
 ## L'algorithme actuel du méandre (`AutoMorphPNG.py`)
 
@@ -177,7 +177,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       mais près des images clés des arcs géants sortent du cadre, des brins se croisent, et `verifie` échoue :
       la règle qui place le raccord est à revoir.
 
-11. **Triangulation mobile** (`programmes/Triangulation.py`, `film_triangule` → `imgs/film_triangule_*.mp4`) : plus d'axe
+11. **Triangulation mobile** (`python/Triangulation.py`, `film_triangule` → `imgs/film_triangule_*.mp4`) : plus d'axe
     ni de couronne. Sommets : trous, clou, extrémités de l'axe, sommets des bords haut et bas à la verticale des
     trous (décalés de 0,31 px pour ne pas être sur le clou). Un lacet est une suite de points sur les arêtes
     (fraction de l'arête), deux points consécutifs dans un même triangle. σ_i : les trous i, i+1 tournent d'un demi-tour,
@@ -250,7 +250,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     croisement. Les cordes ne se croisent jamais ; avant les congés, les arcs lissés se croisaient parfois (jusqu'à 194 sans la tension). Essais sans effet : tangente « bissectrice » (pire), remplacer un arc qui sort de son triangle par la corde (140 croisements : la corde coupe les arcs voisins du faisceau), tout le triangle en cordes (44 → 36 seulement : les croisements restants sont des arcs qui se coupent à l'intérieur d'un même triangle). Pour détecter un croisement, ignorer les
     intersections aux extrémités (les brins se rejoignent au clou).
 
-12. **Morphing de lacets : un bouquet qui pousse** (idée du 2026-11-14, prototype `programmes/Bouquet.py`, séparé du
+12. **Morphing de lacets : un bouquet qui pousse** (idée du 2026-11-14, prototype `python/Bouquet.py`, séparé du
     travail sur les tresses). Une tresse est un mouvement de n points dans le disque ; nos demi-tours sur l'axe n'en
     sont qu'un cas. Si les trous suivent des chemins quelconques (une « chorégraphie » : position de chaque trou à
     chaque instant), les lacets sont emportés par la déformation du plan qui accompagne ce mouvement : un morphing
@@ -263,7 +263,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     qui virent du vert (tige) à la couleur de la fleur ; éventuellement régions entre lacets remplies (pétales
     pleins), tension relâchée pour un rendu plus végétal. Visée : les documentaires en image par image (time-lapse)
     qui montrent une plante pousser jour après jour, côté « surgissant ».
-    **Prototype** (`programmes/Bouquet.py`, `film_bouquet` → `imgs/bouquet.mp4`, portrait 3:4 810 × 1080, 15,5 s,
+    **Prototype** (`python/Bouquet.py`, `film_bouquet` → `imgs/bouquet.mp4`, portrait 3:4 810 × 1080, 15,5 s,
     calcul ~35 s, 35 trous ; têtes données par (abscisse, hauteur au-dessus du sol)) :
     `Pousse` hérite de `Film` (état de départ d'une tresse à n brins, puis `y_axe = -inf` pour couper le départ
     perpendiculaire des brins du clou). Les trous dorment en rang serré sous une terre épaisse (la graine) : les
@@ -296,7 +296,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
     clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
 
-13. **Film par représentation conforme** (`programmes/Conforme.py`, `film_conforme` → `imgs/conforme/film_*.mp4`). Idée de l'utilisateur (2026-11-16) : relier les trous qui tournent aux trous voisins par des segments,
+13. **Film par représentation conforme** (`python/Conforme.py`, `film_conforme` → `imgs/conforme/film_*.mp4`). Idée de l'utilisateur (2026-11-16) : relier les trous qui tournent aux trous voisins par des segments,
     et s'en servir comme pieds d'arcs, pour tendre les lacets « flasques » du film simultané.
     - Pendant σ_i, l'axe se plie en ligne brisée L–A–B–R (A, B : trous i, i+1 ; L, R : voisins, ou points virtuels
       au bord de l'image). Elle reste simple de 0 jusqu'à juste avant la fin du demi-tour, où L–A passe par B ; ses
@@ -332,7 +332,7 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
       7 images à quelques croisements, au milieu du raccord des lettres 6 et 7 (seule étape sans garantie : le
       mélange ; encoches près des trous qui tournent, brins extérieurs tassés). Environ 1 min 30 pour les deux.
     - Limites : légers resserrements près des coins convexes (convergence des géodésiques).
-    - `raccord='triangulation'`, **raccord par défaut** (`programmes/Raccord.py`, essai du 2026-11-16) : pendant la fenêtre, les deux dessins
+    - `raccord='triangulation'`, **raccord par défaut** (`python/Raccord.py`, essai du 2026-11-16) : pendant la fenêtre, les deux dessins
       sont transportés sur une triangulation mobile (trous, clou, bord convexe hors de l'image), les pieds glissent
       sur les arêtes ; cordes seulement dans les triangles qui touchent les trous qui tournent (ou contiennent un
       bigone), coudes des cordes arrondis par des congés (`arrondit`), jonctions avec les arcs conformes tangentes (paire d'arcs),
@@ -403,11 +403,11 @@ Sans activer : `conda run -n braid-blackboard python ...`
 Depuis la racine du dépôt (les chemins de sortie comme `./imgs/...` sont relatifs au répertoire courant) :
 
 ```
-python programmes/Triangulation.py   # le film actuel : vérifie les assert, écrit imgs/film_triangule_*.mp4
-python -c "import sys; sys.path.insert(0, 'programmes'); import Triangulation as T; T.film_triangule([1, 2, -1], 'imgs/f.mp4')"   # un autre film
-python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif, imgs/film_continu_*.gif (film algébrique) et imgs/film_simultane_*.gif, plus leurs .mp4
-python programmes/Conforme.py        # film conforme : imgs/conforme/film_*.mp4, 800 × 800 (avec vérification)
-python programmes/Arcs.py            # rubans, rubans_gauche, diagramme (ou l'une d'elles en argument) : imgs/<méthode>/film_*.mp4
-python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
+python python/Triangulation.py   # le film actuel : vérifie les assert, écrit imgs/film_triangule_*.mp4
+python -c "import sys; sys.path.insert(0, 'python'); import Triangulation as T; T.film_triangule([1, 2, -1], 'imgs/f.mp4')"   # un autre film
+python python/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.png, imgs/film_*.gif, imgs/film_continu_*.gif (film algébrique) et imgs/film_simultane_*.gif, plus leurs .mp4
+python python/Conforme.py        # film conforme : imgs/conforme/film_*.mp4, 800 × 800 (avec vérification)
+python python/Arcs.py            # rubans, rubans_gauche, diagramme (ou l'une d'elles en argument) : imgs/<méthode>/film_*.mp4
+python python/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
 python -m jupyterlab ipynbks/        # notebooks (pas « jupyter lab » : il prend le premier jupyter-lab.exe du PATH, éventuellement d'un autre environnement)
 ```

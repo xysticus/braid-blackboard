@@ -5,7 +5,7 @@ import os
 import random
 import sys
 
-sys.path.insert(0, 'programmes')
+sys.path.insert(0, 'python')
 from tresses import calcule_autofn_de_tresse
 
 def ligne(tresse, nb_trous):
