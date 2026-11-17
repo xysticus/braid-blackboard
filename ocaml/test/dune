@@ -1,4 +1,4 @@
-(test
- (name test_tresses)
- (libraries ardoise alcotest)
- (deps reference_python.txt))
+(tests
+ (names test_tresses test_triangulation)
+ (libraries ardoise alcotest yojson)
+ (deps reference_python.txt reference_triangulation.json))

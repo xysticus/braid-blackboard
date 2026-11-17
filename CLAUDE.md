@@ -48,8 +48,10 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
 - `programmes/Escargot.py` : un escargot fait de rubans (trous fixes à gauche, chorégraphie libre : anneau qui tourne
   pour la coquille, tête, yeux), `film_escargot` → `imgs/escargot/film.mp4`.
 - `ocaml/` : réécriture en OCaml (`plan_ocaml.md`), sous WSL. Étape 1 faite : `lib/tresses.ml` (lettres, mots
-  réduits en type privé `Reduit.t`, action d'Artin). `dune test` dans `ocaml/` compare au Python
-  (`test/reference_python.txt`, écrit par `python ocaml/test/genere_reference.py`). Travailler dans le clone
+  réduits en type privé `Reduit.t`, action d'Artin). Étape 2 faite : `lib/triangulation.ml` (`Maillage` en
+  structure persistante, arêtes et triangles en types privés rangés, noeuds de courbe en type somme,
+  `maillage_initial`). `dune test` dans `ocaml/` compare au Python (`test/reference_python.txt` et
+  `test/reference_triangulation.json`, écrits par `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy
   (`http_proxy`, `https_proxy`) est dans `~/.profile` de WSL.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
