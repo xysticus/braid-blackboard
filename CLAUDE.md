@@ -57,7 +57,11 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par
   `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy
-  (`http_proxy`, `https_proxy`) est dans `~/.profile` de WSL.
+  (`http_proxy`, `https_proxy`) est dans `~/.profile` de WSL. Switch opam local `ocaml/_opam` (ignoré par git) :
+  les dépendances sont déclarées dans `ocaml/dune-project` (dune en tire `ardoise.opam`), installation depuis
+  `ocaml/` par `opam switch create . ocaml-base-compiler.5.4.1 --deps-only --with-test --with-dev-setup` ; le hook
+  de shell d'opam choisit ce switch dans `ocaml/`. Le Python tourne dans le même clone (miniforge et l'environnement
+  `braid-blackboard` installés dans WSL).
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README (introduction, mathématiques, commandes) et un
