@@ -122,3 +122,84 @@ val raccord_egal :
 val deux_arcs : Geometrie.point -> Geometrie.point -> Geometrie.point -> Geometrie.point -> Geometrie.point array
 (** Polyligne de p0 (direction t0) à p1 (direction t1) : deux arcs de cercle raccordés avec la même tangente
     (le [deux_arcs] du Python sans son argument [raccord], qui ne sert pas au film). *)
+
+(** {1 Le méandre}
+
+    Un lacet (l'image d'un générateur) est dessiné comme la suite des intervalles où il coupe l'axe : l'intervalle
+    k est entre le trou k et le trou k + 1 (l'intervalle 0 à gauche du trou 1). Du point 2i au point 2i + 1 c'est un
+    arc du haut, de 2i + 1 à 2i + 2 un arc du bas ; le premier et le dernier point descendent au clou. *)
+
+val calcule_arcs : mot_de_fn -> (int * int) list
+(** Les arcs d'un mot : chaque suite croissante consécutive ([x_1 x_2 x_3] : on passe au-dessus des trous 1, 2, 3)
+    donne un arc du haut (indices pairs), chaque transition un arc du bas (indices impairs) ; le signe des
+    extrémités donne le sens. Lève [Invalid_argument] sur le mot vide. *)
+
+val intervalles : mot_de_fn -> int list
+(** Les intervalles où le lacet du mot coupe l'axe. *)
+
+val voisin : int array -> int -> bool -> int option
+(** [voisin lacet j en_haut] : l'indice du point relié au point j par l'arc du haut (ou du bas) ; [None] si c'est
+    le clou. *)
+
+val suit_en_parallele : int array array -> int * int -> int * int -> bool -> int
+(** Compare deux points (lacet, indice) d'un même intervalle en suivant les deux courbes côte à côte à partir de
+    l'arc du haut (ou du bas) : -1 si p est à gauche, 1 à droite, 0 si elles arrivent ensemble au clou. *)
+
+val compare_points : int array array -> int * int -> int * int -> int
+(** Ordre gauche-droite de deux points d'un même intervalle (on essaie vers le haut puis vers le bas). *)
+
+val abscisses : int array array -> int -> ((int * int, int) Hashtbl.t * int array * int)
+(** [abscisses lacets nb_trous] : rang sur l'axe de chaque point (table indexée par (lacet, indice)), de chaque
+    trou ([rang_trou.(k)] pour le trou k + 1 : le Python indexe à partir de 1), et nombre total de rangs. *)
+
+(** Une paire d'arcs qui se croisent : deux cordes [(gauche, droite)] du même côté entrelacées, ou un arc du bas
+    qui enjambe le départ d'une descente au clou. *)
+type croisement = Arcs of (int * int) * (int * int) | Arc_et_descente of (int * int) * int
+
+val croisements : int array array -> (int * int, int) Hashtbl.t -> croisement list
+(** Vide si le dessin est correct. *)
+
+val verifie : tresse -> bool
+(** Aucun croisement dans le dessin des lacets de la tresse. *)
+
+type etat = { trous : float array; lacets : float array list }
+(** L'état d'un méandre (le tuple [(trous, lacets)] du Python) : abscisses des trous, et pour chaque lacet les
+    abscisses de ses points sur l'axe, dans l'ordre du lacet. Seul l'ordre compte. *)
+
+val etat_de_tresse : ?nb_trous:int -> tresse -> etat
+(** L'état calculé depuis les mots : rangs des trous et des points. *)
+
+val intervalle : float -> float array -> int
+(** Nombre de trous à gauche de x : l'indice de son intervalle. *)
+
+val normalise : etat -> etat
+(** Remplace les abscisses par leurs rangs (même ordre). *)
+
+val agit : etat -> sigma lettre -> etat
+(** L'état non réduit après le demi-tour du bloc des trous i et i + 1 (le [detail] du Python n'est pas traduit).
+    Ne pas confondre avec [conjugaison_locale], l'action d'Artin sur les mots. *)
+
+val reduit : etat -> etat
+(** Supprime les bigones : deux points consécutifs d'un lacet dans le même intervalle s'annulent. *)
+
+val verifie_action : tresse -> bool
+(** En partant de la tresse vide et en appliquant les lettres une à une sans les mots, on retrouve à chaque pas
+    l'état calculé depuis les mots. *)
+
+(** {1 Dessin d'un état} *)
+
+val demi_ellipse : ?pas:float -> float -> float -> bool -> float -> float -> Geometrie.point array
+(** [demi_ellipse x1 x2 en_haut y_axe aplati] : de x1 à x2, au-dessus (ou au-dessous) de l'axe. *)
+
+val descente_au_clou : float -> float -> float -> float -> float -> Geometrie.point array
+(** [descente_au_clou xp y_haut y_sous x_clou y_clou] : du clou au point (xp, y_haut), arc de cercle (ou quart
+    d'ellipse étiré) vertical en (xp, y_sous), puis segment vertical. *)
+
+val dessin_etat :
+  ?hauteur:float -> ?largeur:float -> etat -> Geometrie.point array list list * Geometrie.point array * Geometrie.point
+(** (pour chaque lacet, ses morceaux bout à bout : descente, arcs, remontée ; positions des trous ; clou).
+    Sans les options [disque], [fusions] et [bosses] du Python (animations des anciens films), ni la géométrie
+    qu'il rend en quatrième. *)
+
+val polylignes : Geometrie.point array list list -> Geometrie.point array list
+(** Les morceaux de chaque lacet mis bout à bout. *)

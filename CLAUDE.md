@@ -51,9 +51,11 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   réduits en type privé `Reduit.t`, action d'Artin). Étape 2 faite : `lib/triangulation.ml` (`Maillage` en
   structure persistante, arêtes et triangles en types privés rangés, noeuds de courbe en type somme,
   `maillage_initial`). Étape 3 faite : `lib/film.ml` (mouvement des trous, `tend`, `polyligne` en congés, `mots` ;
-  `lit_mot` et `deux_arcs` dans `lib/tresses.ml`, points dans `lib/geometrie.ml`), sauf `Film.__init__` : l'état de
-  départ vient du Python (étape 3 bis du plan, le méandre). Une lettre jouée en OCaml depuis un état du Python
-  redonne l'état suivant du Python à 1e-15 près ; 0,3 s pour les deux films d'essai (6 s en Python).
+  `lit_mot` et `deux_arcs` dans `lib/tresses.ml`, points dans `lib/geometrie.ml`). Une lettre jouée en OCaml depuis
+  un état du Python redonne l'état suivant du Python à 1e-15 près ; 0,3 s pour les deux films d'essai (4,5 s en
+  Python). Étape 3 bis faite : le méandre dans `lib/tresses.ml` (`intervalles`, `compare_points`, `abscisses`,
+  `etat_de_tresse`, `agit`, `reduit`, `dessin_etat` sans ses options d'animation), `noeuds_de_polyligne` dans
+  `lib/triangulation.ml`, `Film.cree` (le `Film.__init__` du Python) : tout le film se calcule en OCaml.
   `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par
   `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy

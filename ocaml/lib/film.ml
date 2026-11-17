@@ -278,3 +278,65 @@ let positions_des_trous film = Array.map (fun s -> film.maillage.Maillage.pos.(s
 let mots ?lisse film =
   let trous = List.sort compare (Array.to_list (positions_des_trous film)) in
   List.map (fun p -> Tresses.lit_mot p trous) (polylignes ?lisse film)
+
+(* Le constructeur. *)
+
+(* La largeur de chaque intervalle de l'axe (y compris les deux des bords) est proportionnelle à 1 + le nombre de
+   brins qui le traversent : l'écart entre deux points consécutifs de l'axe est le même partout. *)
+let disposition nb_trous largeur (etat : Tresses.etat) =
+  let comptes = Array.make (nb_trous + 1) 0 in
+  List.iter (Array.iter (fun x -> let k = Tresses.intervalle x etat.trous in comptes.(k) <- comptes.(k) + 1)) etat.lacets;
+  let ecart = largeur /. float (Array.fold_left (fun s c -> s + c + 1) 0 comptes) in
+  let cumul = ref 0. in
+  { abscisses = Array.init nb_trous (fun k -> cumul := !cumul +. (float (comptes.(k) + 1) *. ecart); !cumul); ecart }
+
+let cree ?(hauteur = 800.) ?(largeur = 800.) ?(tension = 400) tresse =
+  let e = largeur /. 400. in
+  let nb_trous = 1 + List.fold_left (fun m (l : Tresses.sigma Tresses.lettre) -> max m l.indice) 1 tresse in
+  let prefixe k = List.filteri (fun j _ -> j < k) tresse in
+  let etat k = Tresses.etat_de_tresse ~nb_trous (prefixe k) in
+  let dispositions = Array.init (List.length tresse + 1) (fun k -> disposition nb_trous largeur (etat k)) in
+  (* au milieu de chaque lettre : l'état non réduit compte les brins qui passent de chaque côté du bloc *)
+  let milieux = Array.of_list (List.mapi (fun k sigma -> disposition nb_trous largeur (Tresses.agit (etat k) sigma)) tresse) in
+  let morceaux, trous, clou = Tresses.dessin_etat ~hauteur ~largeur (etat 0) in
+  (* le dessin de départ est replacé sur la disposition 0 : abscisses transformées par la fonction affine par
+     morceaux qui envoie les anciens trous sur les nouveaux *)
+  let xs0 = dispositions.(0).abscisses in
+  let avant = Array.concat [ [| 0. |]; Array.map (fun p -> p.x) trous; [| largeur |] ]
+  and apres = Array.concat [ [| 0. |]; xs0; [| largeur |] ] in
+  let replace p = { p with x = interp p.x avant apres } in
+  let lignes = List.map (Array.map replace) (Tresses.polylignes morceaux) in
+  let clou = replace clou in
+  let trous = List.map (fun x -> { x; y = trous.(0).y }) (Array.to_list xs0) in
+  (* décalage des sommets du bord bas : loin du clou ; si les trous sont trop serrés pour les trois décalages
+     habituels, celui qui éloigne le plus les sommets du clou *)
+  let distance_au_clou d = Array.fold_left (fun m x -> Float.min m (Float.abs (x +. d -. clou.x))) Float.infinity xs0 in
+  let decalage_bas =
+    match List.find_opt (fun d -> distance_au_clou d >= 8. *. e) [ decalage_bord; 12. *. e; -12. *. e ] with
+    | Some d -> d
+    | None ->
+      Array.fold_left (fun m d -> if distance_au_clou d > distance_au_clou m then d else m) (-12. *. e)
+        (Tresses.linspace (-12. *. e) (12. *. e) 49)
+  in
+  let mi = maillage_initial ~decalage_bas trous clou hauteur largeur in
+  let pos = mi.maillage.Maillage.pos in
+  let y_axe = pos.(List.hd mi.trous).y in
+  (* le clou garde sa place relative entre les deux sommets du bord bas qui l'encadrent *)
+  let xs_bas = Array.of_list (List.map (fun s -> pos.(s).x) mi.bas) in
+  let j = ref 0 in
+  for k = 0 to Array.length xs_bas - 2 do if xs_bas.(k) <= clou.x then j := k done;
+  let place_du_clou = (!j, (clou.x -. xs_bas.(!j)) /. (xs_bas.(!j + 1) -. xs_bas.(!j))) in
+  (* le dessin de départ est aplati : on l'étire au-dessus de l'axe pour qu'il occupe la bande du haut *)
+  let y_min = List.fold_left (Array.fold_left (fun m p -> Float.min m p.y)) Float.infinity lignes in
+  let etirement = (y_axe -. (14. *. e)) /. (y_axe -. y_min) in
+  let etire p = if p.y < y_axe then { p with y = y_axe -. ((y_axe -. p.y) *. etirement) } else p in
+  let lignes = List.map (Array.map etire) lignes in
+  let film =
+    { hauteur; largeur; nb_trous; dispositions; milieux; etape = 0; maillage = mi.maillage;
+      trous = Array.of_list mi.trous; clou = mi.clou; haut = Array.of_list mi.haut; bas = Array.of_list mi.bas;
+      decalage_bas; place_du_clou; y_axe;
+      courbes = List.map (fun p -> noeuds_de_polyligne p mi.maillage mi.clou) lignes }
+  in
+  (* la tension s'applique dès la première image : pas de lacets lâches au départ *)
+  let rec tend_n n film = if n = 0 then film else tend_n (n - 1) (tend film 0.3 dispositions.(0).ecart) in
+  tend_n tension film

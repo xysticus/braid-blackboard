@@ -1,12 +1,11 @@
-(** Transport et tension : étape 3 du plan OCaml (voir [plan_ocaml.md]).
-    Traduction de la classe [Film] de [programmes/Triangulation.py], sauf son constructeur : les trous tournent
-    ([trous_au_temps], [place], [abscisses], [chemin_des_trous], [lettre]), les points des lacets suivent leurs
-    arêtes, les flips gardent la triangulation de Delaunay, les brins se tendent ([monotone], [tend]) ; dessin en
-    droites et congés ([portions_du_clou], [polyligne]) et relecture des mots ([mots]).
+(** Transport et tension : étapes 3 et 3 bis du plan OCaml (voir [plan_ocaml.md]).
+    Traduction de la classe [Film] de [programmes/Triangulation.py] : les trous tournent ([trous_au_temps],
+    [place], [abscisses], [chemin_des_trous], [lettre]), les points des lacets suivent leurs arêtes, les flips
+    gardent la triangulation de Delaunay, les brins se tendent ([monotone], [tend]) ; dessin en droites et congés
+    ([portions_du_clou], [polyligne]) et relecture des mots ([mots]).
 
-    L'état de départ ([Film.__init__] du Python) part du dessin d'un état de méandre ([etat_de_tresse],
-    [dessin_etat], [noeuds_de_polyligne], [disposition] : partie « méandre » de [tresses.py], pas encore
-    traduite) : on le reçoit tout fait, par exemple du Python.
+    Le constructeur [cree] ([Film.__init__] du Python) part du dessin d'un état de méandre ([etat_de_tresse],
+    [dessin_etat] de [Tresses], [noeuds_de_polyligne] de [Triangulation], [disposition]).
 
     Choix : toujours persistant. [place], [tend] et [lettre] rendent un nouveau film ; seuls les tableaux de
     positions et de courbes sont recopiés à chaque sous-pas (quelques dizaines de sommets, quelques centaines de
@@ -88,3 +87,16 @@ val positions_des_trous : t -> point array
 
 val mots : ?lisse:bool -> t -> Tresses.Reduit.t list
 (** Les mots relus sur le dessin ([lit_mot], trous triés par abscisse). *)
+
+(** {1 Le constructeur} *)
+
+val disposition : int -> float -> Tresses.etat -> disposition
+(** [disposition nb_trous largeur etat] : la largeur de chaque intervalle de l'axe (y compris les deux des bords)
+    est proportionnelle à 1 + le nombre de brins qui le traversent, donc l'écart entre deux points consécutifs de
+    l'axe est le même partout. (Une méthode en Python, qui lit [nb_trous] et [largeur] dans le film.) *)
+
+val cree : ?hauteur:float -> ?largeur:float -> ?tension:int -> Tresses.tresse -> t
+(** Le constructeur [Film(tresse, hauteur, largeur)] (800 × 800 par défaut) : dispositions des images clés et des
+    milieux de lettre, dessin de départ ([dessin_etat]) replacé sur la disposition 0 et étiré dans la bande du
+    haut, maillage de départ, courbes ([noeuds_de_polyligne]), puis [tension] pas de tension (400 par défaut,
+    comme le Python, qui n'a pas cet argument). *)

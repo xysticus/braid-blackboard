@@ -1,4 +1,4 @@
 (tests
- (names test_tresses test_triangulation test_film)
+ (names test_tresses test_triangulation test_film test_meandre)
  (libraries ardoise alcotest yojson)
- (deps reference_python.txt reference_triangulation.json reference_film.json))
+ (deps reference_python.txt reference_triangulation.json reference_film.json reference_meandre.json))

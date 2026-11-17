@@ -140,3 +140,7 @@ val maillage_initial :
 (** [maillage_initial trous clou hauteur largeur] : triangulation de départ en deux bandes (bord haut → axe,
     axe → bord bas avec le clou), chacune en échelle de triangles, puis [delaunay]. [hauteur] ne sert pas
     (comme en Python, où les bords sont placés par le clou et par y = 3). *)
+
+val noeuds_de_polyligne : point array -> Maillage.t -> sommet -> courbe
+(** [noeuds_de_polyligne points maillage clou] : la courbe (suite des arêtes coupées) d'une polyligne qui part du
+    clou et y revient, bigones retirés. *)

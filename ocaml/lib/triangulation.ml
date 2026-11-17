@@ -204,3 +204,38 @@ let maillage_initial ?(decalage_bas = decalage_bord) trous clou _hauteur largeur
   let maillage, _ = Maillage.delaunay (Maillage.cree pos triangles) [] in
   let sans_bouts l = List.filteri (fun k _ -> k > 0 && k < List.length l - 1) l in
   { maillage; trous = sans_bouts axe; clou = nail; haut; bas }
+
+(* Les arêtes coupées par une polyligne qui part du clou et y revient, dans l'ordre où elle les coupe ; deux
+   coupes successives de la même arête bordent un bigone vide : elles s'annulent (pile). *)
+let noeuds_de_polyligne (points : point array) maillage clou =
+  let pos = maillage.Maillage.pos in
+  let nb = Array.length points - 1 in
+  let trouves = ref [] in
+  Aretes.iter
+    (fun e _ ->
+      let u, v = (e : Arete.t :> sommet * sommet) in
+      let s = pos.(v) -: pos.(u) in
+      for k = 0 to nb - 1 do
+        (* le premier et le dernier segment partent du clou : ils ne coupent pas les arêtes qui y aboutissent *)
+        if not ((u = clou || v = clou) && (k = 0 || k = nb - 1)) then begin
+          let p = points.(k) in
+          let r = points.(k + 1) -: p in
+          let den = croix r s in
+          if Float.abs den > 1e-12 then begin
+            let du = pos.(u) -: p in
+            let t = croix du s /. den and w = croix du r /. den in
+            if t >= 0. && t < 1. && w >= 0. && w < 1. then trouves := (k, t, Sur_arete (e, w)) :: !trouves
+          end
+        end
+      done)
+    (Maillage.aretes maillage);
+  let trouves = List.stable_sort (fun (k, t, _) (k', t', _) -> compare (k, t) (k', t')) (List.rev !trouves) in
+  let pile =
+    List.fold_left
+      (fun pile (_, _, n) ->
+        match (pile, n) with
+        | Sur_arete (e', _) :: reste, Sur_arete (e, _) when e = e' -> reste
+        | _ -> n :: pile)
+      [] trouves
+  in
+  (Sommet clou :: List.rev pile) @ [ Sommet clou ]
