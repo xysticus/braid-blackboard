@@ -52,7 +52,9 @@ Python, plus rapides).
    fabriquer les films de `imgs/conforme/`. 7a fait : la carte de Schwarz–Christoffel (`ocaml/lib/conforme.ml`),
    concordante avec le Python à 1e-11 près. 7b fait : `Lettre` (ligne brisée, pieds, dessin d'un état), concordante
    à 1e-10 près. 7c fait : `RaccordTriangule` et ses outils (`ocaml/lib/raccord.ml`), concordant à 1e-11 près à
-   entrées égales. À faire : 7d `film_conforme` et `nb_croisements`.
+   entrées égales. 7d fait : `film_conforme` et `nb_croisements` (`ocaml/lib/film_conforme.ml`,
+   `Dessin.film_conforme`, `ocaml/bin/conforme.ml`), films identiques octet pour octet à ceux du Python (41 s au lieu
+   de 1 min 35), sans le raccord par mélange.
 
 Laissé de côté au début : le film conforme (`python/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
 l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `python/NouvAutoMorph.py`.

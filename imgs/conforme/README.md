@@ -14,7 +14,10 @@ python python/Conforme.py
 ```
 
 Écrit `film_43m1m12m41.mp4` (la tresse σ₄σ₃σ₁⁻¹σ₁⁻¹σ₂σ₄⁻¹σ₁) et `film_charge.mp4` (σ₁σ₂⁻¹σ₁σ₂⁻¹σ₁σ₂⁻¹σ₃σ₁⁻¹σ₂) dans ce
-répertoire, en 800 × 800, et vérifie chaque image (environ 1 min 30). Pour une autre tresse :
+répertoire, en 800 × 800, et vérifie chaque image (environ 1 min 30). La réécriture OCaml (`ocaml/`, voir
+`ocaml/explications.md`) écrit les mêmes films, identiques octet pour octet, en 40 s : depuis `ocaml/`,
+`dune exec bin/conforme.exe` → `film_43m1m12m41_ocaml.mp4` et `film_charge_ocaml.mp4` (ffmpeg avec libsvtav1, celui de
+l'environnement conda : `FFMPEG=…/envs/braid-blackboard/bin/ffmpeg`). Pour une autre tresse :
 
 ```
 python -c "import sys; sys.path.insert(0, 'python'); import Conforme as C; C.film_conforme([1, 2, -1], 'imgs/conforme/f.mp4', hauteur=800, largeur=800, marge=60)"

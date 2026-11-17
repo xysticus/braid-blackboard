@@ -59,3 +59,9 @@ val film_escargot :
   ?ffmpeg:string -> ?duree:float -> ?images_par_seconde:int -> ?pause:float -> Escargot.t -> string -> unit
 (** [film_escargot escargot fichier] : film MP4 de [duree] = 12 s à 25 images/s, la dernière image tenue [pause] =
     2 s ; chaque image déplace les trous vers la chorégraphie par sous-pas d'au plus 2 px. *)
+
+(* Le film conforme (film_conforme de python/Conforme.py, raccord par triangulation) : écrit le MP4 au fil du calcul,
+   rend les anomalies de la vérification (mots relus, croisements). *)
+val film_conforme :
+  ?ffmpeg:string -> ?hauteur:int -> ?largeur:int -> ?marge:int -> ?largeur_brin:float -> ?pause:float -> ?verifie:bool ->
+  Tresses.tresse -> string -> Film_conforme.anomalie list

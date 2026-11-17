@@ -268,3 +268,48 @@ let film_escargot ?(ffmpeg = "ffmpeg") ?(duree = 12.) ?(images_par_seconde = 25)
   match Unix.close_process_out tube with
   | Unix.WEXITED 0 -> ()
   | _ -> failwith ("ffmpeg n'a pas pu écrire " ^ fichier)
+
+(* Le film conforme (film_conforme de python/Conforme.py, avec le raccord par triangulation et sans les arêtes de
+   construction) : chaque image est peinte comme dans le Python (lacets décalés de la marge, trous, clou), et écrite
+   au fil du calcul dans le tube vers ffmpeg, avec les mêmes arguments. La première image dure [pause] (500 ms), les
+   suivantes 40 ms, la dernière 3 × pause. Rend les anomalies de la vérification. *)
+let film_conforme ?(ffmpeg = "ffmpeg") ?(hauteur = 400) ?(largeur = 400) ?(marge = 0) ?(largeur_brin = 4.) ?(pause = 500.)
+    ?(verifie = false) tresse fichier =
+  let arguments =
+    [ ffmpeg; "-y"; "-loglevel"; "error"; "-f"; "rawvideo"; "-pix_fmt"; "bgra"; "-s"; Printf.sprintf "%dx%d" largeur hauteur;
+      "-r"; "25"; "-i"; "-" ]
+    @ encodeur @ [ fichier ]
+  in
+  let tube = Unix.open_process_args_out ffmpeg (Array.of_list arguments) in
+  let descr = Unix.descr_of_out_channel tube in
+  let decalage = { x = float_of_int marge; y = float_of_int marge } in
+  let surface (im : Film_conforme.image) =
+    peint ~hauteur ~largeur ~largeur_brin
+      (List.map (Array.map (fun p -> p +: decalage)) im.lignes)
+      (List.map (fun p -> p +: decalage) (Array.to_list im.trous))
+      (im.clou +: decalage)
+  in
+  let ecrit fois im =
+    let s = surface im in
+    Cairo.Surface.flush s;
+    let donnees = Cairo.Image.get_data8 s in
+    for _ = 1 to fois do ecrit_tout descr donnees done
+  in
+  (* nombre d'images de 40 ms pour une durée en millisecondes : max(1, round(ms / 40)), arrondi du Python *)
+  let fois ms = max 1 (int_of_float (Film.arrondi (ms /. 40.))) in
+  (* chaque image est écrite quand arrive la suivante : la dernière dure plus longtemps *)
+  let rang = ref 0 and derniere = ref None in
+  let rendu im =
+    Option.iter (ecrit (fois (if !rang = 1 then pause else 40.))) !derniere;
+    incr rang;
+    derniere := Some im
+  in
+  let anomalies =
+    Film_conforme.film ~verifie ~hauteur:(float_of_int hauteur) ~largeur:(float_of_int largeur) ~marge:(float_of_int marge)
+      ~rendu tresse
+  in
+  Option.iter (ecrit (fois (3. *. pause))) !derniere;
+  (match Unix.close_process_out tube with
+  | Unix.WEXITED 0 -> ()
+  | _ -> failwith ("ffmpeg n'a pas pu écrire " ^ fichier));
+  anomalies

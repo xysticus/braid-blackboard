@@ -69,6 +69,10 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   `bin/escargot.ml` → `imgs/escargot/film_ocaml.mp4`, identique octet pour octet au Python (4,5 s au lieu de 8,4). `Maillage.cherche_arete_a_retourner` parcourt les arêtes dans un ordre
   déterministe, le même en Python et en OCaml (arêtes rangées) : l'ordre d'un set changeait les courbes quand
   plusieurs arêtes étaient à retourner au même pas.
+  Étape 7 faite : le film conforme (`lib/conforme.ml` : carte de Schwarz–Christoffel et `Lettre` ; `lib/raccord.ml` :
+  `RaccordTriangule` ; `lib/film_conforme.ml` : la boucle et `nb_croisements` ; `Dessin.film_conforme`),
+  `bin/conforme.ml` → `imgs/conforme/film_*_ocaml.mp4`, identiques octet pour octet au Python (41 s au lieu de 1 min 35),
+  seulement avec le raccord par triangulation (le défaut).
   `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par
   `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy

@@ -137,10 +137,26 @@ let test_raccord j () =
         (J.to_list (J.member "lignes" image)) lignes)
     (J.to_list (J.member "images" j))
 
+(* 7d : nb_croisements, sur des cas faits à la main *)
+
+let test_nb_croisements () =
+  let p x y = { Geometrie.x; y } in
+  let clou = p 0. 0. in
+  let diagonale = [| p 100. 100.; p 200. 200. |] and autre = [| p 100. 200.; p 200. 100. |] in
+  Alcotest.(check int) "deux lacets qui se croisent" 1 (Film_conforme.nb_croisements [ diagonale; autre ] clou);
+  Alcotest.(check int) "un lacet ne se compte pas lui-même" 0
+    (Film_conforme.nb_croisements [ Array.append diagonale autre ] clou);
+  Alcotest.(check int) "près du clou, rien ne compte" 0
+    (Film_conforme.nb_croisements [ [| p (-5.) (-5.); p 5. 5. |]; [| p (-5.) 5.; p 5. (-5.) |] ] clou);
+  (* plus de 64 segments : plusieurs paquets par lacet *)
+  let long = Array.init 200 (fun k -> p (100. +. float_of_int k) 150.) in
+  Alcotest.(check int) "paquets" 1 (Film_conforme.nb_croisements [ long; autre ] clou)
+
 let () =
   Alcotest.run "conforme"
     [
       ("carte", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "carte %d" k) `Quick (test_carte k j)) (cartes ()));
       ("lettre", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "lettre %d" k) `Quick (test_lettre j)) (lettres ()));
       ("raccord", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "raccord %d" k) `Quick (test_raccord j)) (raccords ()));
+      ("film", [ Alcotest.test_case "nb_croisements" `Quick test_nb_croisements ]);
     ]

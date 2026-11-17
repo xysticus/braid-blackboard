@@ -635,6 +635,33 @@ les trous et le clou.
 seconde avec une réduction qui varie), reconstruits en OCaml à partir des mêmes entrées : mêmes anomalies (aucune),
 mêmes nombres de points, points à 1e-11 près sur les 34 images.
 
+## 13. Le film conforme (`film_conforme.ml`, `Dessin.film_conforme`, étape 7d)
+
+Le `film_conforme` du Python est coupé en deux, comme les autres films : le calcul des images dans
+`lib/film_conforme.ml` (un module à part, parce que `Raccord` dépend déjà de `Conforme`), le dessin et l'écriture du
+MP4 dans `dessin/dessin.ml`. Seul le raccord par triangulation (le défaut) est traduit ; ni le mélange
+(`raccord='melange'`), ni le tracé des arêtes de construction, ni le GIF.
+
+- **`film ~hauteur ~largeur ~marge ~rendu tresse`** : la première image est l'image clé 0, dessinée par la carte ;
+  puis, pour chaque lettre, 48 images aux temps `lisse (n / 48)`. Hors de la fenêtre (poids 0 ou 1), l'état k ou
+  k+1 dessiné par la lettre, aplati davantage si des arcs sortent par le haut (`dessin_reduit` rend les lignes et la
+  réduction ; en Python, `lettre.reduction` est un attribut modifié en place, ici un argument). Dans la fenêtre, le
+  raccord est construit à la première image, avec la dernière image avant la fenêtre (`precedent`) et la première
+  après (dessinée d'avance) ; chaque image de la fenêtre en est tirée (`Raccord.lignes`). `rendu` reçoit chaque
+  image au fil du calcul : rien n'est gardé en mémoire.
+  Les appels à la carte se font dans l'ordre du Python : le cache des écarts de la lettre se remplit dans le même
+  ordre, et les derniers chiffres des dessins en dépendent.
+- **`verifie`** : sur chaque image hors de l'instant où les trous qui tournent sont l'un au-dessus de l'autre, les
+  mots relus (`lit_mot`, trous rangés par abscisse) doivent être ceux de l'image clé k ou k+1 ; et
+  **`nb_croisements`** compte les croisements entre lacets distincts, loin du clou, par paquets de 64 segments dont
+  on ne compare que ceux dont les rectangles englobants se chevauchent.
+- **`Dessin.film_conforme`** : chaque image est peinte par `peint` après le décalage de la marge, et envoyée à
+  ffmpeg ; la première dure 500 ms (12 images à 25 par seconde), la dernière 1,5 s (38), les autres 40 ms.
+
+**Vérification** : `dune exec bin/conforme.exe` écrit les deux films (800 × 800, marges de 60) avec vérification :
+0 anomalie, et des MP4 identiques octet pour octet à ceux du Python (avec le même ffmpeg), en 41 s au lieu de
+1 min 35. `nb_croisements` est aussi testé sur des cas faits à la main.
+
 ## Annexe : pourquoi l'OCaml est au moins 15 fois plus rapide
 
 Les 16 lettres des deux films d'essai prennent 4,5 s en Python, moins de 0,3 s en OCaml, avec le même algorithme
