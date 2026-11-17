@@ -1,0 +1,4 @@
+(test
+ (name test_tresses)
+ (libraries ardoise alcotest)
+ (deps reference_python.txt))

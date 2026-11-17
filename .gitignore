@@ -5,3 +5,4 @@
 *.mp4
 .vscode/
 __pycache__/
+_build/
