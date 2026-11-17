@@ -58,8 +58,10 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   `lib/triangulation.ml`, `Film.cree` (le `Film.__init__` du Python) : tout le film se calcule en OCaml.
   Étape 5 faite (avant la 4) : `dessin/dessin.ml`, bibliothèque à part qui seule dépend de cairo2 (`peint`,
   `cadre`, `film_triangule`), et `bin/films.ml` (`dune exec bin/films.exe` → `imgs/film_triangule_*_ocaml.mp4`,
-  mêmes images que le Python, 6 s au lieu de 12 ; ffmpeg pris dans l'environnement conda). cairo2 demande
-  `sudo apt install libcairo2-dev pkg-config`.
+  identiques octet pour octet au Python, 6 s au lieu de 12 ; ffmpeg pris dans l'environnement conda). Les arêtes
+  grises sont tracées dans l'ordre rangé des deux côtés : là où elles se recouvrent, l'anticrénelage dépend de
+  l'ordre, et un pixel d'écart suffit à changer l'encodage AV1. cairo2 demande `sudo apt install libcairo2-dev
+  pkg-config`.
   Étape 4 faite : `lib/raccord.ml` (`maillage_du_raccord`), `lib/arcs.ml` (`FilmArcs` et `DiagrammeCourbes` dans
   un même type `Arcs.t`, sans la tension hyperbolique ; `Film.tend_courbes` et `Film.polyligne_de_courbe`
   remplacent l'héritage), `bin/arcs.ml` → `imgs/<méthode>/film_*_ocaml.mp4`, identiques octet pour octet au

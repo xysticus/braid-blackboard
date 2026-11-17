@@ -52,11 +52,13 @@ let cadre ?(lisse = true) ?largeur_brin ?(avec_aretes = true) ?ecart (film : Fil
   let axe =
     if avec_aretes then
       Some
-        (Triangulation.Aretes.fold
-           (fun (a : Triangulation.Arete.t) _ acc ->
+        (* dans l'ordre rangé, comme le Python : là où deux arêtes se recouvrent, le gris anticrénelé dépend de
+           l'ordre de tracé (arrondi à 8 bits) *)
+        (List.map
+           (fun ((a : Triangulation.Arete.t), _) ->
              let u, v = (a :> int * int) in
-             [| pos.(u); pos.(v) |] :: acc)
-           (Triangulation.Maillage.aretes film.maillage) [])
+             [| pos.(u); pos.(v) |])
+           (Triangulation.Aretes.bindings (Triangulation.Maillage.aretes film.maillage)))
     else None
   in
   peint ~hauteur:(int_of_float film.hauteur) ~largeur:(int_of_float film.largeur) ~largeur_brin ?axe

@@ -388,7 +388,9 @@ class Film:
     def cadre(self, lisse=True, largeur_brin=None, avec_arêtes=True, ecart=None):
         if largeur_brin is None: largeur_brin = 3 * self.largeur / 400
         if ecart is not None: largeur_brin = min(largeur_brin, max(1, 0.7 * ecart)) # brins serrés : trait plus fin
-        arêtes = [self.maillage.pos[list(e)] for e in self.maillage.aretes()] if avec_arêtes else None
+        # arêtes tracées dans l'ordre rangé, comme l'OCaml : là où deux arêtes se recouvrent, le gris anticrénelé
+        # dépend de l'ordre (arrondi à 8 bits)
+        arêtes = [self.maillage.pos[list(e)] for e in sorted(self.maillage.aretes())] if avec_arêtes else None
         return peint(self.polylignes(lisse), self.positions_des_trous(), self.maillage.pos[self.clou],
                      self.hauteur, self.largeur, largeur_brin, axe=arêtes)
 

@@ -428,8 +428,10 @@ cairo2 demande la bibliothèque C (`sudo apt install libcairo2-dev pkg-config`),
 - **`bin/films.ml`** : le `__main__` du Python, `dune exec bin/films.exe` depuis `ocaml/` (ffmpeg dans le PATH, ou
   dans la variable `FFMPEG`). Il écrit `imgs/film_triangule_*_ocaml.mp4`.
 
-Comparé au film Python de la tresse de référence : même nombre d'images (809), écart moyen d'un demi-niveau de gris
-sur 255 (bruit de l'encodage). Le film prend 6 s au lieu de 12 : le calcul ne compte presque plus, l'essentiel est
+Les deux films sont identiques octet pour octet à ceux du Python. Il a fallu tracer les arêtes grises dans le même
+ordre des deux côtés (l'ordre rangé, `Aretes.bindings`) : là où deux arêtes se recouvrent, le gris anticrénelé,
+arrondi à 8 bits, dépend de l'ordre de tracé. Une vingtaine de pixels différaient d'un niveau sur 255, et cela
+suffisait pour que l'encodeur AV1, avec perte, fasse d'autres choix sur toute l'image. Le film prend 6 s au lieu de 12 : le calcul ne compte presque plus, l'essentiel est
 le dessin et l'encodage AV1.
 
 ---
