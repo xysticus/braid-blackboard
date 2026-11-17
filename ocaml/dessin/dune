@@ -1,0 +1,5 @@
+; Le dessin et le film (étape 5 du plan) : seule partie qui dépend de cairo2. La bibliothèque ardoise et ses tests
+; s'en passent.
+(library
+ (name dessin)
+ (libraries ardoise cairo2 unix))

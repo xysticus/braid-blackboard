@@ -41,7 +41,8 @@ Python, plus rapides).
 4. **Diagramme de courbes et rubans** (`python/Arcs.py`) : le plus simple des films (environ 600 lignes de Python
    en tout), avec la construction du maillage (`python/Raccord.py`, `maillage_du_raccord`) et la découpe d'une
    polyligne par les arêtes (`coupe_arc`).
-5. **Dessin et film** : cairo2 pour le dessin, ffmpeg par un tube pour la vidéo.
+5. **Dessin et film** : cairo2 pour le dessin, ffmpeg par un tube pour la vidéo. Fait avant l'étape 4 pour le
+   film de la triangulation mobile (`ocaml/dessin/dessin.ml`, `ocaml/bin/films.ml`).
 
 Laissé de côté au début : le film conforme (`python/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
 l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `python/NouvAutoMorph.py`.

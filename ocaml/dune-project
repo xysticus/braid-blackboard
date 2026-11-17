@@ -15,6 +15,8 @@
  (depends
   (ocaml (>= 5.4))
   dune
+  ; cairo2 demande la bibliothèque C et pkg-config : sudo apt install libcairo2-dev pkg-config
+  cairo2
   (alcotest :with-test)
   (yojson :with-test)
   (ocaml-lsp-server :with-dev-setup)

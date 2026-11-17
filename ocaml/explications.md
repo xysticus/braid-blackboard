@@ -10,6 +10,7 @@ le `.mli` le dit.
 | [`lib/tresses.ml`](lib/tresses.ml) | `python/tresses.py` : groupe libre, action d'Artin, méandre, relecture, arcs | 1, 3, 3 bis |
 | [`lib/triangulation.ml`](lib/triangulation.ml) | `Maillage`, `maillage_initial`, `noeuds_de_polyligne` de `python/Triangulation.py` | 2, 3 bis |
 | [`lib/film.ml`](lib/film.ml) | la classe `Film` de `python/Triangulation.py` | 3, 3 bis |
+| [`dessin/dessin.ml`](dessin/dessin.ml) | `peint`, `Film.cadre`, `film_triangule` (cairo2, ffmpeg) | 5 |
 
 Les tests (`dune test` dans `ocaml/`) comparent chaque fonction aux sorties du Python, écrites dans
 `test/reference_*` par `python ocaml/test/genere_reference*.py`.
@@ -404,6 +405,30 @@ Les brins se tassent à écart fixe là où ils sont tirés, près des trous, et
   4. dessin étiré au-dessus de l'axe pour remplir la bande du haut ;
   5. courbes posées sur le maillage (`noeuds_de_polyligne`), puis `?tension` pas de `tend` (400 par défaut, comme
      le Python, qui n'a pas cet argument).
+
+---
+
+## 7. Le dessin et le film (`dessin/dessin.ml`, étape 5)
+
+Une bibliothèque à part, `dessin`, la seule qui dépende de cairo2 : `ardoise` et ses tests compilent sans Cairo.
+cairo2 demande la bibliothèque C (`sudo apt install libcairo2-dev pkg-config`), puis `opam install cairo2`.
+
+- **`peint`** : fond blanc, arêtes en gris dessous (`?axe`), lacets en couleur, trous et clou en disques noirs. Les
+  appels Cairo sont ceux du Python (`move_to`, `line_to`, `stroke`, `arc`, `fill`), avec un contexte explicite.
+  Le Python accepte aussi des morceaux d'axe avec leur opacité : ils ne servent qu'aux anciens films.
+- **`cadre`** : l'image du film à un instant (`Film.cadre` du Python). Les arêtes viennent de `Maillage.aretes` ; une
+  `Arete.t` est privée, `(a :> int * int)` la lit comme une paire sans pouvoir en fabriquer une.
+- **`film_triangule`** : ffmpeg est lancé par `Unix.open_process_args_out`, et chaque image part brute (BGRA, le
+  format en mémoire d'une surface Cairo ARGB32) par `Unix.write_bigarray` sur le descripteur du tube, sans copie
+  dans une chaîne. Le rendu passé à `Film.lettre` garde l'image précédente et l'écrit quand la suivante arrive :
+  la dernière du film, seule, est répétée pendant la pause finale. Les pauses comptent leurs images avec
+  `Film.arrondi` (le `round` du Python, au pair : 12 images pour 0,5 s).
+- **`bin/films.ml`** : le `__main__` du Python, `dune exec bin/films.exe` depuis `ocaml/` (ffmpeg dans le PATH, ou
+  dans la variable `FFMPEG`). Il écrit `imgs/film_triangule_*_ocaml.mp4`.
+
+Comparé au film Python de la tresse de référence : même nombre d'images (809), écart moyen d'un demi-niveau de gris
+sur 255 (bruit de l'encodage). Le film prend 6 s au lieu de 12 : le calcul ne compte presque plus, l'essentiel est
+le dessin et l'encodage AV1.
 
 ---
 

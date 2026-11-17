@@ -56,6 +56,10 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   Python). Étape 3 bis faite : le méandre dans `lib/tresses.ml` (`intervalles`, `compare_points`, `abscisses`,
   `etat_de_tresse`, `agit`, `reduit`, `dessin_etat` sans ses options d'animation), `noeuds_de_polyligne` dans
   `lib/triangulation.ml`, `Film.cree` (le `Film.__init__` du Python) : tout le film se calcule en OCaml.
+  Étape 5 faite (avant la 4) : `dessin/dessin.ml`, bibliothèque à part qui seule dépend de cairo2 (`peint`,
+  `cadre`, `film_triangule`), et `bin/films.ml` (`dune exec bin/films.exe` → `imgs/film_triangule_*_ocaml.mp4`,
+  mêmes images que le Python, 6 s au lieu de 12 ; ffmpeg pris dans l'environnement conda). cairo2 demande
+  `sudo apt install libcairo2-dev pkg-config`.
   `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par
   `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy

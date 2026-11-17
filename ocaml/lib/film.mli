@@ -66,6 +66,9 @@ val abscisses : t -> float -> disposition
 val chemin_des_trous : ?echantillons:int -> t -> Tresses.sigma Tresses.lettre -> float array * float array
 (** (temps échantillonnés, longueur cumulée du chemin parcouru par l'ensemble des trous). *)
 
+val arrondi : float -> float
+(** Le [round] du Python : au plus proche, et à l'entier pair en cas d'égalité ([arrondi 12.5 = 12.]). *)
+
 val lettre :
   ?images:int -> ?sous_pas:int -> ?taux:float -> ?vitesse:float -> ?rendu:(t -> float -> unit) ->
   t -> Tresses.sigma Tresses.lettre -> t * int
