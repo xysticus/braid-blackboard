@@ -101,9 +101,46 @@ let test_lettre j () =
     attendu dessin;
   List.iteri (fun i q -> proches_p (nom ^ " : trou") 1e-9 (point_de q) (Conforme.trous_ecran l ~reduction:1. s).(i)) (J.to_list (J.member "trous" j))
 
+(* 7c : le raccord par triangulation, reconstruit à partir des entrées capturées dans le film Python *)
+
+let raccords () = J.to_list (J.member "raccords" (Lazy.force reference))
+let lignes_de j = List.map (fun l -> Array.of_list (List.map point_de (J.to_list l))) (J.to_list j)
+
+let test_raccord j () =
+  let entiers = List.map J.to_int (J.to_list (J.member "tresse" j)) in
+  let k = J.to_int (J.member "k" j) in
+  let nom = Printf.sprintf "raccord de la lettre %d" k in
+  let tresse = Tresses.tresse_de_entiers entiers in
+  let nb_trous = List.fold_left (fun a x -> max a (abs x)) 0 entiers + 1 in
+  let prefixe n = List.filteri (fun i _ -> i < n) tresse in
+  let cle = Tresses.etat_de_tresse ~nb_trous (prefixe k) and suivante = Tresses.etat_de_tresse ~nb_trous (prefixe (k + 1)) in
+  let largeur = J.to_number (J.member "largeur" j) and hauteur = J.to_number (J.member "hauteur" j) in
+  let l = Conforme.lettre ~hauteur ~largeur cle suivante (List.nth tresse k) in
+  let nombre n = J.to_number (J.member n j) in
+  let r =
+    Raccord.raccord ~positions:(fun s reduction -> Conforme.trous_ecran l ~reduction s) ~clou:(point_de (J.member "clou" j))
+      ~largeur ~hauteur ~s_a:(nombre "s_a") ~r_a:(nombre "r_a") ~depart:(lignes_de (J.member "depart" j)) ~s_b:(nombre "s_b")
+      ~r_b:(nombre "r_b") ~arrivee:(lignes_de (J.member "arrivee" j)) ~temps:(Array.of_list (reels (J.member "temps" j)))
+      ~tournants:(List.map J.to_int (J.to_list (J.member "tournants" j))) ()
+  in
+  List.iter
+    (fun image ->
+      let f = J.to_int (J.member "f" image) and poids = J.to_number (J.member "poids" image) in
+      let nom = Printf.sprintf "%s, image %d" nom f in
+      let lignes, anomalies = Raccord.lignes r f poids in
+      Alcotest.(check int) (nom ^ " : anomalies") (J.to_int (J.member "anomalies" image)) (List.length anomalies);
+      List.iter2
+        (fun res p ->
+          Alcotest.(check int) (nom ^ " : points du lacet") (J.to_int (J.member "n" res)) (Array.length p);
+          List.iteri (fun i q -> proches_p (nom ^ " : point du lacet") 1e-6 (point_de q) p.(25 * i)) (J.to_list (J.member "echantillon" res));
+          proches_p (nom ^ " : dernier point") 1e-6 (point_de (J.member "dernier" res)) p.(Array.length p - 1))
+        (J.to_list (J.member "lignes" image)) lignes)
+    (J.to_list (J.member "images" j))
+
 let () =
   Alcotest.run "conforme"
     [
       ("carte", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "carte %d" k) `Quick (test_carte k j)) (cartes ()));
       ("lettre", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "lettre %d" k) `Quick (test_lettre j)) (lettres ()));
+      ("raccord", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "raccord %d" k) `Quick (test_raccord j)) (raccords ()));
     ]

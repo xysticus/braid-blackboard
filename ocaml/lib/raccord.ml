@@ -57,3 +57,345 @@ let maillage_du_raccord ?(marge = 40.) ?(par_cote = 6) trous clou largeur hauteu
   let m, i_clou = match clou with None -> (m, None) | Some c -> let m, v = insere m c in (m, Some v) in
   let m, _ = Maillage.delaunay m [] in
   (m, Array.to_list indices, i_clou)
+
+(* --- Le raccord du film conforme par triangulation mobile (étape 7c) --- *)
+
+let lisse u = u *. u *. (3. -. (2. *. u))
+
+(* Image d'un point par l'application affine par triangles qui envoie les positions avant sur apres : le triangle
+   qui le contient (le plus « intérieur » si plusieurs : la plus grande des plus petites coordonnées barycentriques),
+   puis les mêmes coordonnées barycentriques dans le triangle déplacé (localise et transporte du Python). *)
+let transporte_point triangles avant apres x =
+  let meilleur = ref None and pire_max = ref Float.neg_infinity in
+  List.iter
+    (fun t ->
+      let a, b, c = (t : Triangle.t :> sommet * sommet * sommet) in
+      let pa = avant.(a) in
+      let v0 = avant.(b) -: pa and v1 = avant.(c) -: pa in
+      let det = croix v0 v1 in
+      let d = x -: pa in
+      let l1 = ((d.x *. v1.y) -. (d.y *. v1.x)) /. det and l2 = ((v0.x *. d.y) -. (v0.y *. d.x)) /. det in
+      let l0 = 1. -. l1 -. l2 in
+      let pire = Float.min (Float.min l0 l1) l2 in
+      if pire > !pire_max then begin
+        pire_max := pire;
+        meilleur := Some (a, b, c, l0, l1, l2)
+      end)
+    triangles;
+  if !pire_max <= -1e-6 then failwith "Raccord.transporte : point hors du maillage";
+  match !meilleur with
+  | Some (a, b, c, l0, l1, l2) ->
+      { x = (l0 *. apres.(a).x) +. (l1 *. apres.(b).x) +. (l2 *. apres.(c).x);
+        y = (l0 *. apres.(a).y) +. (l1 *. apres.(b).y) +. (l2 *. apres.(c).y) }
+  | None -> failwith "Raccord.transporte : maillage vide"
+
+let transporte lignes triangles avant apres = List.map (Array.map (transporte_point triangles avant apres)) lignes
+
+type traversee = { position : float; arete : Arete.t; fraction : float }
+(* Une traversée d'arête par une polyligne : la position le long de la polyligne (indice du segment + fraction),
+   l'arête, la fraction de u vers v où elle est traversée. *)
+
+(* Traversées des arêtes par une polyligne qui part du clou et y revient : (suite réduite, toutes les traversées).
+   Un point posé sur une arête compte toujours du même côté (une traversée est un changement de côté). La suite
+   réduite annule les bigones (deux traversées successives d'une même arête) et ne garde pas les traversées des arêtes
+   du clou en tête et en queue (le clou est le point base, un lacet peut tourner autour en partant). *)
+let coupe points m clou =
+  let pos = m.Maillage.pos in
+  let n = Array.length points in
+  let trouvees = ref [] in
+  Aretes.iter
+    (fun arete _ ->
+      let u, v = (arete : Arete.t :> sommet * sommet) in
+      let s = pos.(v) -: pos.(u) in
+      let longueur = Float.hypot s.x s.y in
+      let cote = Array.map (fun p -> ((s.x *. (p.y -. pos.(u).y)) -. (s.y *. (p.x -. pos.(u).x))) /. longueur) points in
+      for k = 0 to n - 2 do
+        if cote.(k) >= -1e-7 <> (cote.(k + 1) >= -1e-7) then begin
+          let t = cote.(k) /. (cote.(k) -. cote.(k + 1)) in
+          let xk = points.(k) +: (t *: (points.(k + 1) -: points.(k))) in
+          let w = scalaire (xk -: pos.(u)) s /. (longueur *. longueur) in
+          if 1e-9 < w && w < 1. -. 1e-9 then trouvees := { position = float_of_int k +. t; arete; fraction = w } :: !trouvees
+        end
+      done)
+    (Maillage.aretes m);
+  let toutes = List.stable_sort (fun a b -> compare a.position b.position) (List.rev !trouvees) in
+  let pile =
+    List.fold_left (fun pile t -> match pile with x :: reste when x.arete = t.arete -> reste | _ -> t :: pile) [] toutes |> List.rev
+  in
+  let touche_clou t = let u, v = (t.arete : Arete.t :> sommet * sommet) in u = clou || v = clou in
+  let rec sans_tete = function x :: reste when touche_clou x -> sans_tete reste | l -> l in
+  (List.rev (sans_tete (List.rev (sans_tete pile))), toutes)
+
+(* Le point de la polyligne à une position (indice du segment + fraction). *)
+let point_en points position =
+  let k = min (int_of_float position) (Array.length points - 2) in
+  points.(k) +: ((position -. float_of_int k) *: (points.(k + 1) -: points.(k)))
+
+(* Le morceau de la polyligne entre les positions a <= b. *)
+let morceau points a b =
+  let interieurs =
+    List.filter_map
+      (fun v -> if a < float_of_int v && float_of_int v < b then Some points.(v) else None)
+      (List.init (max 0 (int_of_float (Float.ceil b) - (int_of_float (Float.floor a) + 1))) (fun i -> int_of_float (Float.floor a) + 1 + i))
+  in
+  Array.of_list ((point_en points a :: interieurs) @ [ point_en points b ])
+
+(* La polyligne rééchantillonnée en n points régulièrement espacés le long de sa longueur. *)
+let reechantillonne points n =
+  let longueurs = Array.init (Array.length points - 1) (fun i -> norme (points.(i + 1) -: points.(i))) in
+  let cumul = Conforme.cumul_depuis_zero longueurs in
+  let total = cumul.(Array.length cumul - 1) in
+  if total = 0. then Array.make n points.(0)
+  else
+    let xs = Array.map (fun p -> p.x) points and ys = Array.map (fun p -> p.y) points in
+    Array.map (fun s -> { x = Conforme.interp s cumul xs; y = Conforme.interp s cumul ys }) (Conforme.linspace 0. total n)
+
+(* La ligne brisée des points, chaque coude arrondi par un congé (arc tangent aux deux segments, sur au plus [part] du
+   plus court). depart (arrivee) : direction unitaire de la courbe qui arrive au premier point (qui part du dernier) ;
+   le début du premier segment (la fin du dernier) devient alors une paire d'arcs tangente à cette courbe : pas de coin
+   à la jonction. Chaque arrondi reste dans un disque centré sur son coude de rayon 0,9 × la distance au trou le plus
+   proche : il ne passe jamais de l'autre côté d'un trou. *)
+let arrondit ?(part = 0.5) ?depart ?arrivee ~trous points =
+  let n = Array.length points in
+  let rayon_libre v = 0.9 *. Array.fold_left (fun a t -> Float.min a (norme (t -: v))) Float.infinity trous in
+  let dessin = ref [ [| points.(0) |] ] in
+  (match depart with
+  | Some d when n > 1 ->
+      let corde = points.(1) -: points.(0) in
+      let lg = norme corde in
+      if lg > 1e-9 && scalaire d ((1. /. lg) *: corde) < 1. -. 1e-9 then begin
+        let c = Float.min (part *. lg) (rayon_libre points.(0) /. 2.) in
+        let u = (1. /. lg) *: corde in
+        dessin := [ Tresses.deux_arcs points.(0) d (points.(0) +: (c *: u)) u ]
+      end
+  | _ -> ());
+  for i = 1 to n - 2 do
+    let a = points.(i - 1) and v = points.(i) and b = points.(i + 1) in
+    let la = norme (a -: v) and lb = norme (b -: v) in
+    if la < 1e-9 || lb < 1e-9 then dessin := [| v |] :: !dessin
+    else
+      let ua = (1. /. la) *: (a -: v) and ub = (1. /. lb) *: (b -: v) in
+      if scalaire ua ub < -1. +. 1e-9 then dessin := [| v |] :: !dessin
+      else
+        let c = Float.min (part *. Float.min la lb) (rayon_libre v) in
+        dessin := Tresses.deux_arcs (v +: (c *: ua)) (oppose ua) (v +: (c *: ub)) ub :: !dessin
+  done;
+  let fin =
+    match arrivee with
+    | Some d when n > 1 ->
+        let corde = points.(n - 1) -: points.(n - 2) in
+        let lg = norme corde in
+        if lg > 1e-9 && scalaire d ((1. /. lg) *: corde) < 1. -. 1e-9 then
+          let c = Float.min (part *. lg) (rayon_libre points.(n - 1) /. 2.) in
+          let u = (1. /. lg) *: corde in
+          Some (Tresses.deux_arcs (points.(n - 1) -: (c *: u)) u points.(n - 1) d)
+        else None
+    | _ -> None
+  in
+  let fin = match fin with Some arcs -> arcs | None -> [| points.(n - 1) |] in
+  Array.concat (List.rev (fin :: !dessin))
+
+(* Coupe la polyligne là où elle traverse successivement les arêtes données (une traversée par arête, dans l'ordre) ;
+   les morceaux (un de plus que d'arêtes), ou None si une traversée manque. *)
+let decoupe_aux_aretes points aretes pos =
+  let n = Array.length points in
+  let rec suite debut morceaux = function
+    | [] -> Some (List.rev (morceau points debut (float_of_int (n - 1)) :: morceaux))
+    | arete :: reste -> (
+        let u, v = (arete : Arete.t :> sommet * sommet) in
+        let s = pos.(v) -: pos.(u) in
+        let cote = Array.map (fun p -> (s.x *. (p.y -. pos.(u).y)) -. (s.y *. (p.x -. pos.(u).x))) points in
+        let trouve = ref None and k = ref (int_of_float debut) in
+        while !trouve = None && !k < n - 1 do
+          (if cote.(!k) >= 0. <> (cote.(!k + 1) >= 0.) then
+             let t = cote.(!k) /. (cote.(!k) -. cote.(!k + 1)) in
+             let xk = points.(!k) +: (t *: (points.(!k + 1) -: points.(!k))) in
+             let w = scalaire (xk -: pos.(u)) s /. scalaire s s in
+             if 0. < w && w < 1. && float_of_int !k +. t > debut then trouve := Some (float_of_int !k +. t));
+          incr k
+        done;
+        match !trouve with None -> None | Some t -> suite t (morceau points debut t :: morceaux) reste)
+  in
+  suite 0. [] aretes
+
+type raccord = {
+  image_de : int array;  (** pour chaque image de la fenêtre, l'indice de son instant *)
+  etats : (Triangle.t list * point array) array;  (** triangles (après retournements) et positions, à chaque instant *)
+  i_trous : sommet list;
+  i_clou : sommet;
+  depart : point array list array;  (** le dessin de départ transporté jusqu'à chaque instant *)
+  arrivee : point array list array;  (** le dessin d'arrivée ramené à chaque instant *)
+  reduction : float -> float;
+  tournants : sommet list;  (** les deux trous qui tournent (sommets du maillage) *)
+  phases : float * float * float * float;
+}
+
+(* Le raccord d'une lettre entre les temps s_a (dessin de départ, réduction r_a) et s_b (dessin d'arrivée, r_b).
+   positions s r : positions à l'écran des trous physiques au temps s avec la réduction r ; temps : les temps des
+   images de la fenêtre, croissants, strictement entre s_a et s_b ; tournants : les deux trous physiques qui
+   tournent. Le maillage (bord convexe, trous, clou) suit les trous de sous-pas en sous-pas en retournant ses arêtes ;
+   le dessin de départ est transporté vers l'avant, celui d'arrivée vers l'arrière (RaccordTriangule du Python). *)
+let raccord ?(sous_pas = 8) ?(phases = (0., 0.35, 0.65, 1.)) ~positions ~clou ~largeur ~hauteur ~s_a ~r_a ~depart ~s_b ~r_b
+    ~arrivee ~temps ~tournants () =
+  let reduction s = r_a +. ((r_b -. r_a) *. (s -. s_a) /. (s_b -. s_a)) in
+  let reperes = Array.concat [ [| s_a |]; temps; [| s_b |] ] in
+  let instants = ref [ s_a ] and image_de = ref [] in
+  for j = 0 to Array.length reperes - 2 do
+    for k = 1 to sous_pas do
+      instants := (reperes.(j) +. ((reperes.(j + 1) -. reperes.(j)) *. float_of_int k /. float_of_int sous_pas)) :: !instants
+    done;
+    if j < Array.length temps then image_de := (List.length !instants - 1) :: !image_de
+  done;
+  let instants = Array.of_list (List.rev !instants) and image_de = Array.of_list (List.rev !image_de) in
+  let m, i_trous, i_clou = maillage_du_raccord (Array.to_list (positions s_a r_a)) (Some clou) largeur hauteur in
+  let i_clou = Option.get i_clou in
+  let etats = Array.make (Array.length instants) (Maillage.triangles m, m.pos) in
+  let m = ref m in
+  for j = 1 to Array.length instants - 1 do
+    let s = instants.(j) in
+    let nouvelles = Array.copy !m.Maillage.pos in
+    List.iteri (fun p v -> nouvelles.(v) <- (positions s (reduction s)).(p)) i_trous;
+    let deplace = Maillage.deplace !m nouvelles in
+    if not (Maillage.valide deplace) then failwith "triangle retourné pendant le raccord : augmenter sous_pas";
+    let apres, _ = Maillage.delaunay deplace [] in
+    m := apres;
+    etats.(j) <- (Maillage.triangles apres, apres.pos)
+  done;
+  let nb = Array.length instants in
+  let dep = Array.make nb depart and arr = Array.make nb arrivee in
+  for j = 1 to nb - 1 do
+    let triangles, avant = etats.(j - 1) in
+    dep.(j) <- transporte dep.(j - 1) triangles avant (snd etats.(j))
+  done;
+  for j = nb - 1 downto 1 do
+    let triangles, avant = etats.(j - 1) in
+    arr.(j - 1) <- transporte arr.(j) triangles (snd etats.(j)) avant
+  done;
+  { image_de; etats; i_trous; i_clou; depart = dep; arrivee = arr; reduction;
+    tournants = List.map (List.nth i_trous) tournants; phases }
+
+let reduction r s = r.reduction s
+
+(* Direction unitaire d'une courbe à son début (en partant, au_debut) ou à sa fin (en arrivant). *)
+let tangente courbe au_debut =
+  let pts = if au_debut then Array.init (Array.length courbe) (fun i -> courbe.(Array.length courbe - 1 - i)) else courbe in
+  let n = Array.length pts in
+  let rec cherche k =
+    if k < 0 then None
+    else
+      let d = pts.(n - 1) -: pts.(k) in
+      let l = norme d in
+      if l > 1e-6 then Some ((if au_debut then -1. else 1.) *: ((1. /. l) *: d)) else cherche (k - 1)
+  in
+  cherche (n - 2)
+
+let melange q a b = ((1. -. q) *: a) +: (q *: b)
+
+(* Lacets de l'image f de la fenêtre au poids donné (0 : départ, 1 : arrivée), et les anomalies (lacet, message).
+   Chaque lacet est découpé en morceaux entre ses pieds sur les arêtes ; les pieds des deux dessins se correspondent
+   un à un. Les pieds glissent sur leurs arêtes entre phases 1 et 2 (l'ordre sur chaque arête est gardé). Les morceaux
+   d'un triangle qui touche un des trous qui tournent, ou qui contient un bigone, passent par les cordes : tension
+   (phases 0 → 1), glissement en cordes arrondies, courbure (phases 2 → 3) ; les autres passent directement du morceau de
+   départ à celui d'arrivée pendant le glissement (le mélange de deux courbes d'un triangle reste dans ce triangle). *)
+let lignes r f poids =
+  let j = r.image_de.(f) in
+  let triangles, pos = r.etats.(j) in
+  let maillage = Maillage.cree pos triangles in
+  let p0, p1, p2, p3 = r.phases in
+  let rampe a b = lisse (Float.min 1. (Float.max 0. ((poids -. a) /. (b -. a)))) in
+  let tension = rampe p0 p1 and glisse = rampe p1 p2 and courbe = rampe p2 p3 in
+  let trous = Array.of_list (List.map (fun v -> pos.(v)) r.i_trous) in
+  let anomalies = ref [] and en_cordes = Hashtbl.create 16 in
+  (* premier passage : les morceaux de chaque lacet, avec leur triangle (les sommets de leurs deux arêtes) *)
+  let decoupes =
+    List.mapi
+      (fun l (d, a) ->
+        let cd, bd = coupe d maillage r.i_clou and ca, ba = coupe a maillage r.i_clou in
+        if List.map (fun c -> c.arete) cd <> List.map (fun c -> c.arete) ca then begin
+          anomalies := (l, "traversées différentes") :: !anomalies;
+          None
+        end
+        else
+          let bornes pts c = Array.of_list ((0. :: List.map (fun c -> c.position) c) @ [ float_of_int (Array.length pts - 1) ]) in
+          let bd_ = bornes d cd and ba_ = bornes a ca in
+          let sommets =
+            Array.of_list (([ r.i_clou ] :: List.map (fun c -> let u, v = (c.arete : Arete.t :> sommet * sommet) in [ u; v ]) cd) @ [ [ r.i_clou ] ])
+          in
+          let cda = Array.of_list cd in
+          Some
+            (List.init (Array.length bd_ - 1) (fun k ->
+                 let triangle = List.sort_uniq compare (sommets.(k) @ sommets.(k + 1)) in
+                 let dedans bornes x = bornes.(k) < x.position && x.position < bornes.(k + 1) in
+                 let bigone = List.exists (dedans bd_) bd || List.exists (dedans ba_) ba in
+                 if bigone || List.exists (fun t -> List.mem t triangle) r.tournants then Hashtbl.replace en_cordes triangle ();
+                 ( triangle,
+                   reechantillonne (morceau d bd_.(k) bd_.(k + 1)) 60,
+                   reechantillonne (morceau a ba_.(k) ba_.(k + 1)) 60,
+                   if k < Array.length cda then Some cda.(k).arete else None ))))
+      (List.combine r.depart.(j) r.arrivee.(j))
+  in
+  (* second passage : les formes ; les morceaux en cordes consécutifs forment une suite, tracée en ligne brisée aux
+     coudes arrondis, raccordée en tangence aux morceaux courbes voisins *)
+  let resultat =
+    List.mapi
+      (fun l decoupe ->
+        match decoupe with
+        | None -> if poids < 0.5 then List.nth r.depart.(j) l else List.nth r.arrivee.(j) l
+        | Some morceaux ->
+            let morceaux = Array.of_list morceaux in
+            let nb = Array.length morceaux in
+            let courbe_de k =
+              let triangle, pd, pa, _ = morceaux.(k) in
+              if Hashtbl.mem en_cordes triangle then None else Some (Array.map2 (melange glisse) pd pa)
+            in
+            let courbes = Array.init nb courbe_de in
+            let formes = ref [] and k = ref 0 in
+            while !k < nb do
+              match courbes.(!k) with
+              | Some c ->
+                  formes := c :: !formes;
+                  incr k
+              | None ->
+                  let debut = !k in
+                  while !k < nb && courbes.(!k) = None do
+                    incr k
+                  done;
+                  let suite = Array.sub morceaux debut (!k - debut) in
+                  let _, pd0, pa0, _ = suite.(0) in
+                  let pieds =
+                    Array.append [| melange glisse pd0.(0) pa0.(0) |]
+                      (Array.map (fun (_, pd, pa, _) -> melange glisse pd.(Array.length pd - 1) pa.(Array.length pa - 1)) suite)
+                  in
+                  let avant = if debut > 0 then Option.bind courbes.(debut - 1) (fun c -> tangente c false) else None in
+                  let apres = if !k < nb then Option.bind courbes.(!k) (fun c -> tangente c true) else None in
+                  let cordes = arrondit ?depart:avant ?arrivee:apres ~trous pieds in
+                  let forme =
+                    if 0. < glisse && glisse < 1. then cordes
+                    else
+                      (* mélange triangle par triangle : les cordes arrondies coupées aux arêtes des pieds, chaque
+                         morceau mélangé avec celui du même triangle *)
+                      let vraie (_, pd, pa, _) = if glisse = 0. then pd else pa in
+                      let poids_cordes = if glisse = 0. then tension else 1. -. courbe in
+                      let aretes = List.filter_map (fun (_, _, _, a) -> a) (Array.to_list (Array.sub suite 0 (Array.length suite - 1))) in
+                      let parts =
+                        match decoupe_aux_aretes cordes aretes pos with
+                        | Some parts -> parts
+                        | None -> Array.to_list (Array.map (fun x -> let v = vraie x in [| v.(0); v.(Array.length v - 1) |]) suite)
+                      in
+                      let melanges =
+                        List.map2
+                          (fun x rr ->
+                            let v = vraie x in
+                            let n = max (Array.length v) (Array.length rr) in
+                            Array.map2 (melange poids_cordes) (reechantillonne v n) (reechantillonne rr n))
+                          (Array.to_list suite) parts
+                      in
+                      Array.concat (List.hd melanges :: List.map (fun m -> Array.sub m 1 (Array.length m - 1)) (List.tl melanges))
+                  in
+                  formes := forme :: !formes
+            done;
+            let formes = List.rev !formes in
+            Array.concat (List.hd formes :: List.map (fun m -> Array.sub m 1 (Array.length m - 1)) (List.tl formes)))
+      decoupes
+  in
+  (resultat, List.rev !anomalies)

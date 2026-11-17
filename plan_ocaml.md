@@ -51,8 +51,8 @@ Python, plus rapides).
 7. **Le film conforme** (`python/Conforme.py`, avec le raccord par triangulation de `python/Raccord.py`), pour
    fabriquer les films de `imgs/conforme/`. 7a fait : la carte de Schwarz–Christoffel (`ocaml/lib/conforme.ml`),
    concordante avec le Python à 1e-11 près. 7b fait : `Lettre` (ligne brisée, pieds, dessin d'un état), concordante
-   à 1e-10 près. À faire : 7c
-   `RaccordTriangule` et ses outils, 7d `film_conforme` et `nb_croisements`.
+   à 1e-10 près. 7c fait : `RaccordTriangule` et ses outils (`ocaml/lib/raccord.ml`), concordant à 1e-11 près à
+   entrées égales. À faire : 7d `film_conforme` et `nb_croisements`.
 
 Laissé de côté au début : le film conforme (`python/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
 l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `python/NouvAutoMorph.py`.

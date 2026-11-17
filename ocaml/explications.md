@@ -10,7 +10,7 @@ le `.mli` le dit.
 | [`lib/tresses.ml`](lib/tresses.ml) | `python/tresses.py` : groupe libre, action d'Artin, méandre, relecture, arcs | 1, 3, 3 bis |
 | [`lib/triangulation.ml`](lib/triangulation.ml) | `Maillage`, `maillage_initial`, `noeuds_de_polyligne` de `python/Triangulation.py` | 2, 3 bis |
 | [`lib/film.ml`](lib/film.ml) | la classe `Film` de `python/Triangulation.py` | 3, 3 bis |
-| [`lib/raccord.ml`](lib/raccord.ml) | `maillage_du_raccord`, `insere` de `python/Raccord.py` | 4 |
+| [`lib/raccord.ml`](lib/raccord.ml) | `python/Raccord.py` : `maillage_du_raccord`, `insere` ; le raccord du film conforme (`RaccordTriangule` et ses outils) | 4, 7c |
 | [`lib/arcs.ml`](lib/arcs.ml) | `python/Arcs.py` : `FilmArcs`, `DiagrammeCourbes` (sans la tension hyperbolique) | 4 |
 | [`lib/escargot.ml`](lib/escargot.ml) | `python/Escargot.py` : la chorégraphie et `deplace` | 6 |
 | [`lib/conforme.ml`](lib/conforme.ml) | `python/Conforme.py` : la carte de Schwarz–Christoffel (`Carte`, `demi_cercle`), la lettre (`Lettre`) | 7a, 7b |
@@ -596,6 +596,44 @@ trous i-1 et i (de 0) tournent ; l'axe se plie en ligne brisée L–A–B–R pa
 chaque fois (cache vide des deux côtés). Lignes brisées, pieds, aplatissements, trous et points des dessins
 concordent avec le Python à 1e-10 près ; au-delà, les puissances complexes de la carte diffèrent de numpy au dernier
 chiffre.
+
+## 12. Le raccord par triangulation (`raccord.ml`, étape 7c)
+
+À mi-chemin d'une lettre, le film conforme passe du dessin de l'état k (sur L–A–B–R) au dessin de l'état k+1 (sur
+L–B–A–R). Ce passage se fait sur une triangulation mobile, dont les sommets sont un bord convexe hors de l'image,
+les trous et le clou.
+
+- **`transporte lignes triangles avant apres`** : l'image des lignes par l'application **affine par triangles** qui
+  envoie les positions `avant` sur `apres` : pour chaque point, le triangle qui le contient (le plus « intérieur »
+  s'il est sur une arête : la plus grande des plus petites coordonnées barycentriques), puis les mêmes coordonnées
+  barycentriques dans le triangle déplacé. C'est une déformation continue du plan (une isotopie) : des lignes sans
+  croisement le restent. Le Python ordonne les triangles comme son ensemble (`set`), l'OCaml dans l'ordre rangé ; ils
+  ne diffèrent que pour un point posé exactement sur une arête, où les deux triangles donnent la même image.
+- **`type traversee`**, **`coupe points maillage clou`** : les traversées des arêtes par un lacet, classées le long
+  du lacet. Un point est d'un côté ou de l'autre d'une arête (un point posé dessus compte toujours du même côté) : une
+  traversée est un changement de côté, jamais doublée ni manquée. La suite réduite annule les bigones (deux traversées
+  successives d'une même arête) et ne garde pas les traversées des arêtes du clou en tête et en queue : le clou est le
+  point base, un lacet peut tourner autour en partant. Les sommets étant des trous, cette suite réduite est la même
+  pour les deux dessins d'un même lacet : leurs pieds se correspondent un à un.
+- **`point_en`**, **`morceau`**, **`reechantillonne`** : un point, un morceau, et un rééchantillonnage régulier d'une
+  polyligne.
+- **`arrondit`** : la ligne brisée des pieds, chaque coude arrondi par un congé (deux arcs tangents, `deux_arcs`), les
+  jonctions avec les morceaux restés courbes faites en tangence, et chaque arrondi tenu à l'écart des trous (dans un
+  disque de 0,9 × la distance au trou le plus proche).
+- **`decoupe_aux_aretes`** : coupe une polyligne à ses traversées successives d'arêtes données.
+- **`raccord ... ()`** (`RaccordTriangule.__init__`) : les instants du transport (les images de la fenêtre et des
+  sous-pas entre elles) ; le maillage qui suit les trous d'instant en instant en retournant ses arêtes (un triangle
+  retourné entre deux sous-pas est une erreur) ; le dessin de départ transporté vers l'avant, celui d'arrivée vers
+  l'arrière. Le type `raccord` est abstrait ; **`reduction r s`** donne la réduction interpolée.
+- **`lignes r f poids`** : les lacets de l'image f. Dans chaque triangle, les morceaux de lacet passent soit par les
+  cordes (tension, glissement des pieds sur leurs arêtes, courbure), soit directement du départ à l'arrivée ; le choix
+  se fait par triangle (une corde et une courbe du même triangle se croiseraient) : les cordes pour les triangles qui
+  touchent un trou qui tourne ou contiennent un bigone. Les mélanges se font triangle par triangle (un triangle est
+  convexe, et ses sommets sont des trous : un mélange ne peut pas passer par-dessus un trou).
+
+**Vérification** : deux raccords capturés pendant le vrai film Python (lettres 1 et 5 de la tresse de référence, la
+seconde avec une réduction qui varie), reconstruits en OCaml à partir des mêmes entrées : mêmes anomalies (aucune),
+mêmes nombres de points, points à 1e-11 près sur les 34 images.
 
 ## Annexe : pourquoi l'OCaml est au moins 15 fois plus rapide
 

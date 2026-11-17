@@ -3,6 +3,8 @@ Schwarz–Christoffel, 7b : la lettre).
 - "cartes" : pour de vraies cartes du film (tresse de référence, lettres 1 et 5, quatre instants, haut et bas), les
   sommets, les β, les écarts et antécédents des sommets, delta, des points du bord, des antécédents de points du
   bord, des images de points intérieurs, des antécédents de points intérieurs et l'image d'un demi-cercle.
+- "raccords" : deux raccords par triangulation (lettres 1 et 5 de la tresse de référence, film 800 × 800 marges 60),
+  leurs entrées et leurs sorties.
 - "lettres" : pour chaque lettre des deux tresses d'essai, à quatre instants, la ligne brisée, les pieds, l'aplatissement,
   un résumé du dessin de l'état (nombre de points, somme, un point sur 25, dernier point) et les trous à l'écran.
 Lancer depuis la racine du dépôt : python ocaml/test/genere_reference_conforme.py'''
@@ -70,6 +72,34 @@ for tr in ([4, 3, -1, -1, 2, -4, 1], [1, -2, 1, -2, 1, -2, 3, -1, 2]):
                 'aplati': lettre.aplati(s), 'dessin': [resume(l) for l in lettre.dessin(e, s)],
                 'trous': lettre.trous_ecran(s).tolist()})
 
+# 7c : le raccord par triangulation, capturé pendant le film de la tresse de référence (deux lettres) : ses entrées
+# (dessins de départ et d'arrivée complets, temps, réductions) et ses sorties (lignes de chaque image de la fenêtre)
+import Raccord
+import Conforme as C
+reference['raccords'] = []
+capture = {}
+init_orig, lignes_orig = Raccord.RaccordTriangule.__init__, Raccord.RaccordTriangule.lignes
+def init(self, positions, clou, largeur, hauteur, s_a, r_a, depart, s_b, r_b, arrivee, temps, tournants, **options):
+    init_orig(self, positions, clou, largeur, hauteur, s_a, r_a, depart, s_b, r_b, arrivee, temps, tournants, **options)
+    capture.clear()
+    capture.update({'clou': [float(x) for x in clou], 'largeur': largeur, 'hauteur': hauteur, 's_a': s_a, 'r_a': r_a,
+                    's_b': s_b, 'r_b': r_b, 'temps': list(temps), 'tournants': list(tournants),
+                    'depart': [np.asarray(l).tolist() for l in depart], 'arrivee': [np.asarray(l).tolist() for l in arrivee],
+                    'images': []})
+    reference['raccords'].append(capture.copy())
+def lignes(self, f, poids):
+    res = lignes_orig(self, f, poids)
+    reference['raccords'][-1]['images'].append({'f': f, 'poids': poids, 'lignes': [resume(l) for l in res[0]],
+                                               'anomalies': len(res[1])})
+    return res
+Raccord.RaccordTriangule.__init__, Raccord.RaccordTriangule.lignes = init, lignes
+tr = [4, 3, -1, -1, 2, -4, 1]
+import tempfile
+with tempfile.TemporaryDirectory() as dossier:
+    C.film_conforme(tr[:5], os.path.join(dossier, 'film.mp4'), hauteur=800, largeur=800, marge=60)
+for k, r in enumerate(reference['raccords']): r['k'], r['tresse'] = k, tr
+reference['raccords'] = [reference['raccords'][k] for k in (0, 4)]
+
 with open(os.path.join(os.path.dirname(__file__), 'reference_conforme.json'), 'w') as f:
     json.dump(reference, f)
-print(len(reference['cartes']), 'cartes,', len(reference['lettres']), 'lettres')
+print(len(reference['cartes']), 'cartes,', len(reference['lettres']), 'lettres,', len(reference['raccords']), 'raccords')
