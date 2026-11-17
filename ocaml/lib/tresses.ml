@@ -23,19 +23,20 @@ let lettre_de_entier i =
 let entier_de_lettre { indice; signe } =
   match signe with Plus -> indice | Moins -> -indice
 
-type mot = x lettre list
+type mot_de_fn = x lettre list
 
 (* Renverser et inverser chaque lettre, en une seule passe : rev_map renverse déjà. *)
 let inverse m = List.rev_map inverse_lettre m
 
 module Reduit = struct
-  type t = mot
+  type t = mot_de_fn
 
   (* Réduction libre par une pile. On lit le mot de gauche à droite ; la pile contient le préfixe déjà lu,
      réduit, à l'envers (sa dernière lettre en tête). Une lettre qui annule la tête de pile la fait disparaître,
      sinon on l'empile. Invariant : la pile est toujours un mot réduit, donc à la fin aussi.
-     Le Python ([simplifie]) fait la même chose sur place, en reculant d'un cran après chaque suppression. *)
-  let de_mot m =
+     Le simplifie du Python fait la même chose sur place, en reculant d'un cran après chaque suppression ; ici on
+     rend un nouveau mot, de type Reduit.t. *)
+  let simplifie m =
     let empile pile l =
       match pile with
       | tete :: reste when tete = inverse_lettre l -> reste
@@ -44,7 +45,7 @@ module Reduit = struct
     List.rev (List.fold_left empile [] m)
 
   (* Les facteurs sont réduits, mais leurs jonctions peuvent se simplifier : on réduit la concaténation. *)
-  let produit ms = de_mot (List.concat ms)
+  let produit ms = simplifie (List.concat ms)
 
   (* L'inverse d'un mot réduit est réduit. *)
   let inverse = inverse
@@ -54,15 +55,15 @@ type tresse = sigma lettre list
 
 type automorphisme = Reduit.t array
 
-let identite n = Array.init n (fun i -> Reduit.de_mot [ { indice = i + 1; signe = Plus } ])
+let morphisme_identite n = Array.init n (fun i -> Reduit.simplifie [ { indice = i + 1; signe = Plus } ])
 
 (* Le Python modifie le tableau en place ; ici on rend un nouveau tableau. On réduit à chaque lettre au lieu
    de tout réduire à la fin : la réduction libre donne le même mot réduit dans les deux cas, et les mots restent
    courts. *)
-let agit sigma auto =
+let conjugaison_locale sigma auto =
   let i = sigma.indice - 1 in
   if i < 0 || i + 1 >= Array.length auto then
-    invalid_arg "agit : σ_i demande les trous i et i+1";
+    invalid_arg "conjugaison_locale : σ_i demande les trous i et i+1";
   let u = auto.(i) and v = auto.(i + 1) in
   let u', v' =
     match sigma.signe with
@@ -80,19 +81,20 @@ let agit sigma auto =
       d'indice : le Python prend alors 6 trous, on fait de même pour pouvoir comparer.
    2. On part de l'identité sur n générateurs et on fait agir chaque lettre, la dernière d'abord : c'est une
       composition, φ_(σ₁σ₂…σ_k) = φ_σ₁ ∘ φ_σ₂ ∘ … ∘ φ_σ_k, et c'est φ_σ_k qui touche l'identité en premier.
-      fold_right donne exactement cet ordre : fold_right agit [σ₁; σ₂; σ₃] id = agit σ₁ (agit σ₂ (agit σ₃ id)).
+      fold_right donne exactement cet ordre : avec f = conjugaison_locale,
+      fold_right f [σ₁; σ₂; σ₃] id = f σ₁ (f σ₂ (f σ₃ id)).
       (Le Python écrit la même chose avec for sigma in reversed(tresse).)
-   Chaque image reste réduite à chaque pas (agit ne fabrique que des Reduit.t). *)
-let auto_de_tresse ?nb_trous tresse =
+   Chaque image reste réduite à chaque pas (conjugaison_locale ne fabrique que des Reduit.t). *)
+let calcule_autofn_de_tresse ?nb_trous tresse =
   let n =
     match nb_trous, tresse with
     | Some n, _ -> n
     | None, [] -> 6
     | None, _ -> 1 + List.fold_left (fun m l -> max m l.indice) 0 tresse (* plus grand indice *)
   in
-  List.fold_right agit tresse (identite n)
+  List.fold_right conjugaison_locale tresse (morphisme_identite n)
 
 (* Les annotations choisissent l'alphabet : lettre_de_entier est polymorphe. *)
 let tresse_de_entiers l : tresse = List.map lettre_de_entier l
-let mot_de_entiers l : mot = List.map lettre_de_entier l
+let mot_de_fn_de_entiers l : mot_de_fn = List.map lettre_de_entier l
 let entiers_de_mot l = List.map entier_de_lettre l

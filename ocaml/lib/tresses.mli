@@ -12,11 +12,11 @@
 
     {[
       let t : tresse = tresse_de_entiers [ 1; -2 ]
-      let _ = Reduit.de_mot t
+      let _ = Reduit.simplifie t
     ]}
     {v
 Error: The value t has type tresse = sigma lettre list
-       but an expression was expected of type mot = x lettre list
+       but an expression was expected of type mot_de_fn = x lettre list
        Type sigma lettre is not compatible with type x lettre
        Type sigma is not compatible with type x
     v}
@@ -47,7 +47,7 @@ val entier_de_lettre : 'a lettre -> int
 
 (** {1 Mots de F_n} *)
 
-type mot = x lettre list
+type mot_de_fn = x lettre list
 
 val inverse : 'a lettre list -> 'a lettre list
 (** (a b c)⁻¹ = c⁻¹ b⁻¹ a⁻¹, dans les deux alphabets. *)
@@ -57,11 +57,11 @@ val inverse : 'a lettre list -> 'a lettre list
     σ₁σ₃ = σ₃σ₁) : [Reduit] n'accepte que l'alphabet [x].
 
     Le type est privé : on ne peut en fabriquer un qu'en réduisant, donc tout [Reduit.t] est réduit. On peut le lire
-    comme un [mot] (coercion [:>]). *)
+    comme un [mot_de_fn] (coercion [:>]). *)
 module Reduit : sig
-  type t = private mot
+  type t = private mot_de_fn
 
-  val de_mot : mot -> t
+  val simplifie : mot_de_fn -> t
   (** Réduction libre. *)
 
   val produit : t list -> t
@@ -78,19 +78,22 @@ type tresse = sigma lettre list
 type automorphisme = Reduit.t array
 (** [a.(i)] est l'image de x_(i+1), comme [images[i]] en Python. *)
 
-val identite : int -> automorphisme
-(** [identite n] : x_i ↦ x_i pour i = 1..n. *)
+val morphisme_identite : int -> automorphisme
+(** [morphisme_identite n] : x_i ↦ x_i pour i = 1..n. Différence avec le Python : on donne le nombre de
+    générateurs n, le Python donne le plus grand indice de la tresse (n - 1). *)
 
-val agit : sigma lettre -> automorphisme -> automorphisme
-(** Composition par l'automorphisme d'Artin de σ (le [conjugaison_locale] du Python, sans effet de bord) :
-    σ_i⁺ : (u, v) ↦ (u v u⁻¹, u), σ_i⁻ : (u, v) ↦ (v, v⁻¹ u v), où u, v sont les images de x_i, x_(i+1). *)
+val conjugaison_locale : sigma lettre -> automorphisme -> automorphisme
+(** Composition par l'automorphisme d'Artin de σ :
+    σ_i⁺ : (u, v) ↦ (u v u⁻¹, u), σ_i⁻ : (u, v) ↦ (v, v⁻¹ u v), où u, v sont les images de x_i, x_(i+1).
+    Différence avec le Python : pas d'effet de bord, on rend un nouveau tableau. (Ne pas confondre avec le
+    [agit] du Python, qui est l'action de σ_i sur l'état d'un méandre.) *)
 
-val auto_de_tresse : ?nb_trous:int -> tresse -> automorphisme
-(** [calcule_autofn_de_tresse] : parcourt la tresse à l'envers. Par défaut, nb_trous = 1 + le plus grand indice
+val calcule_autofn_de_tresse : ?nb_trous:int -> tresse -> automorphisme
+(** Parcourt la tresse à l'envers, comme le Python. Par défaut, nb_trous = 1 + le plus grand indice
     (6 pour la tresse vide, comme en Python). *)
 
 (** {1 Entrées et sorties en entiers, pour comparer au Python} *)
 
 val tresse_de_entiers : int list -> tresse
-val mot_de_entiers : int list -> mot
+val mot_de_fn_de_entiers : int list -> mot_de_fn
 val entiers_de_mot : 'a lettre list -> int list

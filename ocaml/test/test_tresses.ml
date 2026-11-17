@@ -3,8 +3,8 @@
 
 open Ardoise.Tresses
 
-let entiers_de_reduit (r : Reduit.t) = entiers_de_mot (r :> mot)
-let reduit_entiers l = entiers_de_reduit (Reduit.de_mot (mot_de_entiers l))
+let entiers_de_reduit (r : Reduit.t) = entiers_de_mot (r :> mot_de_fn)
+let reduit_entiers l = entiers_de_reduit (Reduit.simplifie (mot_de_fn_de_entiers l))
 let mot_entiers = Alcotest.(list int)
 
 let test_reduction () =
@@ -19,16 +19,16 @@ let test_reduction () =
 let test_inverse () =
   List.iter
     (fun t ->
-      let a = auto_de_tresse ~nb_trous:4 (tresse_de_entiers t) in
+      let a = calcule_autofn_de_tresse ~nb_trous:4 (tresse_de_entiers t) in
       Alcotest.(check (array mot_entiers))
         (String.concat " " (List.map string_of_int t))
-        (Array.map entiers_de_reduit (identite 4))
+        (Array.map entiers_de_reduit (morphisme_identite 4))
         (Array.map entiers_de_reduit a))
     [ [ 1; -1 ]; [ -2; 2 ]; [ 1; 2; 3; -3; -2; -1 ] ]
 
 (* Relations de tresse : σ₁σ₂σ₁ = σ₂σ₁σ₂ et σ₁σ₃ = σ₃σ₁. *)
 let test_relations () =
-  let auto t = Array.map entiers_de_reduit (auto_de_tresse ~nb_trous:4 (tresse_de_entiers t)) in
+  let auto t = Array.map entiers_de_reduit (calcule_autofn_de_tresse ~nb_trous:4 (tresse_de_entiers t)) in
   Alcotest.(check (array mot_entiers)) "σ₁σ₂σ₁ = σ₂σ₁σ₂" (auto [ 1; 2; 1 ]) (auto [ 2; 1; 2 ]);
   Alcotest.(check (array mot_entiers)) "σ₁σ₃ = σ₃σ₁" (auto [ 1; 3 ]) (auto [ 3; 1 ])
 
@@ -47,7 +47,7 @@ let test_python () =
   List.iter
     (fun ligne ->
       let tresse, nb_trous, attendu = lit_ligne ligne in
-      let obtenu = auto_de_tresse ~nb_trous (tresse_de_entiers tresse) in
+      let obtenu = calcule_autofn_de_tresse ~nb_trous (tresse_de_entiers tresse) in
       Alcotest.(check (list mot_entiers))
         (String.concat " " (List.map string_of_int tresse))
         attendu

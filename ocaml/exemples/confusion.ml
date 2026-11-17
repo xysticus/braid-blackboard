@@ -5,4 +5,4 @@
 open Tresses
 
 let t : tresse = tresse_de_entiers [ 1; -2 ]
-let _ = Reduit.de_mot t
+let _ = Reduit.simplifie t

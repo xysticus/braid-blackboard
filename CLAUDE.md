@@ -366,6 +366,9 @@ environment.yml --prune` si l'environnement existe déjà).
 - Un automorphisme = liste des images des générateurs (`images[i]` est l'image de x_(i+1)).
 - Plusieurs fonctions travaillent par effet de bord (`simplifie`, `conjugaison_locale`) : le docstring le signale.
 - Python ≥ 3.10 requis (`match`/`case` utilisés).
+- OCaml (`ocaml/`) : mêmes noms qu'en Python pour les fonctions et les types traduits (`mot_de_fn`,
+  `simplifie`, `conjugaison_locale`, `calcule_autofn_de_tresse`…) ; si la signature diffère (argument, effet de bord),
+  le commentaire le dit. Attention : le `agit` du Python est l'action sur l'état d'un méandre, pas l'action d'Artin.
 - Deux usages pour chaque script : module (on l'importe, rien ne s'exécute) et exemples (on le lance) : les tests
   (`assert`), les `print` d'essai et la fabrication des images et des films sont sous `if __name__ == "__main__":`
   dans `NouvAutoMorph.py` et `Triangulation.py`. `tresses.py`, sans exemples, garde ses `assert` au niveau du module
