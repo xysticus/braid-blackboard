@@ -43,11 +43,10 @@ let borne x a b = Float.min (Float.max x a) b
    1. Pour chaque point d'arête, sa nouvelle place souhaitée et le sinus de l'angle sous lequel le brin traverse
       l'arête ; tout est calculé sur l'état de départ, rangé par arête.
    2. Arête par arête : les points gardent leur ordre et leur espacement minimal (régression monotone bornée). *)
-let tend ?degagement ?(portee_sinus = 0.) film taux ecart =
+let tend_courbes ?degagement ?(portee_sinus = 0.) m courbes taux ecart =
   let degagement = Option.value degagement ~default:ecart in
-  let m = film.maillage in
   let pos = m.Maillage.pos in
-  let courbes = Array.of_list (List.map Array.of_list film.courbes) in
+  let courbes = Array.of_list (List.map Array.of_list courbes) in
   let par_arete = Hashtbl.create 64 in
   Array.iteri
     (fun k courbe ->
@@ -104,7 +103,10 @@ let tend ?degagement ?(portee_sinus = 0.) film taux ecart =
           courbes.(k).(i) <- Sur_arete (e, final /. longueur))
         (monotone cibles))
     par_arete;
-  { film with courbes = Array.to_list (Array.map Array.to_list courbes) }
+  Array.to_list (Array.map Array.to_list courbes)
+
+let tend ?degagement ?portee_sinus film taux ecart =
+  { film with courbes = tend_courbes ?degagement ?portee_sinus film.maillage film.courbes taux ecart }
 
 let abscisses film u =
   let a = film.dispositions.(film.etape) and mi = film.milieux.(film.etape)
@@ -214,33 +216,36 @@ let lettre ?images ?(sous_pas = 2) ?(taux = 0.15) ?vitesse ?rendu film sigma =
   in
   (boucle 1 film, images)
 
-let portions_du_clou film courbe =
-  let pts = Array.of_list (List.map (Maillage.position film.maillage) courbe) in
+let portions m y_axe courbe =
+  let pts = Array.of_list (List.map (Maillage.position m) courbe) in
   let passage i j =
     let p1 = pts.(i) and p2 = pts.(j) in
-    if Float.abs (p2.y -. p1.y) > 1e-12 then p1.x +. ((p2.x -. p1.x) *. (film.y_axe -. p1.y) /. (p2.y -. p1.y)) else p2.x
+    if Float.abs (p2.y -. p1.y) > 1e-12 then p1.x +. ((p2.x -. p1.x) *. (y_axe -. p1.y) /. (p2.y -. p1.y)) else p2.x
   in
-  let haut = List.filter (fun i -> pts.(i).y <= film.y_axe) (List.init (Array.length pts) Fun.id) in
+  let haut = List.filter (fun i -> pts.(i).y <= y_axe) (List.init (Array.length pts) Fun.id) in
   match haut with
   | [] -> []
   | i1 :: _ ->
     let i2 = List.nth haut (List.length haut - 1) in
     [ ((1, i1), passage (i1 - 1) i1); ((i2 + 1, Array.length pts - 1), passage (i2 + 1) i2) ]
 
+let portions_du_clou film courbe = portions film.maillage film.y_axe courbe
+
 let unitaire u = (1. /. norme u) *: u
 
-let polyligne ?(lisse = true) ?(part_du_conge = 0.5) film k =
-  let courbe = List.nth film.courbes k in
-  let pts = Array.of_list (List.map (Maillage.position film.maillage) courbe) in
+let polyligne_de_courbe ?(lisse = true) ?(part_du_conge = 0.5) ?clou m courbe =
+  let pts = Array.of_list (List.map (Maillage.position m) courbe) in
   if not lisse then pts
   else begin
     (* passages sur l'axe des brins du clou : le premier entre les points i1 - 1 et i1, le dernier entre i2 et
        i2 + 1 ; on y insère deux points de part et d'autre de l'axe *)
-    let insertions =
-      List.mapi (fun n ((debut, fin), x) -> ((if n = 0 then fin else debut), { x; y = film.y_axe }))
-        (portions_du_clou film courbe)
+    let insertions, ecart =
+      match clou with
+      | None -> ([], 0.)
+      | Some (y_axe, ecart) ->
+        (List.mapi (fun n ((debut, fin), x) -> ((if n = 0 then fin else debut), { x; y = y_axe })) (portions m y_axe courbe),
+         ecart)
     in
-    let ecart = film.dispositions.(film.etape).ecart in
     let insere pts (i, q) =
       let voisins = Float.min (Float.abs (q.y -. pts.(i - 1).y)) (Float.abs (q.y -. pts.(i).y)) in
       if voisins < 1e-6 then pts
@@ -272,7 +277,11 @@ let polyligne ?(lisse = true) ?(part_du_conge = 0.5) film k =
     Array.concat ([ [| pts.(0) |] ] @ List.init (max 0 (n - 2)) (fun k -> coude (k + 1)) @ [ [| pts.(n - 1) |] ])
   end
 
-let polylignes ?lisse film = List.init (List.length film.courbes) (polyligne ?lisse film)
+let polyligne ?lisse ?part_du_conge film k =
+  polyligne_de_courbe ?lisse ?part_du_conge ~clou:(film.y_axe, film.dispositions.(film.etape).ecart) film.maillage
+    (List.nth film.courbes k)
+
+let polylignes ?lisse film =List.init (List.length film.courbes) (polyligne ?lisse film)
 let positions_des_trous film = Array.map (fun s -> film.maillage.Maillage.pos.(s)) film.trous
 
 let mots ?lisse film =

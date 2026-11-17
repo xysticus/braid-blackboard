@@ -101,3 +101,71 @@ let film_triangule ?(ffmpeg = "ffmpeg") ?vitesse ?(pause = 0.5) ?largeur_brin ?h
   match Unix.close_process_out tube with
   | Unix.WEXITED 0 -> ()
   | _ -> failwith ("ffmpeg n'a pas pu écrire " ^ fichier)
+
+(* Films d'arcs. *)
+
+let couleurs_arcs =
+  [| (0.85, 0.15, 0.15); (0.10, 0.60, 0.15); (0.15, 0.25, 0.85); (0.75, 0.60, 0.05); (0.65, 0.15, 0.65);
+     (0.05, 0.60, 0.65) |]
+
+let cadre_arcs ?(rubans = false) ?(largeur_brin = 2.5) ?(avec_aretes = false) ?(lisere = false) (film : Arcs.t) =
+  let surface = Cairo.Image.create Cairo.Image.ARGB32 ~w:(int_of_float film.largeur) ~h:(int_of_float film.hauteur) in
+  let ctx = Cairo.create surface in
+  Cairo.set_source_rgb ctx 1. 1. 1.;
+  Cairo.paint ctx;
+  Cairo.set_line_cap ctx Cairo.ROUND;
+  Cairo.set_line_join ctx Cairo.JOIN_ROUND;
+  let pos = film.maillage.pos in
+  if avec_aretes then begin
+    Cairo.set_source_rgb ctx 0.8 0.8 0.8;
+    Cairo.set_line_width ctx 0.7;
+    Triangulation.Aretes.iter
+      (fun (a : Triangulation.Arete.t) _ -> let u, v = (a :> int * int) in trace ctx [| pos.(u); pos.(v) |])
+      (Triangulation.Maillage.aretes film.maillage)
+  end;
+  List.iteri
+    (fun k _ ->
+      let p = if rubans then Arcs.ruban film k else Arcs.polyligne film k in
+      let couleur = couleurs_arcs.(k mod Array.length couleurs_arcs) in
+      let traits = if lisere then [ ((1., 1., 1.), 0.85 *. film.ecart); (couleur, 1.3) ] else [ (couleur, largeur_brin) ] in
+      List.iter
+        (fun ((r, v, b), largeur) ->
+          Cairo.set_source_rgb ctx r v b;
+          Cairo.set_line_width ctx largeur;
+          trace ctx p)
+        traits)
+    film.courbes;
+  List.iter
+    (fun (sommets, gris) ->
+      Cairo.set_source_rgb ctx gris gris gris;
+      Array.iter
+        (fun s ->
+          Cairo.arc ctx pos.(s).x pos.(s).y ~r:4. ~a1:0. ~a2:(2. *. Float.pi);
+          Cairo.fill ctx)
+        sommets)
+    [ (film.voyageurs, 0.); (film.fixes, 0.55) ];
+  surface
+
+let film_arcs ?(ffmpeg = "ffmpeg") ?(rubans = false) ?(pause = 0.5) ?(lisere = false) ?images (film : Arcs.t) tresse fichier =
+  let l = int_of_float film.largeur and h = int_of_float film.hauteur in
+  let arguments =
+    [ ffmpeg; "-y"; "-loglevel"; "error"; "-f"; "rawvideo"; "-pix_fmt"; "bgra"; "-s"; Printf.sprintf "%dx%d" l h;
+      "-r"; "25"; "-i"; "-" ]
+    @ encodeur @ [ fichier ]
+  in
+  let tube = Unix.open_process_args_out ffmpeg (Array.of_list arguments) in
+  let descr = Unix.descr_of_out_channel tube in
+  let ecrit ?(fois = 1) film =
+    let surface = cadre_arcs ~rubans ~lisere film in
+    Cairo.Surface.flush surface;
+    let donnees = Cairo.Image.get_data8 surface in
+    for _ = 1 to fois do ecrit_tout descr donnees done
+  in
+  let fois secondes = int_of_float (Film.arrondi (25. *. secondes)) in
+  ecrit ~fois:(fois pause) film;
+  let film = List.fold_left (fun film sigma -> Arcs.lettre ?images ~rendu:(fun f -> ecrit f) film sigma) film tresse in
+  (* comme le Python : la dernière image est écrite une fois par la lettre, puis pendant la pause finale *)
+  ecrit ~fois:(fois (3. *. pause)) film;
+  match Unix.close_process_out tube with
+  | Unix.WEXITED 0 -> ()
+  | _ -> failwith ("ffmpeg n'a pas pu écrire " ^ fichier)

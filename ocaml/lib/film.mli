@@ -51,6 +51,11 @@ val tend : ?degagement:float -> ?portee_sinus:float -> t -> float -> float -> t
     l'arête, sinus borné à 0,3) et à [degagement] (par défaut [ecart]) des sommets. [portee_sinus] > 0 : le sinus
     est mesuré avec des points du brin à au moins cette distance. *)
 
+val tend_courbes :
+  ?degagement:float -> ?portee_sinus:float -> Maillage.t -> courbe list -> float -> float -> courbe list
+(** [tend_courbes maillage courbes taux ecart] : le même pas de tension, sur un maillage et des courbes. Pas de
+    fonction à part en Python : les films d'arcs ([Arcs]) héritent de [Film.tend] ; ici ils l'appellent. *)
+
 val trous_au_temps : t -> Tresses.sigma Tresses.lettre -> float -> point array * float array * float * float * float
 (** [(positions des trous de gauche à droite, abscisses des places, milieu, rayon, angle)] au temps u de la
     lettre : glissement des places ([abscisses]) et demi-tour de la paire. *)
@@ -84,6 +89,12 @@ val polyligne : ?lisse:bool -> ?part_du_conge:float -> t -> int -> point array
 (** La polyligne dessinée de la courbe k : la ligne brisée de ses points (sans [lisse]), ou, avec, chaque coude
     arrondi par un congé (paire d'arcs tangents aux deux segments, au plus [part_du_conge] du plus court), et les
     brins du clou qui partent de l'axe perpendiculairement. *)
+
+val polyligne_de_courbe :
+  ?lisse:bool -> ?part_du_conge:float -> ?clou:float * float -> Maillage.t -> courbe -> point array
+(** Le même dessin pour une courbe d'un maillage. [clou = (y_axe, ecart)] : les brins attachés au clou partent
+    perpendiculairement à l'axe y = y_axe ; sans [clou], rien de tel (le [y_axe = -inf] des films d'arcs du
+    Python). *)
 
 val polylignes : ?lisse:bool -> t -> point array list
 val positions_des_trous : t -> point array

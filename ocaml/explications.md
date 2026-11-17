@@ -10,7 +10,9 @@ le `.mli` le dit.
 | [`lib/tresses.ml`](lib/tresses.ml) | `python/tresses.py` : groupe libre, action d'Artin, méandre, relecture, arcs | 1, 3, 3 bis |
 | [`lib/triangulation.ml`](lib/triangulation.ml) | `Maillage`, `maillage_initial`, `noeuds_de_polyligne` de `python/Triangulation.py` | 2, 3 bis |
 | [`lib/film.ml`](lib/film.ml) | la classe `Film` de `python/Triangulation.py` | 3, 3 bis |
-| [`dessin/dessin.ml`](dessin/dessin.ml) | `peint`, `Film.cadre`, `film_triangule` (cairo2, ffmpeg) | 5 |
+| [`lib/raccord.ml`](lib/raccord.ml) | `maillage_du_raccord`, `insere` de `python/Raccord.py` | 4 |
+| [`lib/arcs.ml`](lib/arcs.ml) | `python/Arcs.py` : `FilmArcs`, `DiagrammeCourbes` (sans la tension hyperbolique) | 4 |
+| [`dessin/dessin.ml`](dessin/dessin.ml) | `peint`, `Film.cadre`, `film_triangule`, `FilmArcs.cadre`, `film_arcs` (cairo2, ffmpeg) | 4, 5 |
 
 Les tests (`dune test` dans `ocaml/`) comparent chaque fonction aux sorties du Python, écrites dans
 `test/reference_*` par `python ocaml/test/genere_reference*.py`.
@@ -429,6 +431,53 @@ cairo2 demande la bibliothèque C (`sudo apt install libcairo2-dev pkg-config`),
 Comparé au film Python de la tresse de référence : même nombre d'images (809), écart moyen d'un demi-niveau de gris
 sur 255 (bruit de l'encodage). Le film prend 6 s au lieu de 12 : le calcul ne compte presque plus, l'essentiel est
 le dessin et l'encodage AV1.
+
+---
+
+## 8. Les films d'arcs (`raccord.ml`, `arcs.ml`, étape 4)
+
+### Le maillage à bord convexe (`raccord.ml`)
+
+- **`maillage_du_raccord`** : un bord convexe (rectangle bombé de 40 px hors de l'image, 6 points par côté) en
+  éventail de triangles, puis les trous insérés un à un de gauche à droite, puis `delaunay`. Les indices des trous
+  suivent l'ordre d'insertion, pas celui de la liste : la fonction rend aussi l'indice de chaque trou.
+- **`insere`** : le triangle qui contient le point est coupé en trois ; s'il est sur une arête, les deux triangles
+  qui la bordent sont coupés en deux. Le Python modifie le maillage en place ; ici on rebâtit un maillage
+  (`Maillage.cree`), ce qui recalcule les orientations : elles n'ont pas changé, les sommets n'ayant pas bougé.
+
+### Arcs et diagramme (`arcs.ml`)
+
+- **Pas d'héritage.** En Python, `FilmArcs` hérite de `Film` et neutralise son clou (`y_axe = -inf`) pour garder
+  la tension et le dessin. Ici, `Film` expose ces deux fonctions sur un maillage et des courbes (`tend_courbes`,
+  `polyligne_de_courbe`, sans clou par défaut), et `Arcs.t` est un enregistrement à lui, sans champ inutile.
+  `DiagrammeCourbes`, qui hérite de `FilmArcs` en Python, est le même type avec `genre = Diagramme` : seuls le
+  constructeur (`cree_diagramme`) et `mots` (le seul premier arc) diffèrent.
+- **`coupe_arc`** : la polyligne de départ devient une courbe posée sur le maillage. Toutes les traversées
+  d'arêtes, rangées le long de la polyligne ; une pile annule les bigones (deux traversées successives de la même
+  arête) ; on retire en tête et en queue les traversées des arêtes qui touchent les bouts (un arc peut tourner
+  autour de ses extrémités sans changer de classe).
+- **`pchip`, `hermite`** : les largeurs des intervalles de l'axe glissent d'une image clé à l'autre par une
+  interpolation cubique monotone, donc toujours positives : deux trous ne s'inversent jamais. `hermite` calcule
+  u³ par `Float.pow`, comme le `u**3` du Python (un seul arrondi).
+- **`lettre`**, **`ruban`**, **`mots`** : traductions directes. Le ruban est le bord d'un voisinage de l'arc,
+  dont la largeur s'annule près du trou fixe ; on y relit le lacet x_i (`lit_mot`).
+- La tension hyperbolique (`hyperbolique=True`, `python/Geodesiques.py`) n'est pas traduite.
+
+### L'ordre des retournements d'arêtes
+
+`delaunay` retourne la première arête mauvaise qu'il trouve. Le Python parcourt les triangles dans l'ordre d'un
+`set` de `frozenset`, qui dépend de l'historique des insertions (il change même après un `deepcopy`) ; l'OCaml, dans
+l'ordre d'une `Map`. Quand plusieurs arêtes sont à retourner au même sous-pas, l'ordre compte : chaque
+retournement retire les points de l'arête retournée, donc les courbes finales diffèrent (jusqu'à 3 % d'une arête,
+que la tension efface peu à peu), et avec les points alignés de l'axe (cocycliques) la triangulation elle-même peut
+différer. Le générateur de références (`test/genere_reference_arcs.py`) remplace donc la recherche du Python par
+l'ordre de l'OCaml ; la comparaison est alors exacte à 1e-9 près, au départ et lettre par lettre.
+
+### Le dessin
+
+`Dessin.cadre_arcs` et `Dessin.film_arcs`, et `bin/arcs.ml` (le `__main__` de `Arcs.py` : vérification des mots,
+puis `imgs/<méthode>/film_*_ocaml.mp4`). Les six films (rubans, rubans à gauche, diagramme, sur les deux tresses
+d'essai) sont identiques octet pour octet à ceux du Python, en 21 s au lieu de 55.
 
 ---
 

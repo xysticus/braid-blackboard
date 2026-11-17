@@ -60,6 +60,11 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   `cadre`, `film_triangule`), et `bin/films.ml` (`dune exec bin/films.exe` → `imgs/film_triangule_*_ocaml.mp4`,
   mêmes images que le Python, 6 s au lieu de 12 ; ffmpeg pris dans l'environnement conda). cairo2 demande
   `sudo apt install libcairo2-dev pkg-config`.
+  Étape 4 faite : `lib/raccord.ml` (`maillage_du_raccord`), `lib/arcs.ml` (`FilmArcs` et `DiagrammeCourbes` dans
+  un même type `Arcs.t`, sans la tension hyperbolique ; `Film.tend_courbes` et `Film.polyligne_de_courbe`
+  remplacent l'héritage), `bin/arcs.ml` → `imgs/<méthode>/film_*_ocaml.mp4`, identiques octet pour octet au
+  Python (21 s au lieu de 55). L'ordre des retournements d'arêtes du Python (celui d'un set) change les courbes
+  quand plusieurs arêtes sont à retourner ensemble : `genere_reference_arcs.py` impose celui de l'OCaml.
   `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par
   `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy

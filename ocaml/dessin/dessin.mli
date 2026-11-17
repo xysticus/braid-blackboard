@@ -32,3 +32,18 @@ val film_triangule :
 (** [film_triangule tresse fichier] : film MP4 à 25 images/s, un demi-tour continu par lettre, les trous avançant
     à vitesse constante ([Film.lettre]). Pas de pause entre les lettres ; [pause] secondes (0,5 par défaut) sur la
     première image, trois fois plus sur la dernière. [ffmpeg] : le programme à lancer (cherché dans le PATH). *)
+
+(** {1 Films d'arcs (étape 4)} *)
+
+val couleurs_arcs : couleur array
+(** Les [COULEURS] de [python/Arcs.py], un peu plus sombres que celles des lacets. *)
+
+val cadre_arcs : ?rubans:bool -> ?largeur_brin:float -> ?avec_aretes:bool -> ?lisere:bool -> Arcs.t -> Cairo.Surface.t
+(** L'image d'un film d'arcs ([FilmArcs.cadre] du Python) : arcs (ou leurs rubans, avec [rubans]) en couleur,
+    trait de 2,5 px ; avec [lisere], chaque arc tracé en blanc large (0,85 × [ecart]) avec un liseré de couleur fin
+    au milieu (impression d'un écart entre brins voisins). Trous voyageurs en noir, trous fixes en gris. *)
+
+val film_arcs :
+  ?ffmpeg:string -> ?rubans:bool -> ?pause:float -> ?lisere:bool -> ?images:int -> Arcs.t -> Tresses.tresse -> string -> unit
+(** [film_arcs film tresse fichier] : film MP4 à 25 images/s, [images] = 60 images par lettre. Le Python prend la
+    classe et ses options ; ici on passe le film déjà construit ([Arcs.cree] ou [Arcs.cree_diagramme]). *)
