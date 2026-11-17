@@ -18,5 +18,8 @@
   (alcotest :with-test)
   (yojson :with-test)
   (ocaml-lsp-server :with-dev-setup)
+  ; ocamlformat : sert à l'éditeur pour mettre en forme les types au survol (sans fichier .ocamlformat, il ne
+  ; reformate pas le code)
+  (ocamlformat (and :with-dev-setup (> 0.21.0)))
   ; ocaml-lsp-server 1.26.1 appelle Pid.of_int, retiré de stdune 3.25
   (stdune (and :with-dev-setup (< 3.25)))))

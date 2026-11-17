@@ -8,6 +8,7 @@ depends: [
   "alcotest" {with-test}
   "yojson" {with-test}
   "ocaml-lsp-server" {with-dev-setup}
+  "ocamlformat" {with-dev-setup & > "0.21.0"}
   "stdune" {with-dev-setup & < "3.25"}
   "odoc" {with-doc}
 ]
