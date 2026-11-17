@@ -74,14 +74,22 @@ let agit sigma auto =
   a.(i + 1) <- v';
   a
 
+(* L'automorphisme de F_n associé à une tresse, en deux temps.
+   1. Le nombre de trous n : celui qu'on donne (?nb_trous, argument optionnel : None s'il est absent), sinon
+      1 + le plus grand indice de la tresse, puisque σ_i fait bouger les trous i et i+1. La tresse vide n'a pas
+      d'indice : le Python prend alors 6 trous, on fait de même pour pouvoir comparer.
+   2. On part de l'identité sur n générateurs et on fait agir chaque lettre, la dernière d'abord : c'est une
+      composition, φ_(σ₁σ₂…σ_k) = φ_σ₁ ∘ φ_σ₂ ∘ … ∘ φ_σ_k, et c'est φ_σ_k qui touche l'identité en premier.
+      fold_right donne exactement cet ordre : fold_right agit [σ₁; σ₂; σ₃] id = agit σ₁ (agit σ₂ (agit σ₃ id)).
+      (Le Python écrit la même chose avec for sigma in reversed(tresse).)
+   Chaque image reste réduite à chaque pas (agit ne fabrique que des Reduit.t). *)
 let auto_de_tresse ?nb_trous tresse =
   let n =
     match nb_trous, tresse with
     | Some n, _ -> n
     | None, [] -> 6
-    | None, _ -> 1 + List.fold_left (fun m l -> max m l.indice) 0 tresse
+    | None, _ -> 1 + List.fold_left (fun m l -> max m l.indice) 0 tresse (* plus grand indice *)
   in
-  (* fold_right parcourt la tresse à l'envers : auto(σ₁…σ_k) = φ_σ₁ ∘ … ∘ φ_σ_k appliqué à l'identité. *)
   List.fold_right agit tresse (identite n)
 
 (* Les annotations choisissent l'alphabet : lettre_de_entier est polymorphe. *)
