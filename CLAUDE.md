@@ -389,5 +389,5 @@ python programmes/NouvAutoMorph.py   # vérifie les assert, écrit imgs/nouv_*.p
 python programmes/Conforme.py        # film conforme : imgs/conforme/film_*.mp4, 800 × 800 (avec vérification)
 python programmes/Arcs.py            # rubans, rubans_gauche, diagramme (ou l'une d'elles en argument) : imgs/<méthode>/film_*.mp4
 python programmes/AutoMorphPNG.py    # écrit imgs/a43m1m12m41nv.png
-jupyter lab ipynbks/                  # notebooks
+python -m jupyterlab ipynbks/        # notebooks (pas « jupyter lab » : il prend le premier jupyter-lab.exe du PATH, éventuellement d'un autre environnement)
 ```
