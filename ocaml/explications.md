@@ -13,6 +13,7 @@ le `.mli` le dit.
 | [`lib/raccord.ml`](lib/raccord.ml) | `maillage_du_raccord`, `insere` de `python/Raccord.py` | 4 |
 | [`lib/arcs.ml`](lib/arcs.ml) | `python/Arcs.py` : `FilmArcs`, `DiagrammeCourbes` (sans la tension hyperbolique) | 4 |
 | [`lib/escargot.ml`](lib/escargot.ml) | `python/Escargot.py` : la chorégraphie et `deplace` | 6 |
+| [`lib/conforme.ml`](lib/conforme.ml) | `python/Conforme.py` : la carte de Schwarz–Christoffel (`Carte`, `demi_cercle`) | 7a |
 | [`dessin/dessin.ml`](dessin/dessin.ml) | `peint`, `Film.cadre`, `film_triangule`, `FilmArcs.cadre`, `film_arcs`, `Escargot.dessine`, `film_escargot` (cairo2, ffmpeg) | 4, 5, 6 |
 
 Les tests (`dune test` dans `ocaml/`) comparent chaque fonction aux sorties du Python, écrites dans
@@ -498,6 +499,67 @@ chemin pour le masque du corps : le film `imgs/escargot/film_ocaml.mp4` (`dune e
 identique octet pour octet à celui du Python, en 4,5 s au lieu de 8,4.
 
 ---
+
+## 10. La carte de Schwarz–Christoffel (`conforme.ml`, étape 7a)
+
+Le film conforme dessine les lacets sur une ligne brisée L–A–B–R (l'axe plié par le demi-tour). Pour cela il lui faut
+une **représentation conforme** : une transformation du demi-plan supérieur (la variable w) sur la région au-dessus
+de la ligne brisée (la variable z), qui conserve les angles. La formule de Schwarz–Christoffel la donne par sa
+dérivée :
+
+  dz/dw = Π (w − w_k)^β_k
+
+où les w_k sont les antécédents (réels) des sommets V_k, et β_k = −(angle dont tourne le bord en V_k) / π. Loin des
+sommets, z ≈ w + constante : la carte est presque une translation. Toute la difficulté est de trouver les w_k.
+
+**Outils numériques** (les fonctions numpy dont la carte a besoin) :
+
+- **`linspace`**, **`interp`**, **`cumul_depuis_zero`** : `np.linspace`, `np.interp`, et la somme cumulée précédée
+  d'un 0. Écrits pour donner exactement les mêmes nombres que numpy (même formule, même ordre des additions).
+- **`resous`** : `np.linalg.solve`, la résolution d'un petit système linéaire par l'élimination de Gauss avec pivot
+  partiel (au plus trois inconnues ici).
+
+**La carte** (`type carte`, un enregistrement : sommets, longueurs et directions des segments, β, écarts et
+antécédents des sommets, tables du bord, delta). C'est la classe `Carte` du Python, construite par `cree` au lieu
+de `__init__`.
+
+- **`module_sans beta w t sauf`** : |dz/dw| en des points réels t, sans le facteur du sommet `sauf`.
+- **`depuis beta w k sens d n`** : la table du bord à partir de w_k, sur une distance d : des antécédents t et la
+  longueur parcourue sur le bord. Près de w_k, |dz/dw| ~ |w − w_k|^β_k est singulier (infini si β_k < 0) ; le
+  changement de variable t = w_k + sens · d · s^q, avec q = 1 / (1 + β_k), le rend régulier, et la méthode des trapèzes
+  en s suffit.
+- **`cotes beta ecarts n`** : les longueurs des segments que donneraient ces écarts entre antécédents (chaque segment
+  intégré par ses deux moitiés, depuis chacune de ses extrémités, pour éviter les deux singularités à la fois).
+- **`tables_du_bord`** : les tables de tous les morceaux du bord : la demi-droite de gauche, chaque segment (ses deux
+  moitiés recollées, puis remises à l'échelle de la vraie longueur du segment), la demi-droite de droite.
+- **`cree ?ecarts sommets`** : β à partir des directions des segments ; puis la **méthode de Newton** sur les
+  logarithmes des écarts (pour qu'ils restent positifs), jacobienne par différences finies, pas borné à 1, jusqu'à
+  ce que les longueurs calculées égalent les vraies à 1e-11 près ; enfin les tables et delta (z − w loin à droite).
+  `ecarts` : point de départ (le film réutilise ceux de l'image précédente, presque justes). Lève
+  `Pas_de_convergence` après 80 itérations.
+- **`antecedent_bord carte morceau longueur`** : l'antécédent réel d'un point du bord, par interpolation dans la
+  table du morceau.
+- **`bord carte t`** : l'inverse, le point du bord image du réel t.
+- **`derivee carte w`** : dz/dw en un point du demi-plan (partie imaginaire ramenée à ≥ 0, et `+. 0.` pour éviter le
+  −0, dont l'argument serait −π au lieu de π).
+- **`chemin ?z1 carte ws z0`** : les images d'un chemin du demi-plan, en intégrant dz/dw pas à pas (méthode du point
+  milieu) depuis z0, image du premier point. Si l'on connaît aussi z1, l'image du dernier point (les deux pieds d'un
+  arc, sur le bord), l'erreur d'intégration est répartie le long du chemin, au prorata de la longueur parcourue.
+- **`image carte w`** : l'image d'un point intérieur ; on y va en ligne droite depuis un point du bord choisi loin des
+  antécédents des sommets (partir d'une singularité rendrait l'intégration bruitée).
+- **`antecedent carte z`** : l'inverse, par la méthode de Newton (w ← w − (image(w) − z) / dz/dw), arrêtée à 1e-4 près.
+- **`demi_cercle ?n w0 w1`** : le demi-cercle du demi-plan entre deux réels, points resserrés aux extrémités. Un arc
+  du film est l'image par `chemin` du demi-cercle entre les antécédents de ses deux pieds : il arrive
+  perpendiculairement au bord, et deux arcs ne peuvent pas se croiser (la carte est une bijection).
+
+**Choix OCaml.** Les nombres complexes sont ceux du module `Complex` de la bibliothèque standard ; la carte est un
+enregistrement immuable (le Python la modifie en place pendant sa construction). Les boucles de numpy deviennent des
+`Array.map` et des boucles `for` sur des tableaux locaux, qui ne sortent pas des fonctions.
+
+**Vérification** (`test/test_conforme.ml`, références de `test/genere_reference_conforme.py`) : 16 vraies cartes du
+film (tresse de référence, lettres 1 et 5, quatre instants, haut et bas). β, écarts, antécédents des sommets, delta,
+points du bord, images de points intérieurs et demi-cercles emportés concordent avec le Python à 1e-11 près ; les
+antécédents de points intérieurs à 1e-3 près (Newton s'arrête à 1e-4).
 
 ## Annexe : pourquoi l'OCaml est au moins 15 fois plus rapide
 

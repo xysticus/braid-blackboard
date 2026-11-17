@@ -48,6 +48,11 @@ Python, plus rapides).
 6. **L'escargot** (`python/Escargot.py`) : premier film à chorégraphie libre (pas de tresse). Fait
    (`ocaml/lib/escargot.ml`, `Dessin.cadre_escargot`, `ocaml/bin/escargot.ml`), film identique à celui du Python.
 
+7. **Le film conforme** (`python/Conforme.py`, avec le raccord par triangulation de `python/Raccord.py`), pour
+   fabriquer les films de `imgs/conforme/`. 7a fait : la carte de Schwarz–Christoffel (`ocaml/lib/conforme.ml`),
+   concordante avec le Python à 1e-11 près. À faire : 7b `Lettre` (ligne brisée, pieds, dessin d'un état), 7c
+   `RaccordTriangule` et ses outils, 7d `film_conforme` et `nb_croisements`.
+
 Laissé de côté au début : le film conforme (`python/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
 l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `python/NouvAutoMorph.py`.
 
