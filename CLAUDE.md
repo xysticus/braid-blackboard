@@ -49,8 +49,9 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   pour la coquille, tête, yeux), `film_escargot` → `imgs/escargot/film.mp4`.
 - `ocaml/` : réécriture en OCaml (`plan_ocaml.md`), sous WSL. Étape 1 faite : `lib/tresses.ml` (lettres, mots
   réduits en type privé `Reduit.t`, action d'Artin). `dune test` dans `ocaml/` compare au Python
-  (`test/reference_python.txt`, écrit par `python ocaml/test/genere_reference.py`). dune ne construit pas sur `/mnt/c` :
-  `DUNE_BUILD_DIR` est défini dans `~/.profile` de WSL (avec le proxy pour opam).
+  (`test/reference_python.txt`, écrit par `python ocaml/test/genere_reference.py`). Travailler dans le clone
+  côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy
+  (`http_proxy`, `https_proxy`) est dans `~/.profile` de WSL.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README (introduction, mathématiques, commandes) et un
