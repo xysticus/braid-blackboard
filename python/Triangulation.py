@@ -68,13 +68,20 @@ class Maillage:
 
     def cherche_arete_a_retourner(self):
         '''Une arête intérieure qui n'est pas de Delaunay (angles opposés de somme > π) et dont on peut
-        retourner le quadrilatère, ou None.'''
-        for (a, c), tris in self.aretes().items():
+        retourner le quadrilatère, ou None.
+        Ordre déterministe : arêtes rangées, et pour les deux triangles d'une arête le plus grand (rangé) d'abord,
+        comme l'OCaml (`ocaml/lib/triangulation.ml`). L'ordre d'un set de frozensets dépend de l'histoire des
+        insertions (il change même après un deepcopy) ; or quand plusieurs arêtes sont à retourner au même pas,
+        l'ordre change les courbes (les points de l'arête retournée disparaissent), jusqu'à quelques pour cent d'une
+        arête, et parfois la triangulation (points cocycliques, alignés sur l'axe).'''
+        aretes = self.aretes()
+        for a, c in sorted(aretes):
+            tris = aretes[(a, c)]
             if len(tris) != 2: continue
-            b, d = [next(iter(t - {a, c})) for t in tris]
+            b, d = [next(iter(t - {a, c})) for t in sorted(tris, key=sorted, reverse=True)]
             if self.cotangente(b, a, c) + self.cotangente(d, a, c) >= -1e-9: continue
             if not self.convexe(a, b, c, d): continue
-            if any(set(e) == {b, d} for e in self.aretes()): continue
+            if (min(b, d), max(b, d)) in aretes: continue
             return a, b, c, d
         return None
 

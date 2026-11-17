@@ -4,7 +4,6 @@ d'arcs, diagramme de courbes, maillage à bord convexe).
 - "films" : pour chaque méthode (comme METHODES de Arcs.py) et chaque tresse d'essai, les données du film au départ
   (maillage, trous, largeurs) et, après chaque lettre jouée en 12 images, l'état (positions, triangles, courbes,
   places), les mots relus et un résumé des rubans.
-Les arêtes à retourner sont cherchées dans l'ordre de l'OCaml (`cherche_arete_dans_l_ordre`).
 Lancer depuis la racine du dépôt : python ocaml/test/genere_reference_arcs.py'''
 import json
 import os
@@ -14,31 +13,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, 'python')
-import Triangulation
 from Arcs import FilmArcs, DiagrammeCourbes, pchip, hermite
-
-
-def cherche_arete_dans_l_ordre(self):
-    '''`Maillage.cherche_arete_a_retourner`, arêtes parcourues dans l'ordre de l'OCaml (arêtes rangées ; pour les deux
-    triangles d'une arête, le plus grand d'abord, comme la liste construite par `Maillage.aretes` en OCaml).
-    L'ordre du Python est celui d'un set de frozensets, qui dépend de l'histoire des insertions (il change même après
-    un deepcopy). Quand plusieurs arêtes sont à retourner en même temps, l'ordre des retournements change les courbes
-    (les points de l'arête retournée disparaissent) : jusqu'à 3 % d'une arête, que la tension efface ensuite peu à
-    peu. Avec les points alignés de l'axe (trous fixes à gauche, diagramme), il peut même changer la triangulation
-    (points cocycliques). On fixe donc l'ordre pour comparer exactement.'''
-    aretes = self.aretes()
-    for (a, c) in sorted(aretes):
-        tris = sorted(aretes[(a, c)], key=lambda t: sorted(t), reverse=True)
-        if len(tris) != 2: continue
-        b, d = [next(iter(t - {a, c})) for t in tris]
-        if self.cotangente(b, a, c) + self.cotangente(d, a, c) >= -1e-9: continue
-        if not self.convexe(a, b, c, d): continue
-        if (min(b, d), max(b, d)) in aretes: continue
-        return a, b, c, d
-    return None
-
-
-Triangulation.Maillage.cherche_arete_a_retourner = cherche_arete_dans_l_ordre
 
 
 def noeud(n):

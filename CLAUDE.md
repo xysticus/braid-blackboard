@@ -63,12 +63,14 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   Étape 4 faite : `lib/raccord.ml` (`maillage_du_raccord`), `lib/arcs.ml` (`FilmArcs` et `DiagrammeCourbes` dans
   un même type `Arcs.t`, sans la tension hyperbolique ; `Film.tend_courbes` et `Film.polyligne_de_courbe`
   remplacent l'héritage), `bin/arcs.ml` → `imgs/<méthode>/film_*_ocaml.mp4`, identiques octet pour octet au
-  Python (21 s au lieu de 55). L'ordre des retournements d'arêtes du Python (celui d'un set) change les courbes
-  quand plusieurs arêtes sont à retourner ensemble : `genere_reference_arcs.py` impose celui de l'OCaml.
+  Python (21 s au lieu de 55). `Maillage.cherche_arete_a_retourner` parcourt les arêtes dans un ordre
+  déterministe, le même en Python et en OCaml (arêtes rangées) : l'ordre d'un set changeait les courbes quand
+  plusieurs arêtes étaient à retourner au même pas.
   `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par
   `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy
-  (`http_proxy`, `https_proxy`) est dans `~/.profile` de WSL. Switch opam local `ocaml/_opam` (ignoré par git) :
+  (`http_proxy`, `https_proxy`) est dans `~/.profile` de WSL, et dans `http.proxy` du git global de WSL (un
+  `wsl.exe bash -c` ne lit pas `~/.profile` : sans cela, `git push` restait bloqué). Switch opam local `ocaml/_opam` (ignoré par git) :
   les dépendances sont déclarées dans `ocaml/dune-project` (dune en tire `ardoise.opam`), installation depuis
   `ocaml/` par `opam switch create . ocaml-base-compiler.5.4.1 --deps-only --with-test --with-dev-setup` ; le hook
   de shell d'opam choisit ce switch dans `ocaml/`. Le Python tourne dans le même clone (miniforge et l'environnement

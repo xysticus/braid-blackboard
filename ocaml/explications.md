@@ -465,13 +465,14 @@ le dessin et l'encodage AV1.
 
 ### L'ordre des retournements d'arêtes
 
-`delaunay` retourne la première arête mauvaise qu'il trouve. Le Python parcourt les triangles dans l'ordre d'un
-`set` de `frozenset`, qui dépend de l'historique des insertions (il change même après un `deepcopy`) ; l'OCaml, dans
-l'ordre d'une `Map`. Quand plusieurs arêtes sont à retourner au même sous-pas, l'ordre compte : chaque
-retournement retire les points de l'arête retournée, donc les courbes finales diffèrent (jusqu'à 3 % d'une arête,
-que la tension efface peu à peu), et avec les points alignés de l'axe (cocycliques) la triangulation elle-même peut
-différer. Le générateur de références (`test/genere_reference_arcs.py`) remplace donc la recherche du Python par
-l'ordre de l'OCaml ; la comparaison est alors exacte à 1e-9 près, au départ et lettre par lettre.
+`delaunay` retourne la première arête mauvaise qu'il trouve. Quand plusieurs arêtes sont à retourner au même
+sous-pas, l'ordre compte : chaque retournement retire les points de l'arête retournée, donc les courbes finales
+diffèrent (jusqu'à 3 % d'une arête, que la tension efface peu à peu), et avec les points alignés de l'axe
+(cocycliques) la triangulation elle-même peut différer. Le Python parcourait les triangles dans l'ordre d'un `set`
+de `frozenset`, qui dépend de l'historique des insertions (il change même après un `deepcopy`) : son
+`cherche_arete_a_retourner` suit maintenant l'ordre de l'OCaml (arêtes rangées ; pour les deux triangles d'une
+arête, le plus grand d'abord, comme la liste que construit `Maillage.aretes`). La comparaison est exacte à 1e-9
+près, au départ et lettre par lettre.
 
 ### Le dessin
 
