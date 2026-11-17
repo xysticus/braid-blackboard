@@ -195,6 +195,14 @@ val descente_au_clou : float -> float -> float -> float -> float -> Geometrie.po
 (** [descente_au_clou xp y_haut y_sous x_clou y_clou] : du clou au point (xp, y_haut), arc de cercle (ou quart
     d'ellipse étiré) vertical en (xp, y_sous), puis segment vertical. *)
 
+type geometrie = { abscisse : float -> float; y_axe : float; aplati : float; y_sous : float }
+(** La géométrie du dessin d'un état (le dictionnaire [geo] que rend le [dessin_etat] du Python, réduit à ce qui
+    sert) : l'abscisse à l'écran d'un point de l'axe, la hauteur de l'axe, l'aplatissement vertical des arcs, la
+    hauteur sous tous les arcs du bas. *)
+
+val geometrie_etat : ?hauteur:float -> ?largeur:float -> etat -> geometrie
+(** La géométrie du dessin d'un état, sans le dessin (sert au film conforme). *)
+
 val dessin_etat :
   ?hauteur:float -> ?largeur:float -> etat -> Geometrie.point array list list * Geometrie.point array * Geometrie.point
 (** (pour chaque lacet, ses morceaux bout à bout : descente, arcs, remontée ; positions des trous ; clou).

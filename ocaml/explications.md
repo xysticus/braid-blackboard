@@ -13,7 +13,7 @@ le `.mli` le dit.
 | [`lib/raccord.ml`](lib/raccord.ml) | `maillage_du_raccord`, `insere` de `python/Raccord.py` | 4 |
 | [`lib/arcs.ml`](lib/arcs.ml) | `python/Arcs.py` : `FilmArcs`, `DiagrammeCourbes` (sans la tension hyperbolique) | 4 |
 | [`lib/escargot.ml`](lib/escargot.ml) | `python/Escargot.py` : la chorégraphie et `deplace` | 6 |
-| [`lib/conforme.ml`](lib/conforme.ml) | `python/Conforme.py` : la carte de Schwarz–Christoffel (`Carte`, `demi_cercle`) | 7a |
+| [`lib/conforme.ml`](lib/conforme.ml) | `python/Conforme.py` : la carte de Schwarz–Christoffel (`Carte`, `demi_cercle`), la lettre (`Lettre`) | 7a, 7b |
 | [`dessin/dessin.ml`](dessin/dessin.ml) | `peint`, `Film.cadre`, `film_triangule`, `FilmArcs.cadre`, `film_arcs`, `Escargot.dessine`, `film_escargot` (cairo2, ffmpeg) | 4, 5, 6 |
 
 Les tests (`dune test` dans `ocaml/`) comparent chaque fonction aux sorties du Python, écrites dans
@@ -552,6 +552,9 @@ de `__init__`.
   du film est l'image par `chemin` du demi-cercle entre les antécédents de ses deux pieds : il arrive
   perpendiculairement au bord, et deux arcs ne peuvent pas se croiser (la carte est une bijection).
 
+**Le module d'un complexe** (`module_c`) se calcule par `Float.hypot`, comme `np.abs` ; `Complex.norm` d'OCaml
+emploie une autre formule, qui diffère parfois au dernier chiffre.
+
 **Choix OCaml.** Les nombres complexes sont ceux du module `Complex` de la bibliothèque standard ; la carte est un
 enregistrement immuable (le Python la modifie en place pendant sa construction). Les boucles de numpy deviennent des
 `Array.map` et des boucles `for` sur des tableaux locaux, qui ne sortent pas des fonctions.
@@ -560,6 +563,39 @@ enregistrement immuable (le Python la modifie en place pendant sa construction).
 film (tresse de référence, lettres 1 et 5, quatre instants, haut et bas). β, écarts, antécédents des sommets, delta,
 points du bord, images de points intérieurs et demi-cercles emportés concordent avec le Python à 1e-11 près ; les
 antécédents de points intérieurs à 1e-3 près (Newton s'arrête à 1e-4).
+
+## 11. Une lettre du film conforme (`conforme.ml`, étape 7b)
+
+Une lettre σ_i va de l'image clé k (l'état `cle`) à l'image clé k+1 (l'état `suivante`). Pendant le demi-tour, les
+trous i-1 et i (de 0) tournent ; l'axe se plie en ligne brisée L–A–B–R par leurs voisins.
+
+- **`type lettre`** et **`lettre ?hauteur ?largeur cle suivante sigma`** : la classe `Lettre` du Python. Elle garde
+  les deux états, leur géométrie de dessin (`Tresses.geometrie_etat`, sortie pour l'occasion de `dessin_etat`), les
+  abscisses à l'écran des trous, et `phys` : le trou physique à chaque place (les places i-1 et i sont échangées dans
+  l'état k+1). Le seul champ mutable est `cache` : les écarts de la dernière carte de chaque état, point de départ de
+  Newton pour l'image suivante. Le Python modifie aussi `reduction` en place ; ici elle est passée en argument.
+- **`trou l p s`** : la position du trou physique p au temps s. Les trous immobiles glissent de leur place dans
+  l'image clé k à leur place dans l'image clé k+1 ; les deux trous qui tournent font un demi-tour autour de leur milieu,
+  dans le sens donné par le signe de σ. Les places -1 et n sont des points virtuels au bord de l'image.
+- **`ligne l e s`** : les quatre sommets de la ligne brisée de l'état e : L, A, B, R.
+- **`type pied`**, **`pied l e x s v`** : où poser un point de l'état sur la ligne brisée. Un point d'un des trois
+  intervalles du bloc va sur le segment correspondant, à la même fraction ; les autres restent sur l'axe, à la même
+  place relative entre les trous qui les encadrent. Le pied dit sur quel morceau du bord il est (0 à 4) et à quelle
+  longueur : c'est ce qu'il faut pour son antécédent (`antecedent_bord`).
+- **`cartes l e s`** : les cartes du haut et du bas (la ligne brisée symétrique), Newton parti du cache.
+- **`aplati l ~reduction s`** : l'aplatissement vertical, mélange de ceux des deux images clés, multiplié par la
+  réduction (le film la fixe quand les arcs sortiraient du cadre).
+- **`dessin l ~reduction e s`** : les lacets de l'état e à l'écran. Chaque arc est l'image d'un demi-cercle entre les
+  antécédents de ses pieds, par la carte du haut (arcs pairs) ou du bas (arcs impairs). Les deux bouts descendent au
+  clou par des **géodésiques** du demi-plan du bas : l'arc du cercle orthogonal à l'axe qui passe par le pied et par
+  l'antécédent du clou. Deux de ces cercles ne se recoupent qu'au clou, et le clou doit être hors des demi-cercles du
+  bas (`Clou_dans_un_demi_cercle` sinon) : les descentes ne croisent rien.
+- **`trous_ecran l ~reduction s`** : les trous à l'écran.
+
+**Vérification** : 64 lettres (chaque lettre des deux tresses d'essai, à quatre instants), sur une lettre neuve à
+chaque fois (cache vide des deux côtés). Lignes brisées, pieds, aplatissements, trous et points des dessins
+concordent avec le Python à 1e-10 près ; au-delà, les puissances complexes de la carte diffèrent de numpy au dernier
+chiffre.
 
 ## Annexe : pourquoi l'OCaml est au moins 15 fois plus rapide
 

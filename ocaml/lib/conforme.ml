@@ -70,6 +70,10 @@ let resous j f =
   done;
   x
 
+(* Module d'un complexe, comme np.abs : hypot (module_c calcule autrement, et diffère parfois au dernier
+   chiffre). *)
+let module_c (z : Complex.t) = Float.hypot z.re z.im
+
 (* --- la carte de Schwarz–Christoffel --- *)
 
 type table = { t : float array; l : float array }
@@ -148,7 +152,7 @@ exception Pas_de_convergence of string
 let cree ?ecarts sommets =
   let m = Array.length sommets in
   let cotes_c = Array.init (m - 1) (fun k -> Complex.sub sommets.(k + 1) sommets.(k)) in
-  let longueurs = Array.map Complex.norm cotes_c in
+  let longueurs = Array.map module_c cotes_c in
   let directions = Array.mapi (fun k c -> Complex.div c { re = longueurs.(k); im = 0. }) cotes_c in
   let d = Array.concat [ [| Complex.one |]; directions; [| Complex.one |] ] in
   let beta = Array.init m (fun k -> -.Complex.arg (Complex.div d.(k + 1) d.(k)) /. Float.pi) in
@@ -243,7 +247,7 @@ let chemin ?z1 carte ws z0 =
   | Some z1 ->
       let lg = Array.make n 0. in
       for i = 1 to n - 1 do
-        lg.(i) <- lg.(i - 1) +. Complex.norm (Complex.sub z.(i) z.(i - 1))
+        lg.(i) <- lg.(i - 1) +. module_c (Complex.sub z.(i) z.(i - 1))
       done;
       let total = lg.(n - 1) in
       if total > 0. then
@@ -275,7 +279,7 @@ let antecedent carte (z : Complex.t) =
   let rec newton w iteration =
     if iteration = 50 then raise (Pas_de_convergence "antécédent d'un point intérieur : Newton ne converge pas");
     let e = Complex.sub (image carte w) z in
-    if Complex.norm e < 1e-4 then w
+    if module_c e < 1e-4 then w
     else
       let w = Complex.sub w (Complex.div e (derivee carte w)) in
       newton { w with im = Float.max w.im 1e-3 } (iteration + 1)
@@ -291,3 +295,174 @@ let demi_cercle ?(n = 150) w0 w1 =
       let phi = phi0 +. ((Float.pi -. (2. *. phi0)) *. (1. -. cos (Float.pi *. u)) /. 2.) in
       { Complex.re = m +. (rho *. cos phi); im = rho *. sin phi })
     (linspace 0. 1. n)
+
+(* --- 7b : une lettre du film (classe Lettre du Python) --- *)
+
+open Geometrie
+
+let sens_de_sigma = 1. (* comme dans NouvAutoMorph : σ_i positif = demi-tour horaire à l'écran *)
+
+type lettre = {
+  etats : Tresses.etat array;  (** l'image clé k (état 0) et l'image clé k+1 (état 1) *)
+  sigma : Tresses.sigma Tresses.lettre;
+  i : int;  (** indice de σ : les trous qui tournent sont i-1 et i (de 0) *)
+  hauteur : float;
+  largeur : float;
+  geos : Tresses.geometrie array;  (** géométrie du dessin de chaque état *)
+  h : float array array;  (** abscisses à l'écran des trous de chaque état *)
+  n : int;  (** nombre de trous *)
+  phys : int array array;  (** trou physique à chaque place, dans chaque état (i-1 et i échangés dans l'état 1) *)
+  y_axe : float;
+  clou : point;
+  cache : (int * bool, float array) Hashtbl.t;
+      (** écarts de la dernière carte calculée (état, haut ?), point de départ de Newton pour la suivante : seul état
+          mutable, comme le [cache] du Python, dont dépendent les derniers chiffres des cartes *)
+}
+
+(* Une lettre σ entre l'image clé [cle] et l'image clé [suivante]. Les trous physiques sont numérotés comme dans
+   l'état k ; dans l'état k+1, les places i-1 et i sont échangées. *)
+let lettre ?(hauteur = 400.) ?(largeur = 400.) cle suivante sigma =
+  let etats = [| cle; suivante |] in
+  let geos = Array.map (Tresses.geometrie_etat ~hauteur ~largeur) etats in
+  let h = Array.map2 (fun (e : Tresses.etat) g -> Array.map g.Tresses.abscisse e.trous) etats geos in
+  let n = Array.length cle.Tresses.trous and i = sigma.Tresses.indice in
+  let phys1 = Array.init n Fun.id in
+  phys1.(i - 1) <- i;
+  phys1.(i) <- i - 1;
+  { etats; sigma; i; hauteur; largeur; geos; h; n; phys = [| Array.init n Fun.id; phys1 |]; y_axe = geos.(0).y_axe;
+    clou = { x = largeur /. 2.; y = hauteur -. 10. }; cache = Hashtbl.create 4 }
+
+let c re im = { Complex.re; im }
+
+(* Position (complexe, y vers le haut, avant aplatissement) du trou physique p au temps s ; -1 et n : points
+   virtuels au bord. Les trous qui ne tournent pas glissent de leur place dans l'image clé k à celle dans l'image clé
+   k+1 ; les deux trous qui tournent font un demi-tour autour de leur milieu (centre et rayon glissent aussi). *)
+let trou l p s =
+  let i = l.i and h = l.h in
+  if p < 0 then c 10. 0.
+  else if p >= l.n then c (l.largeur -. 10.) 0.
+  else if p <> i - 1 && p <> i then
+    (* l'indice de p dans phys.(1) : p lui-même, puisque seuls i-1 et i sont échangés *)
+    c (((1. -. s) *. h.(0).(p)) +. (s *. h.(1).(p))) 0.
+  else
+    let centre = ((1. -. s) *. (h.(0).(i - 1) +. h.(0).(i)) /. 2.) +. (s *. (h.(1).(i - 1) +. h.(1).(i)) /. 2.) in
+    let r = ((1. -. s) *. (h.(0).(i) -. h.(0).(i - 1)) /. 2.) +. (s *. (h.(1).(i) -. h.(1).(i - 1)) /. 2.) in
+    let sens = sens_de_sigma *. match l.sigma.signe with Tresses.Plus -> 1. | Moins -> -1. in
+    let theta = Float.pi *. s in
+    let a = if p = i - 1 then Float.pi -. (sens *. theta) else -.(sens *. theta) in
+    c (centre +. (r *. cos a)) (r *. sin a)
+
+let phys_de l e j = if j < 0 || j >= l.n then j else l.phys.(e).(j)
+
+(* Sommets de la ligne brisée de l'état e au temps s : ses trous i-2, i-1, i, i+1 (ou points virtuels). *)
+let ligne l e s = Array.init 4 (fun k -> trou l (phys_de l e (l.i - 2 + k)) s)
+
+type pied = { morceau : int; longueur : float; position : Complex.t }
+(* Le pied d'un point de l'état sur la ligne brisée : le morceau du bord (0 demi-droite de gauche, 1 à 3 les
+   segments, 4 demi-droite de droite), la longueur parcourue sur ce morceau, sa position. *)
+
+(* Pied du point d'abscisse x de l'état e au temps s, sur la ligne brisée de sommets v. Un point d'un des trois
+   intervalles du bloc (autour des trous qui tournent) est posé sur le segment correspondant, à la même fraction ; les
+   autres restent sur l'axe, à la même place relative entre les trous qui les encadrent. *)
+let pied l e x s v =
+  let i = l.i and n = l.n in
+  let trous = l.etats.(e).Tresses.trous in
+  let px = l.geos.(e).abscisse x in
+  let cle j = if j < 0 then 10. else if j >= n then l.largeur -. 10. else l.h.(e).(j) in
+  let actuel j = (trou l (phys_de l e j) s).re in
+  let q = Tresses.intervalle x trous in
+  if i - 1 <= q && q <= i + 1 then
+    let f = (px -. cle (q - 1)) /. (cle q -. cle (q - 1)) in
+    let p = q - i + 2 in
+    let segment = Complex.sub v.(p) v.(p - 1) in
+    { morceau = p; longueur = f *. module_c segment; position = Complex.add v.(p - 1) (Complex.mul (c f 0.) segment) }
+  else
+    let xa =
+      if q = 0 then actuel 0 -. (cle 0 -. px)
+      else if q = n then actuel (n - 1) +. (px -. cle (n - 1))
+      else
+        let f = (px -. cle (q - 1)) /. (cle q -. cle (q - 1)) in
+        actuel (q - 1) +. (f *. (actuel q -. actuel (q - 1)))
+    in
+    if q < i - 1 then { morceau = 0; longueur = v.(0).re -. xa; position = c xa 0. }
+    else { morceau = 4; longueur = xa -. v.(3).re; position = c xa 0. }
+
+(* Les cartes du haut et du bas de l'état e au temps s (celle du bas : la ligne brisée symétrique), Newton parti des
+   écarts de la carte précédente du même état. *)
+let cartes l e s =
+  let v = ligne l e s in
+  let carte en_haut sommets =
+    let carte = cree ?ecarts:(Hashtbl.find_opt l.cache (e, en_haut)) sommets in
+    Hashtbl.replace l.cache (e, en_haut) carte.ecarts;
+    carte
+  in
+  let haut = carte true v in
+  let bas = carte false (Array.map Complex.conj v) in
+  (v, haut, bas)
+
+(* Aplatissement vertical au temps s : celui des images clés, mélangé, multiplié par la réduction (fixée image par
+   image par le film quand le demi-tour fait sortir les arcs du cadre ; un champ modifié en place dans le Python). *)
+let aplati l ~reduction s = (((1. -. s) *. l.geos.(0).aplati) +. (s *. l.geos.(1).aplati)) *. reduction
+
+exception Clou_dans_un_demi_cercle
+
+(* Lacets (polylignes à l'écran) de l'état e dessiné sur sa ligne brisée au temps s : chaque arc est l'image d'un
+   demi-cercle du demi-plan entre les antécédents de ses pieds (arcs du haut par la carte du haut, du bas par celle du
+   bas) ; les deux bouts descendent au clou par des géodésiques du demi-plan du bas. *)
+let dessin l ~reduction e s =
+  let v, haut, bas = cartes l e s in
+  let aplati = aplati l ~reduction s and y_axe = l.y_axe in
+  let ecran en_haut (zs : Complex.t array) =
+    Array.map (fun (z : Complex.t) -> { x = z.re; y = (if en_haut then y_axe -. (z.im *. aplati) else y_axe +. (z.im *. aplati)) }) zs
+  in
+  let lacets = l.etats.(e).Tresses.lacets in
+  let pieds = List.map (fun lacet -> Array.map (fun x -> pied l e x s v) lacet) lacets in
+  let antecedents carte = List.map (Array.map (fun p -> antecedent_bord carte p.morceau p.longueur)) pieds in
+  let wh = antecedents haut and wb = antecedents bas in
+  let zc = c l.clou.x ((l.clou.y -. y_axe) /. aplati) in
+  let wc = antecedent bas zc in
+  (* le clou doit être hors des demi-cercles du bas (sinon les descentes croiseraient les arcs du bas) *)
+  List.iter
+    (fun w ->
+      let j = ref 1 in
+      while !j < Array.length w - 1 do
+        let milieu = (w.(!j) +. w.(!j + 1)) /. 2. in
+        if not (module_c (Complex.sub wc (c milieu 0.)) > Float.abs (w.(!j + 1) -. w.(!j)) /. 2.) then raise Clou_dans_un_demi_cercle;
+        j := !j + 2
+      done)
+    wb;
+  (* du pied (antécédent w, image z dans la carte du bas) au clou : la géodésique du demi-plan, arc du cercle
+     orthogonal à l'axe qui passe par w et par l'antécédent du clou ; deux d'entre elles ne se recoupent qu'au clou *)
+  let descente w z =
+    let a = wc.re and b = wc.im in
+    let u = Array.map (fun t -> 1. -. cos (Float.pi *. t /. 2.)) (linspace 0. 1. 200) in
+    let ws =
+      if Float.abs (a -. w) < 1e-9 *. (1. +. Float.abs b) then Array.map (fun f -> c (w +. (0. *. f)) (b *. f)) u
+      else
+        let m = ((a *. a) +. (b *. b) -. (w *. w)) /. (2. *. (a -. w)) in
+        let rho = Float.abs (w -. m) in
+        let phi0 = if w > m then 0. else Float.pi and phi1 = Float.atan2 b (a -. m) in
+        Array.map (fun f -> let phi = phi0 +. ((phi1 -. phi0) *. f) in c (m +. (rho *. cos phi)) (rho *. sin phi)) u
+    in
+    ecran false (chemin ~z1:zc bas ws z)
+  in
+  List.map2
+    (fun pl (h_, b_) ->
+      let k = Array.length pl in
+      let premier = renverse (descente b_.(0) (Complex.conj pl.(0).position)) in
+      let arcs =
+        List.init (k - 1) (fun j ->
+            if j mod 2 = 0 then ecran true (chemin ~z1:pl.(j + 1).position haut (demi_cercle h_.(j) h_.(j + 1)) pl.(j).position)
+            else
+              ecran false
+                (chemin ~z1:(Complex.conj pl.(j + 1).position) bas (demi_cercle b_.(j) b_.(j + 1)) (Complex.conj pl.(j).position)))
+      in
+      let dernier = descente b_.(k - 1) (Complex.conj pl.(k - 1).position) in
+      Array.concat ((premier :: arcs) @ [ dernier ]))
+    pieds (List.combine wh wb)
+
+(* Point à l'écran d'un point z (y vers le haut, avant aplatissement) au temps s. *)
+let ecran_de l ~reduction (z : Complex.t) s = { x = z.re; y = l.y_axe -. (z.im *. aplati l ~reduction s) }
+
+(* Positions à l'écran des trous au temps s. *)
+let trous_ecran l ~reduction s = Array.init l.n (fun p -> ecran_de l ~reduction (trou l p s) s)

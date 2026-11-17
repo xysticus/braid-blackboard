@@ -1,8 +1,10 @@
 '''Écrit reference_conforme.json : sorties de Conforme.py pour comparer la réécriture OCaml (étape 7a : la carte de
-Schwarz–Christoffel).
+Schwarz–Christoffel, 7b : la lettre).
 - "cartes" : pour de vraies cartes du film (tresse de référence, lettres 1 et 5, quatre instants, haut et bas), les
   sommets, les β, les écarts et antécédents des sommets, delta, des points du bord, des antécédents de points du
   bord, des images de points intérieurs, des antécédents de points intérieurs et l'image d'un demi-cercle.
+- "lettres" : pour chaque lettre des deux tresses d'essai, à quatre instants, la ligne brisée, les pieds, l'aplatissement,
+  un résumé du dessin de l'état (nombre de points, somme, un point sur 25, dernier point) et les trous à l'écran.
 Lancer depuis la racine du dépôt : python ocaml/test/genere_reference_conforme.py'''
 import json
 import os
@@ -46,6 +48,28 @@ for k in (0, 4):
                 'antecedents': [[c(z), c(carte.antecedent(z))] for z in cibles],
                 'demi_cercle': [w[0] - 20, w[-1] + 20, [c(z) for z in arc]]})
 
+# 7b : la lettre (ligne brisée, pieds, dessin d'un état, trous à l'écran), sur une lettre neuve à chaque fois (le
+# cache des écarts vide, comme en OCaml)
+def resume(p):
+    p = np.asarray(p, dtype=float)
+    return {'n': len(p), 'somme': p.sum(axis=0).tolist(), 'echantillon': p[::25].tolist(), 'dernier': p[-1].tolist()}
+
+reference['lettres'] = []
+for tr in ([4, 3, -1, -1, 2, -4, 1], [1, -2, 1, -2, 1, -2, 3, -1, 2]):
+    nb = max(map(abs, tr)) + 1
+    for k in range(len(tr)):
+        cle, suivante = etat_de_tresse(tr[:k], nb), etat_de_tresse(tr[:k + 1], nb)
+        for s in (0.0, 0.3, 0.7, 1.0):
+            e = 0 if s < 0.5 else 1
+            lettre = Lettre(cle, suivante, tr[k], 680, 680)
+            V = lettre.ligne(e, s)
+            pieds = [[[int(p), float(l), c(z)] for p, l, z in (lettre.pied(e, x, s, V) for x in lacet)]
+                     for lacet in lettre.etats[e][1]]
+            reference['lettres'].append({
+                'tresse': tr, 'k': k, 's': s, 'e': e, 'ligne': [c(z) for z in V], 'pieds': pieds,
+                'aplati': lettre.aplati(s), 'dessin': [resume(l) for l in lettre.dessin(e, s)],
+                'trous': lettre.trous_ecran(s).tolist()})
+
 with open(os.path.join(os.path.dirname(__file__), 'reference_conforme.json'), 'w') as f:
     json.dump(reference, f)
-print(len(reference['cartes']), 'cartes')
+print(len(reference['cartes']), 'cartes,', len(reference['lettres']), 'lettres')

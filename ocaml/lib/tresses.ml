@@ -391,13 +391,14 @@ let descente_au_clou xp y_haut y_sous x_clou y_clou =
 
 let renverse t = let n = Array.length t in Array.init n (fun k -> t.(n - 1 - k))
 
-let dessin_etat ?(hauteur = 400.) ?(largeur = 400.) etat =
+type geometrie = { abscisse : float -> float; y_axe : float; aplati : float; y_sous : float }
+
+let geometrie_etat ?(hauteur = 400.) ?(largeur = 400.) etat =
   let tous = Array.to_list etat.trous @ List.concat_map Array.to_list etat.lacets in
   let pmin = List.fold_left Float.min Float.infinity tous and pmax = List.fold_left Float.max Float.neg_infinity tous in
   let pas = (largeur -. 40.) /. (pmax -. pmin) in
   let abscisse p = 20. +. ((p -. pmin) *. pas) in
   let y_axe = 0.4 *. hauteur in
-  let x_clou = largeur /. 2. and y_clou = hauteur -. 10. in
   (* on aplatit les arcs pour qu'ils tiennent en hauteur, en laissant de la place à l'éventail vers le clou *)
   let rayons parite =
     List.concat_map
@@ -409,6 +410,11 @@ let dessin_etat ?(hauteur = 400.) ?(largeur = 400.) etat =
   let rayon_bas = List.fold_left Float.max 0. (rayons 1) in
   let aplati = Float.min 1. (Float.min ((y_axe -. 10.) /. rayon_haut) ((hauteur -. 70. -. y_axe) /. Float.max rayon_bas 1.)) in
   let y_sous = y_axe +. (rayon_bas *. aplati) +. 8. in
+  { abscisse; y_axe; aplati; y_sous }
+
+let dessin_etat ?(hauteur = 400.) ?(largeur = 400.) etat =
+  let { abscisse; y_axe; aplati; y_sous } = geometrie_etat ~hauteur ~largeur etat in
+  let x_clou = largeur /. 2. and y_clou = hauteur -. 10. in
   let descente xp = descente_au_clou xp y_axe y_sous x_clou y_clou in
   let morceaux =
     List.map

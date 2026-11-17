@@ -52,6 +52,58 @@ let test_carte k j () =
       List.iteri (fun i z -> proches_c (nom ^ " : demi-cercle") 1e-6 z obtenu.(i)) attendu
   | _ -> ()
 
+(* 7b : la lettre *)
+
+let point_de j = match reels j with [ x; y ] -> { Geometrie.x; y } | _ -> failwith "point"
+
+let proches_p nom tolerance (a : Geometrie.point) (b : Geometrie.point) =
+  if Float.hypot (a.x -. b.x) (a.y -. b.y) > tolerance then
+    Alcotest.failf "%s : (%.12g, %.12g) au lieu de (%.12g, %.12g)" nom b.x b.y a.x a.y
+
+let lettres () = J.to_list (J.member "lettres" (Lazy.force reference))
+
+let test_lettre j () =
+  let entiers = List.map J.to_int (J.to_list (J.member "tresse" j)) in
+  let k = J.to_int (J.member "k" j) and s = J.to_number (J.member "s" j) and e = J.to_int (J.member "e" j) in
+  let nom = Printf.sprintf "lettre %d, s = %g" k s in
+  let tresse = Tresses.tresse_de_entiers entiers in
+  let nb_trous = List.fold_left (fun a x -> max a (abs x)) 0 entiers + 1 in
+  let prefixe n = List.filteri (fun i _ -> i < n) tresse in
+  let cle = Tresses.etat_de_tresse ~nb_trous (prefixe k) and suivante = Tresses.etat_de_tresse ~nb_trous (prefixe (k + 1)) in
+  let l = Conforme.lettre ~hauteur:680. ~largeur:680. cle suivante (List.nth tresse k) in
+  let v = Conforme.ligne l e s in
+  List.iteri (fun i z -> proches_c (nom ^ " : ligne") 1e-9 (complexe z) v.(i)) (J.to_list (J.member "ligne" j));
+  List.iteri
+    (fun lacet pieds ->
+      let xs = List.nth l.etats.(e).Tresses.lacets lacet in
+      List.iteri
+        (fun q p ->
+          match J.to_list p with
+          | [ morceau; longueur; position ] ->
+              let obtenu = Conforme.pied l e xs.(q) s v in
+              Alcotest.(check int) (nom ^ " : morceau du pied") (J.to_int morceau) obtenu.morceau;
+              proches (nom ^ " : longueur du pied") 1e-9 (J.to_number longueur) obtenu.longueur;
+              proches_c (nom ^ " : position du pied") 1e-9 (complexe position) obtenu.position
+          | _ -> failwith "pied")
+        (J.to_list pieds))
+    (J.to_list (J.member "pieds" j));
+  proches (nom ^ " : aplatissement") 1e-12 (J.to_number (J.member "aplati" j)) (Conforme.aplati l ~reduction:1. s);
+  let dessin = Conforme.dessin l ~reduction:1. e s in
+  let attendu = J.to_list (J.member "dessin" j) in
+  Alcotest.(check int) (nom ^ " : nombre de lacets") (List.length attendu) (List.length dessin);
+  List.iter2
+    (fun r p ->
+      Alcotest.(check int) (nom ^ " : points du lacet") (J.to_int (J.member "n" r)) (Array.length p);
+      List.iteri (fun i q -> proches_p (nom ^ " : point du lacet") 1e-8 (point_de q) p.(25 * i)) (J.to_list (J.member "echantillon" r));
+      proches_p (nom ^ " : dernier point") 1e-8 (point_de (J.member "dernier" r)) p.(Array.length p - 1);
+      let somme = Array.fold_left (fun (a : Geometrie.point) (b : Geometrie.point) -> { Geometrie.x = a.x +. b.x; y = a.y +. b.y }) { x = 0.; y = 0. } p in
+      proches_p (nom ^ " : somme des points") 1e-5 (point_de (J.member "somme" r)) somme)
+    attendu dessin;
+  List.iteri (fun i q -> proches_p (nom ^ " : trou") 1e-9 (point_de q) (Conforme.trous_ecran l ~reduction:1. s).(i)) (J.to_list (J.member "trous" j))
+
 let () =
   Alcotest.run "conforme"
-    [ ("carte", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "carte %d" k) `Quick (test_carte k j)) (cartes ())) ]
+    [
+      ("carte", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "carte %d" k) `Quick (test_carte k j)) (cartes ()));
+      ("lettre", List.mapi (fun k j -> Alcotest.test_case (Printf.sprintf "lettre %d" k) `Quick (test_lettre j)) (lettres ()));
+    ]
