@@ -62,6 +62,9 @@ vue pour tout le film (`vueDe` dans `ardoise.js`), calculée sur toutes ses imag
 
 `index.html?fin` : pas de lecture automatique, les films s'arrêtent sur leur dernière image (pour les captures d'écran).
 
+Adaptation aux petits écrans (`ardoise.css`, deux seuils : 1000 px, une seule colonne ; 640 px, marges réduites, exemples sur deux colonnes,
+commandes de lecture plus grandes, infobulle en feuille collée en bas de l'écran) ; testée à 390 px de large.
+
 ## Limites
 
 8 brins et 40 lettres au plus pour la page ; les films des lacets (conforme : de 0,4 à 2 s par lettre ; triangulation :

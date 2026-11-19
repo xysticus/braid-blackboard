@@ -39,7 +39,7 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 #mot:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
 .erreur { color: var(--erreur); margin: 6px 0 0; font-weight: 500; }
 
-#exemples { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-top: 12px; }
+#exemples { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 8px; margin-top: 12px; }
 .exemple {
   text-align: left; font: inherit; cursor: pointer; padding: 8px 12px; border-radius: 8px;
   border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
@@ -66,7 +66,7 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 .panneau { background: var(--carte); border: 1px solid var(--trait); border-radius: 12px; padding: 12px 12px 10px; }
 .panneau h3 { font-size: 1rem; margin: 0 0 8px; }
 .panneau canvas { display: block; width: 100%; background: #fff; border-radius: 6px; border: 1px solid var(--trait); }
-.libres { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 560px)); gap: 16px; align-items: start; }
+.libres { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 560px)); gap: 16px; align-items: start; }
 .etat { display: flex; align-items: center; gap: 10px; min-height: 32px; margin-top: 8px; font-size: 0.9rem; color: var(--doux); }
 .etat progress { flex: 1; height: 8px; accent-color: var(--accent); }
 .etat button {
@@ -81,11 +81,11 @@ footer { color: var(--doux); font-size: 0.85rem; padding-bottom: 28px; }
 
 /* infobulles : un schéma par méthode de dessin, au survol de « ? » ou au clavier */
 .aide-schema { position: relative; display: inline-block; margin-left: 8px; vertical-align: middle; font-size: 1rem; font-weight: 400; }
-.aide {
+.bouton-aide {
   width: 20px; height: 20px; padding: 0; border-radius: 50%; cursor: help; font: 600 12px/1 system-ui, sans-serif;
   border: 1.5px solid var(--trait); background: var(--carte); color: var(--doux);
 }
-.aide:hover, .aide:focus-visible { border-color: var(--accent); color: var(--accent); }
+.bouton-aide:hover, .bouton-aide:focus-visible { border-color: var(--accent); color: var(--accent); }
 .bulle {
   position: absolute; z-index: 30; top: 100%; left: 0; width: min(460px, calc(100vw - 16px)); padding-top: 8px;
   visibility: hidden; opacity: 0; transition: opacity 0.12s;
@@ -98,6 +98,32 @@ footer { color: var(--doux); font-size: 0.85rem; padding-bottom: 28px; }
 .aide-schema:hover .bulle, .aide-schema:focus-within .bulle, .aide-schema.ouverte .bulle { visibility: visible; opacity: 1; }
 h2 .aide-schema, h3 .aide-schema { font-size: 1rem; }
 
+/* adaptation aux écrans étroits (tablette, smartphone) : une seule colonne, des marges plus petites, des commandes plus grandes */
+main > *, .deux-colonnes > *, .quatre > *, .libres > * { min-width: 0; }   /* un élément de grille ne dépasse pas la fenêtre */
 @media (max-width: 1000px) {
   .quatre, .deux-colonnes { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  header, main, footer { padding-left: 12px; padding-right: 12px; }
+  header { padding-top: 16px; }
+  h1 { font-size: 1.5rem; }
+  main { gap: 14px; padding-top: 14px; }
+  #mot { font-size: 1rem; padding: 9px 12px; }
+  #exemples { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .exemple { padding: 7px 9px; }
+  .exemple .nom { font-size: 0.95rem; }
+  .exemple .legende { font-size: 0.75rem; }
+  .carte { padding: 12px; }
+  .math-ligne { font-size: 1.15rem; line-height: 1.9; }
+  #fn-images { font-size: 1rem; }
+  .panneau { padding: 10px 10px 8px; }
+  .panneau h3 { font-size: 0.95rem; }
+  .etat { gap: 8px; }
+  .etat button { width: 44px; height: 40px; }
+  .etat input[type=range] { min-height: 32px; }
+  /* l'infobulle devient une feuille collée en bas de l'écran : pas de débordement sur les côtés */
+  .bulle { position: fixed; left: 8px !important; right: 8px; bottom: 8px; top: auto; width: auto; padding-top: 0; }
+}
+@media (pointer: coarse) {
+  .bouton-aide { width: 28px; height: 28px; font-size: 14px; }
 }

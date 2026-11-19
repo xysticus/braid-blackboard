@@ -559,7 +559,7 @@ function aideSchema(id) {
   const zone = document.createElement('span');
   zone.className = 'aide-schema';
   zone.dataset.schema = id;
-  zone.innerHTML = `<button type="button" class="aide" aria-label="Schéma explicatif : ${titre}" aria-describedby="bulle-${id}">?</button>` +
+  zone.innerHTML = `<button type="button" class="bouton-aide" aria-label="Schéma explicatif : ${titre}" aria-describedby="bulle-${id}">?</button>` +
     `<span class="bulle" role="tooltip" id="bulle-${id}"><span class="cadre"><img src="schemas/${id}.svg" alt="${alt}" width="440" height="250"></span></span>`;
   const bulle = zone.querySelector('.bulle');
   const ajuste = () => {   // reste dans la fenêtre
