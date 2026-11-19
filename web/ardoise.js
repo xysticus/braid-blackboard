@@ -339,12 +339,47 @@ function dessineBouquet(canvas, im) {
   });
 }
 
-function dessineImage(canvas, image, mode) {
+// Étendue (x et y minimaux et maximaux) des lacets, des trous et du clou d'une image, ou de plusieurs.
+function etendue(images) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const parcourt = (p) => {
+    for (let k = 0; k < p.length; k += 2) {
+      if (p[k] < x0) x0 = p[k];
+      if (p[k] > x1) x1 = p[k];
+      if (p[k + 1] < y0) y0 = p[k + 1];
+      if (p[k + 1] > y1) y1 = p[k + 1];
+    }
+  };
+  for (const im of images) {
+    im.lacets.forEach(parcourt);
+    parcourt(im.trous);
+    parcourt(im.clou);
+  }
+  return { x0, y0, x1, y1 };
+}
+
+// La vue qui fait tenir l'étendue dans le canvas (avec une marge) : un recul seulement, jamais un agrandissement. Les
+// brins d'un faisceau très chargé sortent parfois du cadre : on dézoome (la même vue pour tout le film).
+function vueDe(canvas, images, mode) {
+  if (mode === 'escargot' || mode === 'bouquet') return null;   // des images d'une autre forme, qui tiennent dans le cadre
+  const e = etendue(images);
+  const marge = 14;
+  const w = e.x1 - e.x0, h = e.y1 - e.y0;
+  if (!(w > 0) || !(h > 0)) return null;
+  const hors = e.x0 < marge || e.y0 < marge || e.x1 > canvas.width - marge || e.y1 > canvas.height - marge;
+  if (!hors) return null;
+  const s = Math.min(1, (canvas.width - 2 * marge) / w, (canvas.height - 2 * marge) / h);
+  return { s, tx: canvas.width / 2 - s * (e.x0 + e.x1) / 2, ty: canvas.height / 2 - s * (e.y0 + e.y1) / 2 };
+}
+
+function dessineImage(canvas, image, mode, vue = null) {
   if (mode === 'escargot') { dessineEscargot(canvas, image); return; }
   if (mode === 'bouquet') { dessineBouquet(canvas, image); return; }
   const ctx = canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (vue) ctx.setTransform(vue.s, 0, 0, vue.s, vue.tx, vue.ty);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   image.lacets.forEach((p, i) => {
@@ -393,6 +428,7 @@ class Lecteur {
     this.etat = panneau.querySelector('.etat');
     this.images = [];
     this.fixe = null;
+    this.vue = null;
     this.lecture = false;
     this.t = 0;
     this.derniere = 0;
@@ -401,6 +437,7 @@ class Lecteur {
 
   efface() {
     const ctx = this.canvas.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
@@ -410,6 +447,7 @@ class Lecteur {
     this.arrete();
     this.images = [];
     this.fixe = null;
+    this.vue = null;
     this.t = 0;
     this.efface();
     this.etat.innerHTML = '<progress max="1" value="0"></progress><span>calcul…</span>';
@@ -425,7 +463,8 @@ class Lecteur {
 
   recoitFixe(image) {
     this.fixe = image;
-    dessineImage(this.canvas, image, this.mode);
+    this.vue = vueDe(this.canvas, [image], this.mode);
+    dessineImage(this.canvas, image, this.mode, this.vue);
   }
 
   recoitImage(image, k, total) {
@@ -442,6 +481,7 @@ class Lecteur {
       this.etat.innerHTML = `<span class="ko">${message || 'film indisponible'}</span>`;
       return;
     }
+    this.vue = vueDe(this.canvas, this.images, this.mode);   // une vue pour tout le film : pas de saut de zoom d'une image à l'autre
     this.prepareLecteur(message);
     if (new URLSearchParams(location.search).has('fin')) {   // ?fin : pas de lecture, sur la dernière image (pour les captures)
       this.t = this.duree() - 1;
@@ -469,7 +509,7 @@ class Lecteur {
   montre() {
     const n = this.images.length;
     const k = this.t < this.pauseDebut ? 0 : Math.min(n - 1, Math.floor(this.t - this.pauseDebut));
-    dessineImage(this.canvas, this.images[k], this.mode);
+    dessineImage(this.canvas, this.images[k], this.mode, this.vue);
     if (this.curseur) this.curseur.value = String(Math.floor(this.t));
   }
 

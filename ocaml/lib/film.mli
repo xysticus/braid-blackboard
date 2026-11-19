@@ -110,10 +110,12 @@ val disposition : int -> float -> Tresses.etat -> disposition
     est proportionnelle à 1 + le nombre de brins qui le traversent, donc l'écart entre deux points consécutifs de
     l'axe est le même partout. (Une méthode en Python, qui lit [nb_trous] et [largeur] dans le film.) *)
 
-val cree : ?hauteur:float -> ?largeur:float -> ?tension:int -> ?cadre:bool -> Tresses.tresse -> t
+val cree : ?hauteur:float -> ?largeur:float -> ?tension:int -> ?cadre:bool -> ?grossier:bool -> Tresses.tresse -> t
 (** Le constructeur [Film(tresse, hauteur, largeur)] (800 × 800 par défaut) : dispositions des images clés et des
     milieux de lettre, dessin de départ ([dessin_etat]) replacé sur la disposition 0 et étiré dans la bande du
     haut, maillage de départ, courbes ([noeuds_de_polyligne]), puis [tension] pas de tension (400 par défaut,
     comme le Python, qui n'a pas cet argument). [cadre] (vrai par défaut) : le décalage des sommets du bord bas est choisi
     pour que tous restent dans le cadre dans toutes les dispositions de la tresse ; faux pour les films dont seul l'état de
-    départ sert (le bouquet : les trous n'y suivent pas la tresse). *)
+    départ sert (le bouquet : les trous n'y suivent pas la tresse). [grossier] (faux par défaut, comme le Python) : le
+    maillage est celui des films d'arcs ([Raccord.maillage_du_raccord] : trous, clou, bord convexe hors de l'image) au lieu
+    des deux bandes en échelle ; [haut] et [bas] sont alors vides et les brins du clou partent en éventail. *)

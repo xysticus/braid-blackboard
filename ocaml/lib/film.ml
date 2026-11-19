@@ -128,26 +128,31 @@ let trous_au_temps film sigma u =
   positions.(i + 1) <- { x = milieu +. (r *. Float.cos theta); y = film.y_axe +. (r *. Float.sin theta) };
   (positions, x, milieu, r, theta)
 
+(* Un film à maillage grossier n'a ni rangées de bord ni brins du clou perpendiculaires : voir [cree ~grossier]. *)
+let est_grossier film = Array.length film.haut = 0
+
 let place film sigma u =
   let i = sigma.Tresses.indice - 1 and n = film.nb_trous in
   let pos = Array.copy film.maillage.Maillage.pos in
   let positions, x, milieu, r, theta = trous_au_temps film sigma u in
   Array.iteri (fun j h -> pos.(h) <- positions.(j)) film.trous;
-  (* les sommets des bords se croisent sans jamais se rejoindre *)
-  let ecart = Float.hypot (r *. Float.cos theta) (0.4 *. r *. Float.sin theta) in
-  let bords = Array.copy x in
-  bords.(i) <- milieu -. ecart;
-  bords.(i + 1) <- milieu +. ecart;
-  List.iter
-    (fun (rangee, decalage) ->
-      for j = 0 to n - 1 do
-        let s = rangee.(j + 1) in
-        pos.(s) <- { (pos.(s)) with x = bords.(j) +. decalage }
-      done)
-    [ (film.haut, decalage_bord); (film.bas, film.decalage_bas) ];
-  let j, f = film.place_du_clou in
-  let xa = pos.(film.bas.(j)).x and xb = pos.(film.bas.(j + 1)).x in
-  pos.(film.clou) <- { (pos.(film.clou)) with x = xa +. (f *. (xb -. xa)) };
+  if not (est_grossier film) then begin
+    (* les sommets des bords se croisent sans jamais se rejoindre *)
+    let ecart = Float.hypot (r *. Float.cos theta) (0.4 *. r *. Float.sin theta) in
+    let bords = Array.copy x in
+    bords.(i) <- milieu -. ecart;
+    bords.(i + 1) <- milieu +. ecart;
+    List.iter
+      (fun (rangee, decalage) ->
+        for j = 0 to n - 1 do
+          let s = rangee.(j + 1) in
+          pos.(s) <- { (pos.(s)) with x = bords.(j) +. decalage }
+        done)
+      [ (film.haut, decalage_bord); (film.bas, film.decalage_bas) ];
+    let j, f = film.place_du_clou in
+    let xa = pos.(film.bas.(j)).x and xb = pos.(film.bas.(j + 1)).x in
+    pos.(film.clou) <- { (pos.(film.clou)) with x = xa +. (f *. (xb -. xa)) }
+  end;
   if u = 1. then begin
     let xs1 = film.dispositions.(film.etape + 1).abscisses in
     let a = film.trous.(i) and b = film.trous.(i + 1) in
@@ -280,8 +285,9 @@ let polyligne_de_courbe ?(lisse = true) ?(part_du_conge = 0.5) ?clou m courbe =
   end
 
 let polyligne ?lisse ?part_du_conge film k =
-  polyligne_de_courbe ?lisse ?part_du_conge ~clou:(film.y_axe, film.dispositions.(film.etape).ecart) film.maillage
-    (List.nth film.courbes k)
+  (* maillage grossier : pas de départ perpendiculaire à l'axe, les brins partent du clou en éventail *)
+  let clou = if est_grossier film then None else Some (film.y_axe, film.dispositions.(film.etape).ecart) in
+  polyligne_de_courbe ?lisse ?part_du_conge ?clou film.maillage (List.nth film.courbes k)
 
 let polylignes ?lisse film =List.init (List.length film.courbes) (polyligne ?lisse film)
 let positions_des_trous film = Array.map (fun s -> film.maillage.Maillage.pos.(s)) film.trous
@@ -301,7 +307,7 @@ let disposition nb_trous largeur (etat : Tresses.etat) =
   let cumul = ref 0. in
   { abscisses = Array.init nb_trous (fun k -> cumul := !cumul +. (float (comptes.(k) + 1) *. ecart); !cumul); ecart }
 
-let cree ?(hauteur = 800.) ?(largeur = 800.) ?(tension = 400) ?(cadre = true) tresse =
+let cree ?(hauteur = 800.) ?(largeur = 800.) ?(tension = 400) ?(cadre = true) ?(grossier = false) tresse =
   let e = largeur /. 400. in
   let nb_trous = 1 + List.fold_left (fun m (l : Tresses.sigma Tresses.lettre) -> max m l.indice) 1 tresse in
   let prefixe k = List.filteri (fun j _ -> j < k) tresse in
@@ -321,6 +327,26 @@ let cree ?(hauteur = 800.) ?(largeur = 800.) ?(tension = 400) ?(cadre = true) tr
   let trous = List.map (fun x -> { x; y = trous.(0).y }) (Array.to_list xs0) in
   (* décalage des sommets du bord bas : loin du clou ; si les trous sont trop serrés pour les trois décalages
      habituels, celui qui éloigne le plus les sommets du clou *)
+  if grossier then begin
+    (* maillage grossier : de Delaunay, ses sommets sont les trous, le clou et un bord convexe hors de l'image (le maillage
+       des films d'arcs et du raccord conforme), à la place des deux bandes en échelle : un brin traverse beaucoup moins
+       d'arêtes, et le clou a des arêtes vers les trous *)
+    let y_axe = (List.hd trous).y in
+    let m, indices, i_clou = Raccord.maillage_du_raccord trous (Some clou) largeur hauteur in
+    let i_clou = Option.get i_clou in
+    let y_min = List.fold_left (Array.fold_left (fun m p -> Float.min m p.y)) Float.infinity lignes in
+    let etirement = (y_axe -. (14. *. e)) /. (y_axe -. y_min) in
+    let etire p = if p.y < y_axe then { p with y = y_axe -. ((y_axe -. p.y) *. etirement) } else p in
+    let lignes = List.map (Array.map etire) lignes in
+    let film =
+      { hauteur; largeur; nb_trous; dispositions; milieux; etape = 0; maillage = m; trous = Array.of_list indices;
+        clou = i_clou; haut = [||]; bas = [||]; decalage_bas = 0.; place_du_clou = (0, 0.); y_axe;
+        courbes = List.map (fun p -> noeuds_de_polyligne p m i_clou) lignes }
+    in
+    let rec tend_n n film = if n = 0 then film else tend_n (n - 1) (tend film 0.3 dispositions.(0).ecart) in
+    tend_n tension film
+  end
+  else
   let distance_au_clou d = Array.fold_left (fun m x -> Float.min m (Float.abs (x +. d -. clou.x))) Float.infinity xs0 in
   (* le décalage ne doit jamais pousser un sommet du bord bas hors du cadre, dans aucune des dispositions de la tresse :
      avec 24 px de décalage, un dernier trou à plus de 776 px envoyait son sommet sur le coin droit (triangle retourné,

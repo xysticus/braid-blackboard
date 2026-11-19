@@ -40,8 +40,8 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
 - `.github/workflows/pages.yml` : un workflow GitHub Pages (construit `ardoise_lib.js` chez GitHub, 19 minutes dont 17 pour
   compiler OCaml). Il est resté dans le dépôt, en déclenchement manuel seulement (onglet Actions → Page web → Run workflow) ; le déploiement visé est serveur personnel.
 
-Le film de la triangulation utilise les flips « par traversées » (`ocaml/lib/triangulation.ml`) : les brins du clou partent
-en éventail serré vers le trou qu'ils contournent.
+Le film de la triangulation utilise le maillage grossier des films d'arcs (`Film.cree ~grossier:true`) : les arêtes partent
+en étoile de chaque trou, les brins s'enroulent autour du trou contourné et partent du clou en éventail.
 
 ## Les fichiers
 
@@ -49,6 +49,9 @@ en éventail serré vers le trou qu'ils contournent.
 - `ardoise.js` : lecture du mot (`1 -2 3`, `σ1 σ2^-1`, `σ₁σ₂⁻¹`, `s1^3`), MathML, diagramme classique, lecteurs de films ;
 - `travail.js` : le Web Worker (image fixe, puis images du film envoyées une à une) ;
 - `ardoise_lib.js` : produit par `construit.sh`.
+
+Les méandres qui sortent du cadre (une tresse chargée, à la triangulation) sont recadrés : zoom arrière seulement, une même
+vue pour tout le film (`vueDe` dans `ardoise.js`), calculée sur toutes ses images dès que le film est fini.
 
 `index.html?fin` : pas de lecture automatique, les films s'arrêtent sur leur dernière image (pour les captures d'écran).
 

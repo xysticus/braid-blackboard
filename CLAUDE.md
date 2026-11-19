@@ -327,7 +327,13 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     bourgeon), limbe des feuilles. Voir `pistes_film_conforme.md`.
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
     clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
-    **Flips par traversées** (2026-11-19, OCaml seulement, option `par_traversees` de `Film.lettre`, utilisée par la page web) :
+    **Maillage grossier** (2026-11-19, OCaml seulement, `Film.cree ~grossier:true`, utilisé par la page web) : maillage de
+    Delaunay des films d'arcs (`Raccord.maillage_du_raccord` : trous, clou, bord convexe hors de l'image) à la place des deux
+    bandes en échelle ; plus de rangées de bord ni de brins du clou perpendiculaires. Les brins s'enroulent en polygones
+    concentriques autour du trou contourné et partent du clou en éventail droit ; plus robuste (0 échec sur 400 mots jusqu'à
+    6 brins et 14 lettres). Les films MP4 et le Python restent sur l'échelle.
+    **Flips par traversées** (2026-11-19, OCaml seulement, option `par_traversees` de `Film.lettre` ; essayée sur l'échelle, puis
+    écartée au profit du maillage grossier, avec lequel elle dégrade le dessin) :
     `Maillage.delaunay_par_traversees` retourne aussi une arête quand le flip diminue le nombre de points des courbes sur la
     diagonale (à égalité, Delaunay ; garde-fous : triangle > 150° toujours retourné, pas d'angle > 120° créé) ; les brins du
     clou partent en éventail droit vers le faisceau au lieu de monter le long d'arêtes qu'ils traversent en biais. Pas dans le

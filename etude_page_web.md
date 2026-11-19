@@ -282,9 +282,18 @@ sur la diagonale (les courbes y gagnent des arêtes qui vont dans leur sens, par
 > 120°. Sans ces garde-fous : « triangle retourné » dès la première lettre. Résultat : les brins du clou partent en éventail
 serré et droit vers le faisceau, les mots relus sont justes après chaque lettre (4 tresses), même taux d'échec que Delaunay
 (0 sur 300 jusqu'à 5 brins, 2-3 sur 100 à 6 brins et 14 lettres), calcul de 4 à 6 fois plus long en natif (moins de 1 s).
-Mode `triangulation` de la page ; le Python et les films MP4 de référence restent en Delaunay. Limite visible : avec peu de
-points par brin, un faisceau qui contourne un trou loin du clou fait un coin vif (le congé est borné à la moitié du plus
-court segment) ; piste : un budget de congé par segment.
+Limite visible : un faisceau qui contourne un trou loin du clou faisait un coin vif (peu de points par brin, congé borné à la
+moitié du plus court segment).
+
+**Remplacé le même jour par le maillage grossier des films d'arcs** (question de l'utilisateur : « pourquoi pas la même
+triangulation que pour les arcs ? » ; réponse : aucune raison, les deux bandes en échelle datent du premier film).
+`Film.cree ~grossier:true` : maillage de Delaunay (`Raccord.maillage_du_raccord`) dont les sommets sont les trous, le clou et un
+bord convexe hors de l'image, à la place des deux bandes en échelle (rangées haut et bas, longues arêtes verticales) ; plus de
+brins du clou perpendiculaires à l'axe. Les arêtes partent en étoile de chaque trou : les brins s'enroulent en polygones
+concentriques autour du trou contourné et partent du clou en éventail droit. Mots relus justes ; plus robuste que l'échelle
+(0 échec sur 400 mots jusqu'à 6 brins et 14 lettres, contre 3 % à 6 brins ; 2 sur 60 contre 6 sur 60 à 8 brins et 20 lettres).
+Les flips par traversées, ajoutés au maillage grossier, le dégradent (brins rectilignes vers un sommet lointain) : la page
+utilise le maillage grossier et Delaunay. Le Python et les films MP4 de référence restent sur l'échelle.
 
 ## 12. L'escargot et le premier bouquet dans la page (étude du 2026-11-19 ; fait le même jour : escargot par le pont, bouquet par la voie 2, traduit en OCaml)
 

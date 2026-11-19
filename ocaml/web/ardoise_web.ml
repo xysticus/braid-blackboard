@@ -86,7 +86,8 @@ let image_arcs rubans (film : Arcs.t) =
   let lacets = List.mapi (fun k _ -> if rubans then Arcs.ruban film k else Arcs.polyligne film k) film.courbes in
   image ~fixes:(Array.map (fun s -> pos.(s)) film.fixes) ~ecart:film.ecart lacets (Array.map (fun s -> pos.(s)) film.voyageurs) { x = -100.; y = -100. }
 
-(* --- la triangulation mobile (lib/film.ml, le film de Dessin.film_triangule sans le maillage gris) --- *)
+(* --- la triangulation mobile (lib/film.ml, le film de Dessin.film_triangule sans le maillage gris), sur le maillage
+   grossier des films d'arcs (Film.cree ~grossier:true) --- *)
 
 (* Le trait suit l'écart entre brins : au plus 70 % de cet écart (brins serrés : trait plus fin), comme Dessin.cadre. *)
 let image_triangulation (film : Film.t) ecart =
@@ -96,12 +97,12 @@ let image_triangulation (film : Film.t) ecart =
 
 (* Joue le film en appelant [rendu film ecart numéro] à chaque image (le départ : numéro 0). *)
 let joue_triangulation tresse ~sous_pas ~rendu =
-  let film = Film.cree ~hauteur:cote ~largeur:cote tresse in
+  let film = Film.cree ~hauteur:cote ~largeur:cote ~grossier:true tresse in
   rendu film film.dispositions.(0).ecart 0;
   let k = ref 0 in
   ignore
     (List.fold_left
-       (fun film sigma -> fst (Film.lettre ~sous_pas ~par_traversees:true ~rendu:(fun f e -> incr k; rendu f e !k) film sigma))
+       (fun film sigma -> fst (Film.lettre ~sous_pas ~rendu:(fun f e -> incr k; rendu f e !k) film sigma))
        film tresse)
 
 (* Il reste, rarement (de 1 à 3 mots sur 100 à 6 brins et 14 lettres), un triangle plat que la rotation d'une paire retourne :
