@@ -37,6 +37,9 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
   ```
 
   puis valider et recharger Caddy (`caddy validate`, `systemctl reload caddy`).
+- **`git publie`** : pousse puis déploie sur le serveur personnel, d'une seule commande (`web/publie.sh` : `git push`, puis `deploie.sh`
+  si le push a réussi). L'alias est local : `git config alias.publie '!sh web/publie.sh'` à refaire après un clone. Un simple
+  `git push` met à jour GitHub Pages (workflow) mais pas le serveur personnel.
 - `.github/workflows/pages.yml` : le workflow GitHub Pages, lancé par chaque push sur `master` qui touche `web/` (et à la main :
   onglet Actions). Il copie seulement les fichiers de `web/` (dont `ardoise_lib.js`, suivi par git) : rien n'est compilé chez GitHub
   (la compilation d'OCaml y prenait 19 minutes). Pour que le JS publié soit toujours à jour, le hook `.githooks/pre-push` lance
