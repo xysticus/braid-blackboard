@@ -175,8 +175,8 @@ en action sur le disque percé.
 | 8 | σ₁σ₂⁻¹ | 3 | 2 | 7 | la plus courte tresse « pseudo-Anosov » : action déjà riche |
 | 9 | (σ₁σ₂⁻¹)³ | 3 | 6 | 51 | croissance exponentielle des mots : 6 lettres, 51 lettres dans F_n |
 | 10 | σ₁σ₂σ₃σ₄ | 5 | 4 | 13 | la rotation de 5 trous : une chaîne qui tourne |
-| 11 | σ₄σ₃σ₁⁻¹σ₁⁻¹σ₂σ₄⁻¹σ₁ | 5 | 7 | 21 | la tresse de référence des films |
-| 12 | σ₁σ₂⁻¹σ₁σ₂⁻¹σ₁σ₂⁻¹σ₃σ₁⁻¹σ₂ | 4 | 9 | 94 | la tresse chargée des films |
+| 11 | σ₄σ₃σ₁⁻¹σ₁⁻¹σ₂σ₄⁻¹σ₁ | 5 | 7 | 21 | une tresse à enroulements décroissants |
+| 12 | σ₁σ₂⁻¹σ₁σ₂⁻¹σ₁σ₂⁻¹σ₃σ₁⁻¹σ₂ | 4 | 9 | 94 | une tresse à nombreux enroulements |
 
 Sur « des tresses courtes mais avec une action sur le disque complexe » : j'ai compris « courtes, mais dont l'action sur
 le disque (percé) est compliquée », d'où 8 et 9 (et 12). Si tu pensais à autre chose (les trous dans le plan complexe,
