@@ -1,0 +1,50 @@
+# Publie la page web (web/) sur GitHub Pages. ardoise_lib.js (l'OCaml compilé en JavaScript) n'est pas dans git : il est
+# construit ici, à chaque publication, par web/construit.sh. Réglage à faire une fois : Settings → Pages → Source :
+# « GitHub Actions ».
+name: Page web
+
+on:
+  push:
+    branches: [master]
+    paths: ['web/**', 'ocaml/lib/**', 'ocaml/web/**', 'ocaml/dune-project', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publie:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.4
+
+      # seulement de quoi compiler la bibliothèque en JavaScript : ni cairo2 ni les tests
+      - run: opam install -y dune js_of_ocaml js_of_ocaml-compiler
+
+      - name: Compile ardoise_lib.js
+        run: opam exec -- web/construit.sh
+
+      - name: Assemble le site
+        run: |
+          mkdir _site
+          cp web/index.html web/ardoise.css web/ardoise.js web/travail.js web/ardoise_lib.js _site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploiement
+        uses: actions/deploy-pages@v4

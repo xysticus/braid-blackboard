@@ -21,6 +21,14 @@ cd web && python3 -m http.server  # puis http://localhost:8000/
 Il faut un serveur : les Web Workers ne se chargent pas depuis `file://`. `construit.sh` demande js_of_ocaml dans le switch
 opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés dans `ocaml/dune-project`).
 
+## Publication
+
+`.github/workflows/pages.yml` publie la page sur GitHub Pages à chaque poussée sur `master` qui touche `web/` ou la
+bibliothèque OCaml : il installe OCaml 5.4 et js_of_ocaml, lance `construit.sh` (donc `ardoise_lib.js` n'est jamais dans
+git) puis dépose `index.html`, `ardoise.css`, `ardoise.js`, `travail.js` et `ardoise_lib.js`. À régler une fois dans le
+dépôt GitHub : Settings → Pages → Source : « GitHub Actions ». Les chemins de la page sont relatifs : elle marche sous
+`https://<compte>.github.io/braid-blackboard/`.
+
 ## Les fichiers
 
 - `index.html`, `ardoise.css` : la page ;
