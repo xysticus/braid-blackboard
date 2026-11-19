@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 250" width="440" height="250" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12">
+<title>Diagramme de tresse</title>
+<defs>
+<marker id="pointe" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d2330"/></marker>
+</defs>
+<rect width="440" height="250" fill="#ffffff"/>
+<text x="100" y="26" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">un croisement</text>
+<text x="100" y="44" text-anchor="middle" font-size="12" fill="#626b7d" >deux brins qui s'échangent</text>
+<path d="M31,69 C31,115 65,115 65,161" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M31,69 C31,115 65,115 65,161" fill="none" stroke="#d92626" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M65,69 C65,115 31,115 31,161" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M65,69 C65,115 31,115 31,161" fill="none" stroke="#1a9926" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<text x="48" y="182" text-anchor="middle" font-size="16" fill="#1d2330" font-weight="600">σᵢ</text>
+<text x="48" y="202" text-anchor="middle" font-size="11" fill="#626b7d" >le brin de droite</text>
+<text x="48" y="216" text-anchor="middle" font-size="11" fill="#626b7d" >passe dessus</text>
+<path d="M169,69 C169,115 135,115 135,161" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M169,69 C169,115 135,115 135,161" fill="none" stroke="#1a9926" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M135,69 C135,115 169,115 169,161" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M135,69 C135,115 169,115 169,161" fill="none" stroke="#d92626" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<text x="152" y="182" text-anchor="middle" font-size="16" fill="#1d2330" font-weight="600">σᵢ⁻¹</text>
+<text x="152" y="202" text-anchor="middle" font-size="11" fill="#626b7d" >le brin de gauche</text>
+<text x="152" y="216" text-anchor="middle" font-size="11" fill="#626b7d" >passe dessus</text>
+<text x="335" y="26" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">un mot de tresse</text>
+<text x="335" y="44" text-anchor="middle" font-size="12" fill="#626b7d" >lu de haut en bas : σ₁ σ₂⁻¹</text>
+<path d="M285,61 C285,97 335,97 335,133" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M285,61 C285,97 335,97 335,133" fill="none" stroke="#d92626" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M335,61 C335,97 285,97 285,133" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M335,61 C335,97 285,97 285,133" fill="none" stroke="#1a9926" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M385,62 L385,132" fill="none" stroke="#2640d9" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M285,132 L285,202" fill="none" stroke="#1a9926" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M385,131 C385,167 335,167 335,203" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M385,131 C385,167 335,167 335,203" fill="none" stroke="#2640d9" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M335,131 C335,167 385,167 385,203" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<path d="M335,131 C335,167 385,167 385,203" fill="none" stroke="#d92626" stroke-width="4.5" stroke-linecap="butt" stroke-linejoin="round" opacity="1" />
+<text x="240" y="102" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">σ₁</text>
+<text x="240" y="172" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">σ₂⁻¹</text>
+<path d="M424,67 L424,187" stroke="#1d2330" stroke-width="1.6" fill="none" marker-end="url(#pointe)"/>
+<text x="220" y="240" text-anchor="middle" font-size="12" fill="#626b7d" >un brin de même couleur du haut au bas : les couleurs suivent les brins</text>
+</svg>

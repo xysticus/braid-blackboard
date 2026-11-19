@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 250" width="440" height="250" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12">
+<title>Diagramme de courbes</title>
+<defs>
+<marker id="pointe" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d2330"/></marker>
+</defs>
+<rect width="440" height="250" fill="#ffffff"/>
+<path d="M28,150 L78,150" fill="none" stroke="#d92626" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M78,150 L128,150" fill="none" stroke="#1a9926" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M128,150 L178,150" fill="none" stroke="#2640d9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<circle cx="28" cy="150" r="6" fill="#8c8c8c"/>
+<circle cx="78" cy="150" r="5" fill="#1d2330"/>
+<circle cx="128" cy="150" r="5" fill="#1d2330"/>
+<circle cx="178" cy="150" r="5" fill="#1d2330"/>
+<text x="28" y="176" text-anchor="middle" font-size="11" fill="#8c8c8c" >point fixe</text>
+<text x="78" y="176" text-anchor="middle" font-size="12" fill="#1d2330" >1</text>
+<text x="128" y="176" text-anchor="middle" font-size="12" fill="#1d2330" >2</text>
+<text x="178" y="176" text-anchor="middle" font-size="12" fill="#1d2330" >3</text>
+<path d="M117,136 A36,36 0 0 1 189,136" stroke="#1d2330" stroke-width="1.6" fill="none" stroke-dasharray="4 3" marker-end="url(#pointe)"/>
+<text x="103" y="40" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">départ</text>
+<text x="103" y="58" text-anchor="middle" font-size="12" fill="#626b7d" >les arcs sont les segments de l'axe</text>
+<path d="M200,135 L240,135" stroke="#1d2330" stroke-width="1.6" fill="none" marker-end="url(#pointe)"/>
+<text x="220" y="127" text-anchor="middle" font-size="11" fill="#1d2330" >σ₂</text>
+<path d="M268,150 L318,150" fill="none" stroke="#d92626" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M318,150 C340,88 396,88 418,150" fill="none" stroke="#1a9926" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M418,150 L368,150" fill="none" stroke="#2640d9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<circle cx="268" cy="150" r="6" fill="#8c8c8c"/>
+<circle cx="318" cy="150" r="5" fill="#1d2330"/>
+<circle cx="368" cy="150" r="5" fill="#1d2330"/>
+<circle cx="418" cy="150" r="5" fill="#1d2330"/>
+<text x="318" y="176" text-anchor="middle" font-size="12" fill="#1d2330" >1</text>
+<text x="368" y="176" text-anchor="middle" font-size="12" fill="#1d2330" >3</text>
+<text x="418" y="176" text-anchor="middle" font-size="12" fill="#1d2330" >2</text>
+<text x="343" y="40" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">après le demi-tour</text>
+<text x="343" y="58" text-anchor="middle" font-size="12" fill="#626b7d" >les arcs suivent les trous</text>
+<text x="220" y="232" text-anchor="middle" font-size="12" fill="#626b7d" >un seul point fixe, à gauche : la tresse emporte les arcs</text>
+</svg>

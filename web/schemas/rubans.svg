@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 250" width="440" height="250" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12">
+<title>Rubans</title>
+<defs>
+<marker id="pointe" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d2330"/></marker>
+</defs>
+<rect width="440" height="250" fill="#ffffff"/>
+<path d="M50,195 L50,100" fill="none" stroke="#d92626" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+<path d="M100,195 L100,100" fill="none" stroke="#1a9926" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+<path d="M150,195 L150,100" fill="none" stroke="#2640d9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+<circle cx="50" cy="100" r="5" fill="#1d2330"/>
+<circle cx="100" cy="100" r="5" fill="#1d2330"/>
+<circle cx="150" cy="100" r="5" fill="#1d2330"/>
+<circle cx="50" cy="195" r="5" fill="#8c8c8c"/>
+<circle cx="100" cy="195" r="5" fill="#8c8c8c"/>
+<circle cx="150" cy="195" r="5" fill="#8c8c8c"/>
+<text x="50" y="88" text-anchor="middle" font-size="12" fill="#1d2330" >1</text>
+<text x="100" y="88" text-anchor="middle" font-size="12" fill="#1d2330" >2</text>
+<text x="150" y="88" text-anchor="middle" font-size="12" fill="#1d2330" >3</text>
+<text x="18" y="199" text-anchor="start" font-size="11" fill="#8c8c8c" >fixes</text>
+<text x="14" y="104" text-anchor="middle" font-size="11" fill="#1d2330" ></text>
+<path d="M100,68 A25,16 0 0 1 150,68" stroke="#1d2330" stroke-width="1.6" fill="none" stroke-dasharray="4 3" marker-end="url(#pointe)"/>
+<text x="100" y="26" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">départ</text>
+<text x="100" y="44" text-anchor="middle" font-size="12" fill="#626b7d" >un ruban par trou voyageur</text>
+<path d="M190,135 L230,135" stroke="#1d2330" stroke-width="1.6" fill="none" marker-end="url(#pointe)"/>
+<text x="210" y="127" text-anchor="middle" font-size="11" fill="#1d2330" >σ₂</text>
+<path d="M290,195 L290,100" fill="none" stroke="#d92626" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+<path d="M340,195 C340,150 326,140 326,100 C326,55 390,50 390,100" fill="none" stroke="#1a9926" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+<path d="M390,195 L390,142 C390,120 340,122 340,100" fill="none" stroke="#2640d9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+<circle cx="290" cy="100" r="5" fill="#1d2330"/>
+<circle cx="340" cy="100" r="5" fill="#1d2330"/>
+<circle cx="390" cy="100" r="5" fill="#1d2330"/>
+<circle cx="290" cy="195" r="5" fill="#8c8c8c"/>
+<circle cx="340" cy="195" r="5" fill="#8c8c8c"/>
+<circle cx="390" cy="195" r="5" fill="#8c8c8c"/>
+<text x="290" y="88" text-anchor="middle" font-size="12" fill="#1d2330" >1</text>
+<text x="340" y="88" text-anchor="middle" font-size="12" fill="#1d2330" >3</text>
+<text x="390" y="88" text-anchor="middle" font-size="12" fill="#1d2330" >2</text>
+<text x="340" y="26" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">après le demi-tour</text>
+<text x="340" y="44" text-anchor="middle" font-size="12" fill="#626b7d" >les rubans s'enroulent</text>
+<text x="220" y="236" text-anchor="middle" font-size="12" fill="#626b7d" >chaque ruban va d'un trou fixe (la « queue ») à un trou voyageur</text>
+</svg>

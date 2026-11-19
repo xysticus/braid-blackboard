@@ -48,7 +48,8 @@ en étoile de chaque trou, les brins s'enroulent autour du trou contourné et pa
 - `index.html`, `ardoise.css`, `favicon.svg` (un croisement du diagramme de tresse) : la page ;
 - `ardoise.js` : lecture du mot (`1 -2 3`, `σ1 σ2^-1`, `σ₁σ₂⁻¹`, `s1^3`), MathML, diagramme classique, lecteurs de films ;
 - `travail.js` : le Web Worker (image fixe, puis images du film envoyées une à une) ;
-- `ardoise_lib.js` : produit par `construit.sh`, suivi par git (quelque 167 Ko).
+- `ardoise_lib.js` : produit par `construit.sh`, suivi par git (quelque 167 Ko) ;
+- `schemas/*.svg` : les schémas des infobulles (un « ? » près de chaque titre, au survol ou au clavier), copies de `imgs/schemas/` ; `?aide=triangulation` ouvre une bulle sans survol (captures).
 
 Les méandres qui sortent du cadre (une tresse chargée, à la triangulation) sont recadrés : zoom arrière seulement, une même
 vue pour tout le film (`vueDe` dans `ardoise.js`), calculée sur toutes ses images dès que le film est fini.

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 250" width="440" height="250" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12">
+<title>Lacets conformes</title>
+<defs>
+<marker id="pointe" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d2330"/></marker>
+</defs>
+<rect width="440" height="250" fill="#ffffff"/>
+<path d="M49,175 A13,13 0 0 1 75,175" fill="none" stroke="#d92626" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M35,175 A27,27 0 0 1 89,175" fill="none" stroke="#1a9926" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M21,175 A41,41 0 0 1 103,175" fill="none" stroke="#2640d9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M127,175 A13,13 0 0 1 153,175" fill="none" stroke="#2640d9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M113,175 A27,27 0 0 1 167,175" fill="none" stroke="#bf9900" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M12,175 L188,175" stroke="#1d2330" stroke-width="1.6"/>
+<circle cx="62" cy="175" r="5" fill="#1d2330"/>
+<circle cx="140" cy="175" r="5" fill="#1d2330"/>
+<text x="62" y="195" text-anchor="middle" font-size="12" fill="#1d2330" >A</text>
+<text x="140" y="195" text-anchor="middle" font-size="12" fill="#1d2330" >B</text>
+<text x="100" y="26" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">demi-plan</text>
+<text x="100" y="44" text-anchor="middle" font-size="12" fill="#626b7d" >des demi-cercles</text>
+<path d="M198,125 L240,125" stroke="#1d2330" stroke-width="1.6" fill="none" marker-end="url(#pointe)"/>
+<text x="219" y="104" text-anchor="middle" font-size="11" fill="#1d2330" >transformation</text>
+<text x="219" y="117" text-anchor="middle" font-size="11" fill="#1d2330" >conforme</text>
+<path d="M244,208 L296,208 L334,104 L432,132" stroke="#1d2330" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+<path d="M282,208 A14,14 0 0 1 300.805,194.85" fill="none" stroke="#d92626" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M270,208 A26,26 0 0 1 304.923,183.579" fill="none" stroke="#1a9926" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M258,208 A38,38 0 0 1 309.041,172.308" fill="none" stroke="#2640d9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M329.538,116.21 A13,13 0 1 1 346.5,107.571" fill="none" stroke="#2640d9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<path d="M325.763,126.542 A24,24 0 1 1 357.077,110.593" fill="none" stroke="#bf9900" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+<circle cx="296" cy="208" r="5" fill="#1d2330"/>
+<circle cx="334" cy="104" r="5" fill="#1d2330"/>
+<text x="302" y="226" text-anchor="middle" font-size="12" fill="#1d2330" >A</text>
+<text x="356" y="134" text-anchor="start" font-size="12" fill="#1d2330" >B</text>
+<text x="246" y="226" text-anchor="middle" font-size="12" fill="#1d2330" >L</text>
+<text x="426" y="148" text-anchor="end" font-size="12" fill="#1d2330" >R</text>
+<text x="340" y="26" text-anchor="middle" font-size="14" fill="#1d2330" font-weight="600">ligne brisée L–A–B–R</text>
+<text x="340" y="44" text-anchor="middle" font-size="12" fill="#626b7d" >les trous qui tournent, bout à bout</text>
+<text x="220" y="240" text-anchor="middle" font-size="12" fill="#626b7d" >à chaque instant, le dessin est calculé d'un coup (arcs exacts, à angle droit)</text>
+</svg>

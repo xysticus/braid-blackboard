@@ -17,6 +17,7 @@ fi
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 cp index.html ardoise.css ardoise.js travail.js ardoise_lib.js favicon.svg "$STAGE/"
+mkdir "$STAGE/schemas" && cp schemas/*.svg "$STAGE/schemas/"
 
 HOTE="${CIBLE%%:*}"
 DOSSIER="${CIBLE#*:}"

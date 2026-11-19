@@ -416,7 +416,7 @@ const IMAGES_PAR_SECONDE = 25;
 // 0,5 s sur la première image, puis le film se joue une fois et s'arrête sur la dernière (this.pauseDebut, en images)
 
 class Lecteur {
-  constructor(parent, mode, titre, largeur = 800, hauteur = 800, ips = IMAGES_PAR_SECONDE) {
+  constructor(parent, mode, titre, largeur = 800, hauteur = 800, ips = IMAGES_PAR_SECONDE, schema = null) {
     this.mode = mode;
     this.ips = ips;                                  // images du film par seconde
     this.pauseDebut = Math.round(0.5 * ips);         // 0,5 s sur la première image
@@ -424,6 +424,7 @@ class Lecteur {
     panneau.className = 'panneau';
     panneau.innerHTML = `<h3>${titre}</h3><canvas width="${largeur}" height="${hauteur}" style="aspect-ratio: ${largeur} / ${hauteur}"></canvas><div class="etat"></div>`;
     parent.appendChild(panneau);
+    if (schema) panneau.querySelector('h3').appendChild(aideSchema(schema));
     this.canvas = panneau.querySelector('canvas');
     this.etat = panneau.querySelector('.etat');
     this.images = [];
@@ -541,13 +542,52 @@ class Lecteur {
   }
 }
 
+// ---------------------------------------------------------------- les infobulles : un petit schéma par méthode de dessin
+
+const SCHEMAS = {
+  tresse: ['Diagramme de tresse', 'Un croisement σᵢ et son inverse σᵢ⁻¹, puis l\'exemple σ₁σ₂⁻¹ lu de haut en bas.'],
+  fn: ['Action sur le groupe libre', 'Les lacets x₁ et x₂ avant et après σ₁ : x₁ ↦ x₁x₂x₁⁻¹ et x₂ ↦ x₁.'],
+  diagramme: ['Diagramme de courbes', 'Un point fixe à gauche ; les arcs sont les segments de l\'axe, que le demi-tour de deux trous emporte.'],
+  lacets: ['Lacets conformes', 'Des demi-cercles du demi-plan et leurs images par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R.'],
+  triangulation: ['Triangulation mobile', 'Un maillage et des points sur ses arêtes ; quand les trous tournent, les brins suivent et se tendent.'],
+  rubans: ['Rubans', 'Un ruban par trou voyageur, du trou fixe (la queue) au trou voyageur ; après le demi-tour, les rubans s\'enroulent.'],
+};
+
+// Un bouton « ? » qui montre le schéma au survol et au clavier (Tab). Rend l'élément à ajouter près d'un titre.
+function aideSchema(id) {
+  const [titre, alt] = SCHEMAS[id];
+  const zone = document.createElement('span');
+  zone.className = 'aide-schema';
+  zone.dataset.schema = id;
+  zone.innerHTML = `<button type="button" class="aide" aria-label="Schéma explicatif : ${titre}" aria-describedby="bulle-${id}">?</button>` +
+    `<span class="bulle" role="tooltip" id="bulle-${id}"><span class="cadre"><img src="schemas/${id}.svg" alt="${alt}" width="440" height="250"></span></span>`;
+  const bulle = zone.querySelector('.bulle');
+  const ajuste = () => {   // reste dans la fenêtre
+    bulle.style.left = '0px';
+    const r = bulle.getBoundingClientRect();
+    let dx = 0;
+    if (r.right > window.innerWidth - 8) dx = window.innerWidth - 8 - r.right;
+    if (r.left + dx < 8) dx = 8 - r.left;
+    bulle.style.left = dx + 'px';
+  };
+  zone.addEventListener('mouseenter', ajuste);
+  zone.addEventListener('focusin', ajuste);
+  zone.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.target.blur(); });
+  if (new URLSearchParams(location.search).get('aide') === id) { zone.classList.add('ouverte'); setTimeout(ajuste, 0); }   // ?aide=… : bulle ouverte (captures)
+  return zone;
+}
+
+function ajouteAides() {
+  document.querySelectorAll('[data-schema]').forEach((t) => t.appendChild(aideSchema(t.dataset.schema)));
+}
+
 // ---------------------------------------------------------------- la page
 
 const MODES = [
-  { id: 'diagramme', titre: 'Diagramme de courbes' },
-  { id: 'conforme', titre: 'Action sur le groupe libre et ses lacets' },
-  { id: 'triangulation', titre: 'Action sur le groupe libre et sa triangulation' },
-  { id: 'rubans', titre: 'Action sur le groupe libre et ses rubans' },
+  { id: 'diagramme', titre: 'Diagramme de courbes', schema: 'diagramme' },
+  { id: 'conforme', titre: 'Action sur le groupe libre et ses lacets', schema: 'lacets' },
+  { id: 'triangulation', titre: 'Action sur le groupe libre et sa triangulation', schema: 'triangulation' },
+  { id: 'rubans', titre: 'Action sur le groupe libre et ses rubans', schema: 'rubans' },
 ];
 
 let lecteurs = [];
@@ -659,6 +699,7 @@ function afficheLimites() {
 
 async function demarre() {
   afficheLimites();
+  ajouteAides();
   const exemples = document.getElementById('exemples');
   EXEMPLES.forEach((e) => {
     const b = document.createElement('button');
@@ -671,7 +712,7 @@ async function demarre() {
     exemples.appendChild(b);
   });
   const panneaux = document.getElementById('panneaux');
-  lecteurs = MODES.map((m) => new Lecteur(panneaux, m.id, m.titre));
+  lecteurs = MODES.map((m) => new Lecteur(panneaux, m.id, m.titre, 800, 800, undefined, m.schema));
   const champ = document.getElementById('mot');
   try {
     ardoisePrincipale = await chargeBibliotheque();
