@@ -260,7 +260,7 @@ applications.
 
 Ni l'un ni l'autre n'a de mot de tresse : ce sont des films à chorégraphie libre (des trous qui suivent des chemins, des
 lacets emportés par la triangulation mobile). Ils n'iraient donc pas dans la grille des trois méandres, mais dans une
-section à part (« Hors des tresses ») avec chacun son panneau, son image fixe puis son film, calculé en tâche de fond par
+section à part (« Un peu de poésie », d'abord appelée « Hors des tresses ») avec chacun son panneau, son image fixe puis son film, calculé en tâche de fond par
 le même mécanisme (Web Worker, polylignes, lecteur).
 
 **Escargot : tout est déjà en OCaml.** `lib/escargot.ml` (130 lignes : `cree`, `choregraphie`, `deplace`, `polyligne`) et
@@ -294,7 +294,7 @@ fleur découpé, dégradés radiaux vert → blanc → couleur de la fleur qui �
   pétales, durée) à la volée, et le bouquet rejoint l'ensemble réécrit en OCaml.
 
 **Recommandation** : l'escargot d'abord (voie directe) ; pour le bouquet, la voie 1 d'abord (il apparaît dans la page vite),
-la voie 2 plus tard si l'envie de faire varier les fleurs vient. Dans les deux cas, la section « Hors des tresses » partage le
+la voie 2 plus tard si l'envie de faire varier les fleurs vient. Dans les deux cas, la section « Un peu de poésie » partage le
 lecteur de films de la page (qui lit déjà des suites d'images en polylignes) : il suffit d'y ajouter un type de dessin par
 film (escargot, bouquet) à côté des trois des méandres.
 

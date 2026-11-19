@@ -550,7 +550,7 @@ function lanceCalculs(mot) {
 
 const LIBRES = [
   { id: 'escargot', titre: 'L\'escargot : une spirale de rubans', largeur: 960, hauteur: 640, ips: 25 },
-  { id: 'bouquet', titre: 'Un bouquet qui pousse : l\'éclosion des fleurs', largeur: 810, hauteur: 1080, ips: 12.5 },
+  { id: 'bouquet', titre: 'La floraison des Iris', largeur: 810, hauteur: 1080, ips: 12.5 },
 ];
 
 // Les films sans tresse ne dépendent pas du mot : on les lance une seule fois, au chargement.

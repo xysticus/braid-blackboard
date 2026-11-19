@@ -58,7 +58,7 @@ Python, plus rapides).
 
 8. **Le premier bouquet** (`python/Bouquet.py`, classe `Pousse`) : fait (`ocaml/lib/bouquet.ml`, `test/test_bouquet.ml`),
    concordant avec le Python à 1e-6 près sur les 169 images du film ; le dessin est dans la page web (`web/ardoise.js`).
-   L'escargot et le bouquet sont dans la page, section « Hors des tresses ».
+   L'escargot et le bouquet sont dans la page, section « Un peu de poésie ».
 
 Laissé de côté au début : le film conforme (`python/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
 l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `python/NouvAutoMorph.py`.
