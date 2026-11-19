@@ -4,7 +4,7 @@
      ardoise.statique(mode, mot)                → image            l'image fixe d'un mode
      ardoise.film(mode, mot, rendu) → string                       le film, image par image ; "" si tout va bien
 
-   mot : tableau d'entiers non nuls (σ_k : k, σ_k⁻¹ : -k). mode : "conforme", "diagramme" ou "rubans" (méandres d'une
+   mot : tableau d'entiers non nuls (σ_k : k, σ_k⁻¹ : -k). mode : "conforme", "triangulation", "diagramme" ou "rubans" (méandres d'une
    tresse), ou "escargot" ou "bouquet" (films sans tresse : le mot est ignoré, les images ont d'autres champs, voir
    image_escargot et image_bouquet).
    Une image : { lacets : [[x0, y0, x1, y1, …], …], trous : [x, y, …], fixes : [x, y, …], clou : [x, y],
@@ -42,7 +42,7 @@ let verifie_limites ?(conforme = false) tresse =
     invalid_arg (Printf.sprintf "limites de la page : %d brins et %d lettres au plus" max_brins max_lettres);
   if conforme && (n > max_brins_conforme || l > max_lettres_conforme) then
     invalid_arg
-      (Printf.sprintf "le film conforme est limité à %d brins et %d lettres" max_brins_conforme max_lettres_conforme)
+      (Printf.sprintf "ce film (conforme ou triangulation) est limité à %d brins et %d lettres" max_brins_conforme max_lettres_conforme)
 
 (* Polyligne ou liste de points → tableau JS plat. *)
 let plat points =
@@ -50,14 +50,15 @@ let plat points =
   Array.iteri (fun k p -> a.(2 * k) <- p.x; a.((2 * k) + 1) <- p.y) points;
   Js.array a
 
-let image ?(decalage = { x = 0.; y = 0. }) ?(fixes = [||]) ?(ecart = 6.) lacets trous clou =
+let image ?(decalage = { x = 0.; y = 0. }) ?(fixes = [||]) ?(ecart = 6.) ?(brin = 3.5) lacets trous clou =
   let d = Array.map (fun p -> p +: decalage) in
   Js.Unsafe.obj
     [| ("lacets", Js.Unsafe.inject (Js.array (Array.of_list (List.map (fun l -> plat (d l)) lacets))));
        ("trous", Js.Unsafe.inject (plat (d trous)));
        ("fixes", Js.Unsafe.inject (plat (d fixes)));
        ("clou", Js.Unsafe.inject (plat (d [| clou |])));
-       ("ecart", Js.Unsafe.inject (Js.number_of_float ecart)) |]
+       ("ecart", Js.Unsafe.inject (Js.number_of_float ecart));
+       ("brin", Js.Unsafe.inject (Js.number_of_float brin)) |]
 
 (* --- mots de F_n --- *)
 
@@ -85,6 +86,39 @@ let image_arcs rubans (film : Arcs.t) =
   let lacets = List.mapi (fun k _ -> if rubans then Arcs.ruban film k else Arcs.polyligne film k) film.courbes in
   image ~fixes:(Array.map (fun s -> pos.(s)) film.fixes) ~ecart:film.ecart lacets (Array.map (fun s -> pos.(s)) film.voyageurs) { x = -100.; y = -100. }
 
+(* --- la triangulation mobile (lib/film.ml, le film de Dessin.film_triangule sans le maillage gris) --- *)
+
+(* Le trait suit l'écart entre brins : au plus 70 % de cet écart (brins serrés : trait plus fin), comme Dessin.cadre. *)
+let image_triangulation (film : Film.t) ecart =
+  let brin = Float.min (3. *. film.largeur /. 400.) (Float.max 1. (0.7 *. ecart)) in
+  let pos = film.maillage.Triangulation.Maillage.pos in
+  image ~brin (Film.polylignes film) (Film.positions_des_trous film) pos.(film.clou)
+
+(* Joue le film en appelant [rendu film ecart numéro] à chaque image (le départ : numéro 0). *)
+let joue_triangulation tresse ~sous_pas ~rendu =
+  let film = Film.cree ~hauteur:cote ~largeur:cote tresse in
+  rendu film film.dispositions.(0).ecart 0;
+  let k = ref 0 in
+  ignore
+    (List.fold_left
+       (fun film sigma -> fst (Film.lettre ~sous_pas ~rendu:(fun f e -> incr k; rendu f e !k) film sigma))
+       film tresse)
+
+(* Un triangle peut se retourner entre deux sous-pas (sur environ une tresse aléatoire de 12 lettres à 5 brins sur
+   quatre, plus de sous-pas n'y change rien) : on essaie 2, 4 puis 8 sous-pas par image, sans rien dessiner, ce qui donne
+   aussi le nombre d'images et la dernière image (l'image fixe). *)
+let prepare_triangulation tresse =
+  let essai sous_pas =
+    let derniere = ref None and n = ref 0 in
+    try
+      joue_triangulation tresse ~sous_pas ~rendu:(fun f e k -> n := k; derniere := Some (f, e));
+      Option.map (fun d -> (sous_pas, !n, d)) !derniere
+    with Failure _ -> None
+  in
+  match List.find_map essai [ 2; 4; 8 ] with
+  | Some r -> r
+  | None -> failwith "la triangulation ne passe pas ce mot (un triangle se retourne) : essaie un autre mot"
+
 let nombre_images_arcs = 60
 let nombre_images_conforme = 48
 
@@ -92,6 +126,10 @@ let statique_tresse mode mot =
   try
     let tresse = tresse_de_js mot in
     match Js.to_string mode with
+    | "triangulation" ->
+        verifie_limites ~conforme:true tresse;
+        let _, _, (film, ecart) = prepare_triangulation tresse in
+        image_triangulation film ecart
     | "conforme" ->
         verifie_limites tresse;
         image_conforme { x = marge; y = marge } (Film_conforme.image_finale ~hauteur:cote ~largeur:cote ~marge tresse)
@@ -107,6 +145,11 @@ let film_tresse mode mot rendu =
     let tresse = tresse_de_js mot in
     let appelle im k total = ignore (Js.Unsafe.fun_call rendu [| Js.Unsafe.inject im; Js.Unsafe.inject k; Js.Unsafe.inject total |]) in
     (match Js.to_string mode with
+    | "triangulation" ->
+        verifie_limites ~conforme:true tresse;
+        let sous_pas, total, _ = prepare_triangulation tresse in
+        joue_triangulation tresse ~sous_pas ~rendu:(fun f e k -> appelle (image_triangulation f e) k (total + 1));
+        Js.string ""
     | "conforme" ->
         verifie_limites ~conforme:true tresse;
         let total = 1 + (nombre_images_conforme * List.length tresse) in

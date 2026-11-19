@@ -5,7 +5,7 @@ Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse 
 1. le mot en notation mathématique, tel qu'il est écrit (MathML) ;
 2. le diagramme de tresse classique, de haut en bas ;
 3. l'action de la tresse sur le groupe libre F_n (l'image de chaque x_i) ;
-4. les méandres en trois modes (diagramme de courbes, représentation conforme, rubans) : d'abord une image fixe, puis le
+4. les méandres en quatre modes (diagramme de courbes, lacets conformes, lacets sur la triangulation mobile, rubans) : d'abord une image fixe, puis le
    film, calculé en tâche de fond par un Web Worker par mode, qui la remplace ;
 5. « Un peu de poésie » : l'escargot et le premier bouquet (films sans mot de tresse, lancés une fois au chargement).
 
@@ -51,8 +51,10 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
 
 ## Limites
 
-8 brins et 40 lettres au plus pour la page ; le film conforme (le plus lent : de 0,4 à 2 s par lettre) est limité à 6 brins
-et 14 lettres. Ces limites sont dans `ardoise.js` et `ocaml/web/ardoise_web.ml`.
+8 brins et 40 lettres au plus pour la page ; les films des lacets (conforme : de 0,4 à 2 s par lettre ; triangulation :
+rapide, mais jusqu'à 1 300 images et 30 Mo en mémoire) sont limités à 6 brins et 14 lettres. Le film de la triangulation
+peut échouer (un triangle se retourne entre deux sous-pas : environ une tresse aléatoire sur quatre à 5 brins et 12
+lettres, aucun des 12 exemples) ; la page essaie 2, 4 puis 8 sous-pas par image et sinon le dit dans le panneau. Ces limites sont dans `ardoise.js` et `ocaml/web/ardoise_web.ml`.
 
 Sous JavaScript la pile est petite : pas de récursion non terminale sur des listes de la taille d'une polyligne
 (`List.concat` dans `lit_mot` l'a fait déborder ; remplacé par `List.concat_map`).

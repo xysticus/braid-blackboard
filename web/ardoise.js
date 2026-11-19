@@ -22,7 +22,7 @@ const EXEMPLES = [
 
 const MAX_BRINS = 8;     // les limites de la page (les mêmes que dans ocaml/web/ardoise_web.ml)
 const MAX_LETTRES = 40;
-const MAX_BRINS_CONFORME = 6;     // le film conforme, le plus long à calculer
+const MAX_BRINS_CONFORME = 6;     // les films des lacets (conforme et triangulation)
 const MAX_LETTRES_CONFORME = 14;
 
 // Une seule palette pour toutes les vues : le brin i du diagramme de tresse, le lacet image de x_i dans les trois films
@@ -348,9 +348,9 @@ function dessineImage(canvas, image, mode) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   image.lacets.forEach((p, i) => {
-    if (mode === 'conforme') {
+    if (mode === 'conforme' || mode === 'triangulation') {
       ctx.strokeStyle = PALETTE[i % PALETTE.length];
-      ctx.lineWidth = 3.5;
+      ctx.lineWidth = mode === 'triangulation' ? image.brin : 3.5;   // la triangulation : trait plus fin quand les brins sont serrés
       trace(ctx, p);
     } else if (mode === 'diagramme') {
       ctx.strokeStyle = '#fff';           // liseré blanc : les brins voisins restent lisibles
@@ -365,9 +365,10 @@ function dessineImage(canvas, image, mode) {
       trace(ctx, p);
     }
   });
-  if (mode === 'conforme') {
-    disques(ctx, image.trous, 4, '#000');
-    disques(ctx, image.clou, 4, '#000');
+  if (mode === 'conforme' || mode === 'triangulation') {
+    const r = mode === 'triangulation' ? image.brin : 4;
+    disques(ctx, image.trous, r, '#000');
+    disques(ctx, image.clou, r, '#000');
   } else {
     disques(ctx, image.fixes, 4, '#8c8c8c');
     disques(ctx, image.trous, 4, '#000');
@@ -505,6 +506,7 @@ class Lecteur {
 const MODES = [
   { id: 'diagramme', titre: 'Diagramme de courbes' },
   { id: 'conforme', titre: 'Action sur le groupe libre et ses lacets' },
+  { id: 'triangulation', titre: 'Action sur le groupe libre et sa triangulation' },
   { id: 'rubans', titre: 'Action sur le groupe libre et ses rubans' },
 ];
 
@@ -612,7 +614,7 @@ function afficheLimites() {
   const l = document.getElementById('limites');
   if (!l) return;
   l.innerHTML = `Limites : <b>${MAX_BRINS} brins</b> (σ<sub>1</sub> … σ<sub>${MAX_BRINS - 1}</sub>) et <b>${MAX_LETTRES} lettres</b> au plus ; ` +
-    `pour le film des lacets (le plus long à calculer), <b>${MAX_BRINS_CONFORME} brins</b> et <b>${MAX_LETTRES_CONFORME} lettres</b>.`;
+    `pour les films des lacets et de la triangulation, <b>${MAX_BRINS_CONFORME} brins</b> et <b>${MAX_LETTRES_CONFORME} lettres</b>.`;
 }
 
 async function demarre() {

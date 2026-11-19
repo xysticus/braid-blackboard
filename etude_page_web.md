@@ -256,6 +256,14 @@ quelques secondes), puis `rsync -av --delete` de `index.html`, `ardoise.css`, `a
 Décisions à prendre : A ou B ; ajoute-t-on la règle de cache au Caddyfile (recommandé) ; une carte dans l'accueil des
 applications.
 
+## 11 bis. La triangulation mobile, quatrième méandre (2026-11-19)
+
+Ajoutée à la demande de l'utilisateur (le film « avec le clou » des films de départ, même moteur que le bouquet) : mode
+`triangulation` du pont, polylignes en droites et congés, maillage gris masqué, titre « Action sur le groupe libre et sa
+triangulation ». Calcul très rapide (0,1 à 2 s en JavaScript pour les 12 exemples, qui passent tous), mais jusqu'à 1 255 images
+(32 Mo) : mêmes limites que le conforme. Le film peut échouer sur certaines tresses (un triangle se retourne : 14 tresses
+aléatoires sur 60 à 5 brins et 12 lettres, sans remède par plus de sous-pas) : une piste pour plus tard.
+
 ## 12. L'escargot et le premier bouquet dans la page (étude du 2026-11-19 ; fait le même jour : escargot par le pont, bouquet par la voie 2, traduit en OCaml)
 
 Ni l'un ni l'autre n'a de mot de tresse : ce sont des films à chorégraphie libre (des trous qui suivent des chemins, des

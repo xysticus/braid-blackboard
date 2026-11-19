@@ -53,7 +53,7 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 .math-ligne { font-size: 1.3rem; line-height: 2.1; }
 .math-ligne math { margin-right: 0.12em; }
 .deux-colonnes { display: grid; grid-template-columns: minmax(260px, 380px) 1fr; gap: 18px; align-items: start; }
-.trois-colonnes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.quatre { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 .defile { max-height: 640px; overflow: auto; }
 #canvas-classique { display: block; margin: 0 auto; max-width: 100%; }
 
@@ -80,5 +80,5 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 footer { color: var(--doux); font-size: 0.85rem; padding-bottom: 28px; }
 
 @media (max-width: 1000px) {
-  .trois-colonnes, .deux-colonnes { grid-template-columns: 1fr; }
+  .quatre, .deux-colonnes { grid-template-columns: 1fr; }
 }
