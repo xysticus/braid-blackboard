@@ -6,7 +6,8 @@ Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse 
 2. le diagramme de tresse classique, de haut en bas ;
 3. l'action de la tresse sur le groupe libre F_n (l'image de chaque x_i) ;
 4. les méandres en trois modes (diagramme de courbes, représentation conforme, rubans) : d'abord une image fixe, puis le
-   film, calculé en tâche de fond par un Web Worker par mode, qui la remplace.
+   film, calculé en tâche de fond par un Web Worker par mode, qui la remplace ;
+5. « Hors des tresses » : l'escargot et le premier bouquet (films sans mot de tresse, lancés une fois au chargement).
 
 Le calcul est celui de `ocaml/lib/`, compilé en JavaScript par js_of_ocaml (`ocaml/web/ardoise_web.ml` est le pont) ; un
 film est une suite de polylignes redessinées sur le canvas, pas une vidéo. Étude et choix : `../etude_page_web.md`.
@@ -45,6 +46,8 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
 - `ardoise.js` : lecture du mot (`1 -2 3`, `σ1 σ2^-1`, `σ₁σ₂⁻¹`, `s1^3`), MathML, diagramme classique, lecteurs de films ;
 - `travail.js` : le Web Worker (image fixe, puis images du film envoyées une à une) ;
 - `ardoise_lib.js` : produit par `construit.sh`.
+
+`index.html?fin` : pas de lecture automatique, les films s'arrêtent sur leur dernière image (pour les captures d'écran).
 
 ## Limites
 

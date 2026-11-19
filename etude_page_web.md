@@ -255,3 +255,52 @@ quelques secondes), puis `rsync -av --delete` de `index.html`, `ardoise.css`, `a
 
 Décisions à prendre : A ou B ; ajoute-t-on la règle de cache au Caddyfile (recommandé) ; une carte dans l'accueil des
 applications.
+
+## 12. L'escargot et le premier bouquet dans la page (étude du 2026-11-19 ; fait le même jour : escargot par le pont, bouquet par la voie 2, traduit en OCaml)
+
+Ni l'un ni l'autre n'a de mot de tresse : ce sont des films à chorégraphie libre (des trous qui suivent des chemins, des
+lacets emportés par la triangulation mobile). Ils n'iraient donc pas dans la grille des trois méandres, mais dans une
+section à part (« Hors des tresses ») avec chacun son panneau, son image fixe puis son film, calculé en tâche de fond par
+le même mécanisme (Web Worker, polylignes, lecteur).
+
+**Escargot : tout est déjà en OCaml.** `lib/escargot.ml` (130 lignes : `cree`, `choregraphie`, `deplace`, `polyligne`) et
+le film identique octet pour octet au Python (4,5 s natif pour 300 images). Il reste :
+1. un point d'entrée dans `ocaml/web/ardoise_web.ml` : `ardoise.escargot(rendu)`, qui appelle `deplace` à chaque image
+   et envoie, par image, les polylignes des 7 courbes, le centre et le rayon de la coquille, les positions des yeux et leur
+   facteur d'apparition (ce que `Dessin.cadre_escargot` lit dans l'état) ;
+2. le dessin en canvas, port de `cadre_escargot` (60 lignes) : dégradé de fond, corps puis coquille par-dessus avec un
+   découpage (`clip`) par le disque de la coquille, règle pair-impair pour la partie hors coquille (le canvas sait faire :
+   `ctx.clip('evenodd')`), traits cernés, yeux ;
+3. le temps de calcul attendu en JS : de 5 à 8 s (facteur 1,5 sur le natif, mesuré ailleurs).
+Travail : une séance, sans risque particulier. Taille de données : 300 images × 7 courbes, de l'ordre de 10 Mo en flottants
+32 bits (réductible : une image sur deux suffit pour le lecteur).
+
+**Premier bouquet (iris) : seulement en Python.** `python/Bouquet.py` (516 lignes) : la classe `Pousse` (hérite de `Film`),
+la chorégraphie des fleurs et des feuilles (`phases`, `centre` en Bézier avec nutation, `trous_de_fleur`, `trous_de_feuille`,
+`cibles`), `deplace`, et un dessin en Cairo assez riche (fond en dégradé, lacets remplis en transparence, secteur de la
+fleur découpé, dégradés radiaux vert → blanc → couleur de la fleur qui éclot). Le film de référence : 810 × 1080, 13,5 s,
+169 images calculées, 35 trous, environ 35 s en Python. Deux voies :
+
+- **Voie 1, calculer en Python une fois et servir les données.** Un script écrit, pour chaque image, les polylignes des 35
+  lacets et les positions des centres, des phases et des couleurs ; la page les charge (fichier de plusieurs Mo, à
+  compresser) et le lecteur canvas redessine (port du dessin Cairo : dégradés radiaux, `clip`, transparence : tout existe en
+  canvas 2D). Aucune traduction du calcul : quelques heures, plus une séance pour le dessin. Pas de calcul dans le
+  navigateur (le film est fixe de toute façon : il n'y a pas de mot à saisir), et il se charge d'un coup. Inconvénient :
+  un fichier de données de quelques Mo à déployer, et la chorégraphie reste en Python.
+- **Voie 2, traduire `Bouquet.py` en OCaml** (étape 8 du plan : `Pousse`, ses chorégraphies, `deplace`, comparaison au Python
+  par des références, film identique octet pour octet), puis le même pont que l'escargot. Plus long (deux ou trois séances,
+  avec la vérification pour 35 trous : le décalage du bord bas près du clou est dans `Film.decalage_bas`, mais n'a jamais été
+  essayé à cette taille en OCaml). Gain : le calcul vit dans le navigateur, on peut changer des réglages (couleurs, nombre de
+  pétales, durée) à la volée, et le bouquet rejoint l'ensemble réécrit en OCaml.
+
+**Recommandation** : l'escargot d'abord (voie directe) ; pour le bouquet, la voie 1 d'abord (il apparaît dans la page vite),
+la voie 2 plus tard si l'envie de faire varier les fleurs vient. Dans les deux cas, la section « Hors des tresses » partage le
+lecteur de films de la page (qui lit déjà des suites d'images en polylignes) : il suffit d'y ajouter un type de dessin par
+film (escargot, bouquet) à côté des trois des méandres.
+
+**Autres points** : les couleurs de ces deux films sont les leurs (marron et vert pour l'escargot, bleu clair et couleurs de
+fleurs pour le bouquet) : la palette commune des tresses ne s'y applique pas. Pour le bouquet, des images fixes de 152 × 205
+mm à 300 dpi existent déjà (`imgs/bouquet_152x205.jpg`, `imgs/bouquet_iris.jpg`) : l'image fixe de la page peut être un de ces
+fichiers (ou un dessin canvas de la dernière image) en attendant le film. Enfin, une version plus simple de repli pour les
+deux : une balise `<video>` sur les MP4 existants (AV1 : bien lu par Firefox et Chrome, moins par Safari), sans calcul ni
+canvas, mais sans le côté vectoriel.

@@ -56,6 +56,10 @@ Python, plus rapides).
    `Dessin.film_conforme`, `ocaml/bin/conforme.ml`), films identiques octet pour octet à ceux du Python (41 s au lieu
    de 1 min 35), sans le raccord par mélange.
 
+8. **Le premier bouquet** (`python/Bouquet.py`, classe `Pousse`) : fait (`ocaml/lib/bouquet.ml`, `test/test_bouquet.ml`),
+   concordant avec le Python à 1e-6 près sur les 169 images du film ; le dessin est dans la page web (`web/ardoise.js`).
+   L'escargot et le bouquet sont dans la page, section « Hors des tresses ».
+
 Laissé de côté au début : le film conforme (`python/Conforme.py`, cartes de Schwarz–Christoffel : surtout de
 l'analyse numérique, qui éloigne des idées centrales), et les anciens films de `python/NouvAutoMorph.py`.
 

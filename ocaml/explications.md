@@ -662,6 +662,44 @@ MP4 dans `dessin/dessin.ml`. Seul le raccord par triangulation (le défaut) est 
 0 anomalie, et des MP4 identiques octet pour octet à ceux du Python (avec le même ffmpeg), en 41 s au lieu de
 1 min 35. `nb_croisements` est aussi testé sur des cas faits à la main.
 
+## 14. Le premier bouquet (`bouquet.ml`, étape 8)
+
+La classe `Pousse` de `python/Bouquet.py` (le premier bouquet : trois iris et quatre feuilles, 35 trous). Même idée que
+l'escargot : pas de tresse, les trous suivent une chorégraphie libre et la triangulation mobile (`Film`) emporte les
+lacets. Le dessin (fond, dégradés, secteur de la fleur) n'est pas en OCaml : il est dans `web/ardoise.js`
+(`dessineBouquet`), qui lit les polylignes et les quelques nombres que `ardoise_web.ml` envoie à chaque image.
+
+- **`lisse`, `bezier`** : la rampe 3x² − 2x³ (celle de l'escargot) et la courbe de Bézier quadratique des tiges.
+- **Les groupes** : un type somme `Fleur of fleur | Feuille of feuille` (en Python, des dictionnaires dont on lit des clés
+  facultatives avec `g.get`). `fleur` et `feuille` donnent les réglages par défaut du Python ; `bouquet` est la liste des sept
+  plantes (deux feuilles, trois fleurs rose, jaune, mauve, deux feuilles). `nb_trous_du_groupe` : 2 pour une feuille, 2 ×
+  pétales + 1 pour une fleur (un sépale de plus).
+- **`cree`** : construit l'état de départ d'une tresse à autant de brins que de trous (`Film.cree`, dont seul le départ sert), puis
+  `deplace_film` rassemble sans le montrer les trous en rang serré au-dessus du clou (la graine). Ensuite `y_axe = −∞` : plus
+  d'axe, donc plus de brins du clou qui partent perpendiculairement.
+- **`deplace`** : comme `Escargot.deplace`, mais sur un `Film.t` : les trous vont en ligne droite à leurs cibles par sous-pas
+  d'au plus `pas_max` pixels ; à chaque sous-pas, vérification qu'aucun triangle ne se retourne, retournements d'arêtes
+  (`Maillage.delaunay`), un pas de tension (`Film.tend`, taux 0,12, écart 2,3 px).
+- **`phases`** : (montée, bourgeon, éclosion) de 0 à 1 pour un groupe au temps t. Une feuille n'a pas de bourgeon : le
+  `g.get('duree_bourgeon', …)` du Python donne 1 pour le bourgeon et 0 pour l'éclosion.
+- **`centre`** : de la graine à la tête le long d'une Bézier (le point de contrôle dépend de la `courbure`), avec une
+  oscillation (nutation) qui s'éteint en haut. **`direction_de_tige`** : la direction de la courbe à son arrivée, retournée.
+- **`trous_de_fleur`** : sépales (rangs pairs) et pétales (rangs impairs) en alternance. Les sépales forment une cage qui ne
+  tourne pas ; les pétales, d'abord sur le petit cercle du bourgeon, tournent d'un tour (les lacets s'enroulent en couches) puis
+  sortent entre les sépales, qui retiennent les couches : la fleur éclot. Pendant la montée, tous passent d'un demi-cercle
+  dans l'ordre de la graine (sans croisement) à la disposition de la fleur. **`trous_de_feuille`** : deux trous sur un segment
+  qui s'allonge.
+- **`choregraphie`** : les positions de tous les trous au temps t ; chaque trou part de sa place dans la graine et rejoint sa
+  cible (`sortie = lisse (5 × montée)`).
+- **`polylignes`** : les lacets en droites et congés, sans brin du clou. **`plante_du_lacet`** : la plante de chaque lacet (le
+  dessin colorie un lacet selon sa plante).
+
+**Vérification** : `reference_bouquet.json`, écrit par `python ocaml/test/genere_reference_bouquet.py` : à cinq instants, pour les
+sept plantes, le centre, les phases, les positions des trous et la direction de la tige (1e-9 près) ; puis le film joué (169
+images de 0,08 s) comparé après les images 0, 1, 10, 40, 80, 120 et 169 : positions des trous et polylignes des 35 lacets
+(nombre de points, un point sur 25, dernier point) à 1e-6 près. 36 tests, tous bons du premier coup, en 0,8 s (le Python met
+une trentaine de secondes). Dans le navigateur : 2,5 s pour les 170 images.
+
 ## Annexe : pourquoi l'OCaml est au moins 15 fois plus rapide
 
 Les 16 lettres des deux films d'essai prennent 4,5 s en Python, moins de 0,3 s en OCaml, avec le même algorithme

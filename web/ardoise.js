@@ -211,7 +211,137 @@ function disques(ctx, p, rayon, couleur) {
   }
 }
 
+// ---- l'escargot : port de Dessin.cadre_escargot (ocaml/dessin/dessin.ml)
+
+const rgb = (r, v, b, a = 1) => `rgba(${Math.round(r * 255)}, ${Math.round(v * 255)}, ${Math.round(b * 255)}, ${a})`;
+const COQUILLE = [rgb(0.47, 0.29, 0.14), rgb(0.86, 0.75, 0.56), rgb(0.33, 0.19, 0.09), rgb(0.70, 0.52, 0.30)];
+const CHAIR = rgb(0.74, 0.65, 0.52);
+const CERNE = rgb(0.24, 0.15, 0.08);
+
+function dessineEscargot(canvas, im) {
+  const ctx = canvas.getContext('2d');
+  const l = canvas.width, h = canvas.height;
+  const fond = ctx.createLinearGradient(0, 0, 0, h);
+  fond.addColorStop(0, rgb(0.66, 0.80, 0.52));
+  fond.addColorStop(1, rgb(0.38, 0.58, 0.30));
+  ctx.fillStyle = fond;
+  ctx.fillRect(0, 0, l, h);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const [cx, cy, rayon] = im.coquille;
+  // d'abord le corps (hors de la coquille), puis la coquille par-dessus ; les arcs des yeux ne montent pas dans la coquille
+  for (const dedans of [false, true]) {
+    im.lacets.forEach((p, k) => {
+      if (dedans && k >= im.anneau) return;
+      ctx.save();
+      ctx.beginPath();
+      if (dedans) {
+        ctx.arc(cx, cy, rayon, 0, 2 * Math.PI);
+        ctx.clip();
+      } else {
+        ctx.rect(0, 0, l, h);
+        ctx.moveTo(cx + rayon, cy);
+        ctx.arc(cx, cy, rayon, 0, 2 * Math.PI);
+        ctx.clip('evenodd');
+      }
+      const epaisseur = dedans ? 0.8 * im.ecart : 1.5 * im.ecart;   // le corps : chair épaisse
+      ctx.strokeStyle = CERNE;
+      ctx.lineWidth = epaisseur + 1.6 * im.e;
+      trace(ctx, p);
+      ctx.strokeStyle = dedans ? COQUILLE[k % COQUILLE.length] : CHAIR;
+      ctx.lineWidth = epaisseur;
+      trace(ctx, p);
+      ctx.restore();
+    });
+  }
+  if (im.apparition > 0) {   // les yeux
+    for (let j = 0; j < im.yeux.length; j += 2) {
+      const x = im.yeux[j], y = im.yeux[j + 1];
+      ctx.fillStyle = rgb(0.12, 0.08, 0.05, im.apparition);
+      ctx.beginPath(); ctx.arc(x, y, 6 * im.e, 0, 2 * Math.PI); ctx.fill();
+      ctx.fillStyle = rgb(1, 1, 1, im.apparition);
+      ctx.beginPath(); ctx.arc(x + 2 * im.e, y - 2 * im.e, 1.8 * im.e, 0, 2 * Math.PI); ctx.fill();
+    }
+  }
+}
+
+// ---- le bouquet : port de Pousse.dessine (python/Bouquet.py)
+
+const VERT = [0.26, 0.56, 0.24], SOMBRE = [0.16, 0.38, 0.16], BLANC = [1, 1, 1];
+const melange = (u, a, b) => a.map((x, i) => (1 - u) * x + u * b[i]);
+
+// Chemin de la région où l'on peint la fleur : grand disque autour de la tête privé d'un coin de 50° dans la direction de
+// la tige, ce coin ne commençant qu'au-delà des sépales (la couleur ne descend pas sur la tige).
+function secteurDeFleur(ctx, cx, cy, tige, rayonFleur, rayonSepales) {
+  const R = 2.6 * rayonFleur, r = 1.1 * rayonSepales, demi = 25 * Math.PI / 180;
+  ctx.arc(cx, cy, R, tige + demi, tige - demi + 2 * Math.PI);
+  ctx.arc(cx, cy, r, tige - demi, tige + demi);
+  ctx.closePath();
+}
+
+// Le lacet rempli d'une couleur transparente (0,16), puis tracé.
+function traceFerme(ctx, p, motif, largeur) {
+  if (p.length < 4) return;
+  ctx.beginPath();
+  ctx.moveTo(p[0], p[1]);
+  for (let k = 2; k < p.length; k += 2) ctx.lineTo(p[k], p[k + 1]);
+  ctx.closePath();
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = motif;
+  ctx.fill();
+  ctx.restore();
+  ctx.lineWidth = largeur;
+  ctx.strokeStyle = motif;
+  ctx.stroke();
+}
+
+function dessineBouquet(canvas, im) {
+  const ctx = canvas.getContext('2d');
+  const l = canvas.width, h = canvas.height, e = im.e;
+  const fond = ctx.createLinearGradient(0, 0, 0, h);
+  fond.addColorStop(0, rgb(0.62, 0.80, 0.95));
+  fond.addColorStop(1, rgb(0.82, 0.91, 0.98));
+  ctx.fillStyle = fond;
+  ctx.fillRect(0, 0, l, h);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const largeur = 2 * e;
+  im.lacets.forEach((p, k) => {
+    const o = 11 * im.plante[k];
+    const [sorte, cx, cy, tige, eclosion, rayonFleur, rayonSepales, rayonMotif, cr, cv, cb] = im.plantes.subarray(o, o + 11);
+    const motif = ctx.createRadialGradient(cx, cy, 0, cx, cy, rayonMotif);
+    motif.addColorStop(0, rgb(...VERT));
+    motif.addColorStop(1, rgb(...SOMBRE));
+    if (sorte === 0) { traceFerme(ctx, p, motif, largeur); return; }   // une feuille
+    // une fleur : vert hors du secteur de la fleur...
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, l, h);
+    secteurDeFleur(ctx, cx, cy, tige, rayonFleur, rayonSepales);
+    ctx.clip('evenodd');
+    traceFerme(ctx, p, motif, largeur);
+    ctx.restore();
+    // ... et dans le secteur, du vert du bouton au blanc et à la couleur de la fleur qui éclot
+    const interieur = melange(eclosion, VERT, BLANC);
+    const exterieur = melange(eclosion, VERT, [cr, cv, cb]);
+    const fleur = ctx.createRadialGradient(cx, cy, 0, cx, cy, 2.6 * rayonFleur);
+    fleur.addColorStop(0, rgb(...interieur));
+    fleur.addColorStop(0.21, rgb(...interieur));
+    fleur.addColorStop(0.42, rgb(...exterieur));
+    fleur.addColorStop(1, rgb(...exterieur));
+    ctx.save();
+    ctx.beginPath();
+    secteurDeFleur(ctx, cx, cy, tige, rayonFleur, rayonSepales);
+    ctx.clip();
+    traceFerme(ctx, p, fleur, largeur);
+    ctx.restore();
+  });
+}
+
 function dessineImage(canvas, image, mode) {
+  if (mode === 'escargot') { dessineEscargot(canvas, image); return; }
+  if (mode === 'bouquet') { dessineBouquet(canvas, image); return; }
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -247,14 +377,16 @@ function dessineImage(canvas, image, mode) {
 // ---------------------------------------------------------------- un lecteur : image fixe, puis film
 
 const IMAGES_PAR_SECONDE = 25;
-const PAUSE_DEBUT = 12;   // en images : 0,5 s sur la première image, puis le film se joue une fois et s'arrête sur la dernière
+// 0,5 s sur la première image, puis le film se joue une fois et s'arrête sur la dernière (this.pauseDebut, en images)
 
 class Lecteur {
-  constructor(parent, mode, titre) {
+  constructor(parent, mode, titre, largeur = 800, hauteur = 800, ips = IMAGES_PAR_SECONDE) {
     this.mode = mode;
+    this.ips = ips;                                  // images du film par seconde
+    this.pauseDebut = Math.round(0.5 * ips);         // 0,5 s sur la première image
     const panneau = document.createElement('div');
     panneau.className = 'panneau';
-    panneau.innerHTML = `<h3>${titre}</h3><canvas width="800" height="800"></canvas><div class="etat"></div>`;
+    panneau.innerHTML = `<h3>${titre}</h3><canvas width="${largeur}" height="${hauteur}" style="aspect-ratio: ${largeur} / ${hauteur}"></canvas><div class="etat"></div>`;
     parent.appendChild(panneau);
     this.canvas = panneau.querySelector('canvas');
     this.etat = panneau.querySelector('.etat');
@@ -310,6 +442,12 @@ class Lecteur {
       return;
     }
     this.prepareLecteur(message);
+    if (new URLSearchParams(location.search).has('fin')) {   // ?fin : pas de lecture, sur la dernière image (pour les captures)
+      this.t = this.duree() - 1;
+      this.arrete();
+      this.montre();
+      return;
+    }
     this.joue();
   }
 
@@ -325,11 +463,11 @@ class Lecteur {
     this.curseur.oninput = () => { this.arrete(); this.t = Number(this.curseur.value); this.montre(); };
   }
 
-  duree() { return PAUSE_DEBUT + (this.images.length - 1); }
+  duree() { return this.pauseDebut + (this.images.length - 1); }
 
   montre() {
     const n = this.images.length;
-    const k = this.t < PAUSE_DEBUT ? 0 : Math.min(n - 1, Math.floor(this.t - PAUSE_DEBUT));
+    const k = this.t < this.pauseDebut ? 0 : Math.min(n - 1, Math.floor(this.t - this.pauseDebut));
     dessineImage(this.canvas, this.images[k], this.mode);
     if (this.curseur) this.curseur.value = String(Math.floor(this.t));
   }
@@ -342,7 +480,7 @@ class Lecteur {
     this.derniere = performance.now();
     const pas = (maintenant) => {
       if (!this.lecture) return;
-      this.t += (maintenant - this.derniere) * IMAGES_PAR_SECONDE / 1000;
+      this.t += (maintenant - this.derniere) * this.ips / 1000;
       this.derniere = maintenant;
       if (this.t >= this.duree() - 1) {   // fin : on reste sur la dernière image
         this.t = this.duree() - 1;
@@ -372,6 +510,8 @@ const MODES = [
 
 let lecteurs = [];
 let travailleurs = [];
+let lecteursLibres = [];   // les films sans mot de tresse (l'escargot) : lancés une fois, indépendants du mot
+let travailleursLibres = [];
 let ardoisePrincipale = null;   // la bibliothèque dans le fil principal : pour l'action sur F_n (instantanée)
 
 function arreteTravailleurs() {
@@ -379,26 +519,48 @@ function arreteTravailleurs() {
   travailleurs = [];
 }
 
+// Un Web Worker pour un mode et un lecteur ; rend le worker (ou null si le navigateur refuse, par exemple en file://).
+function demarreTravailleur(mode, mot, lecteur) {
+  let w;
+  try {
+    w = new Worker('travail.js');
+  } catch (e) {
+    lecteur.vide('Ouvre la page par un serveur (python -m http.server dans web/), pas en file://.');
+    return null;
+  }
+  w.onerror = () => lecteur.vide('le calcul a échoué (ardoise_lib.js introuvable ? voir construit.sh)');
+  w.onmessage = (e) => {
+    const d = e.data;
+    if (d.type === 'statique') lecteur.recoitFixe(d.image);
+    else if (d.type === 'image') lecteur.recoitImage(d.image, d.k, d.total);
+    else if (d.type === 'fini') lecteur.fini(d.message, d.erreur);
+  };
+  w.postMessage({ mode, mot });
+  return w;
+}
+
 function lanceCalculs(mot) {
   arreteTravailleurs();
   lecteurs.forEach((l) => l.recommence());
   MODES.forEach((m, j) => {
-    let w;
-    try {
-      w = new Worker('travail.js');
-    } catch (e) {
-      lecteurs[j].vide('Ouvre la page par un serveur (python -m http.server dans web/), pas en file://.');
-      return;
-    }
-    travailleurs.push(w);
-    w.onerror = () => lecteurs[j].vide('le calcul a échoué (ardoise_lib.js introuvable ? voir construit.sh)');
-    w.onmessage = (e) => {
-      const d = e.data;
-      if (d.type === 'statique') lecteurs[j].recoitFixe(d.image);
-      else if (d.type === 'image') lecteurs[j].recoitImage(d.image, d.k, d.total);
-      else if (d.type === 'fini') lecteurs[j].fini(d.message, d.erreur);
-    };
-    w.postMessage({ mode: m.id, mot });
+    const w = demarreTravailleur(m.id, mot, lecteurs[j]);
+    if (w) travailleurs.push(w);
+  });
+}
+
+const LIBRES = [
+  { id: 'escargot', titre: 'L\'escargot : une spirale de rubans', largeur: 960, hauteur: 640, ips: 25 },
+  { id: 'bouquet', titre: 'Un bouquet qui pousse : l\'éclosion des fleurs', largeur: 810, hauteur: 1080, ips: 12.5 },
+];
+
+// Les films sans tresse ne dépendent pas du mot : on les lance une seule fois, au chargement.
+function lanceLibres() {
+  const zone = document.getElementById('panneaux-libres');
+  lecteursLibres = LIBRES.map((m) => new Lecteur(zone, m.id, m.titre, m.largeur, m.hauteur, m.ips));
+  LIBRES.forEach((m, j) => {
+    lecteursLibres[j].recommence();
+    const w = demarreTravailleur(m.id, [], lecteursLibres[j]);
+    if (w) travailleursLibres.push(w);
   });
 }
 
@@ -477,6 +639,7 @@ async function demarre() {
     erreur.hidden = false;
     return;
   }
+  lanceLibres();
   let minuterie = null;
   champ.addEventListener('input', () => {
     clearTimeout(minuterie);

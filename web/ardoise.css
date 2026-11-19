@@ -65,7 +65,8 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 
 .panneau { background: var(--carte); border: 1px solid var(--trait); border-radius: 12px; padding: 12px 12px 10px; }
 .panneau h3 { font-size: 1rem; margin: 0 0 8px; }
-.panneau canvas { display: block; width: 100%; aspect-ratio: 1; background: #fff; border-radius: 6px; border: 1px solid var(--trait); }
+.panneau canvas { display: block; width: 100%; background: #fff; border-radius: 6px; border: 1px solid var(--trait); }
+.libres { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 560px)); gap: 16px; align-items: start; }
 .etat { display: flex; align-items: center; gap: 10px; min-height: 32px; margin-top: 8px; font-size: 0.9rem; color: var(--doux); }
 .etat progress { flex: 1; height: 8px; accent-color: var(--accent); }
 .etat button {
