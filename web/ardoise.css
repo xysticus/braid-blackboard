@@ -76,6 +76,10 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 .etat button:hover { border-color: var(--accent); }
 .etat input[type=range] { flex: 1; accent-color: var(--accent); }
 .etat .ko { color: var(--erreur); }
+.attention { color: #a35a00; font-weight: 500; }
+@media (prefers-color-scheme: dark) { .attention { color: #f0b45a; } }
+/* mot invalide : les résultats affichés sont ceux du dernier mot valide */
+.mot-invalide #notation, .mot-invalide .deux-colonnes, .mot-invalide #meandres { opacity: 0.45; }
 .etat .ok { color: var(--ok); }
 footer { color: var(--doux); font-size: 0.85rem; padding-bottom: 28px; }
 
@@ -95,7 +99,11 @@ footer { color: var(--doux); font-size: 0.85rem; padding-bottom: 28px; }
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
 }
 .bulle img { display: block; width: 100%; height: auto; border-radius: 6px; background: #fff; }
-.aide-schema:hover .bulle, .aide-schema:focus-within .bulle, .aide-schema.ouverte .bulle { visibility: visible; opacity: 1; }
+.aide-schema.ouverte .bulle { visibility: visible; opacity: 1; }
+/* souris : la bulle suit le survol et le focus ; au toucher, seul le bouton l'ouvre (le survol y reste « collé » après un appui) */
+@media (hover: hover) {
+  .aide-schema:hover .bulle, .aide-schema:focus-within .bulle { visibility: visible; opacity: 1; }
+}
 h2 .aide-schema, h3 .aide-schema { font-size: 1rem; }
 
 /* adaptation aux écrans étroits (tablette, smartphone) : une seule colonne, des marges plus petites, des commandes plus grandes */

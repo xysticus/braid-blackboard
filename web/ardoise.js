@@ -454,6 +454,31 @@ class Lecteur {
     this.etat.innerHTML = '<progress max="1" value="0"></progress><span>calcul…</span>';
   }
 
+  // Vue non calculée (mot hors des limites de cette vue) : un message dans le cadre, rien n'est lancé.
+  indisponible(lignes) {
+    this.arrete();
+    this.images = [];
+    this.fixe = null;
+    this.vue = null;
+    this.efface();
+    const ctx = this.canvas.getContext('2d');
+    ctx.fillStyle = '#626b7d';
+    ctx.textAlign = 'center';
+    ctx.font = '600 34px system-ui, sans-serif';
+    const texte = lignes.join(' ');
+    const mots = texte.split(' ');
+    const rangees = [];
+    let courante = '';
+    for (const m of mots) {
+      const essai = courante ? courante + ' ' + m : m;
+      if (ctx.measureText(essai).width > this.canvas.width - 120 && courante) { rangees.push(courante); courante = m; } else courante = essai;
+    }
+    rangees.push(courante);
+    const y0 = this.canvas.height / 2 - (rangees.length - 1) * 24;
+    rangees.forEach((r, i) => ctx.fillText(r, this.canvas.width / 2, y0 + i * 48));
+    this.etat.innerHTML = '<span class="attention">vue non calculée pour ce mot</span>';
+  }
+
   vide(texte) {
     this.arrete();
     this.images = [];
@@ -570,12 +595,32 @@ function aideSchema(id) {
     if (r.left + dx < 8) dx = 8 - r.left;
     bulle.style.left = dx + 'px';
   };
+  const bouton = zone.querySelector('.bouton-aide');
+  bouton.setAttribute('aria-expanded', 'false');
   zone.addEventListener('mouseenter', ajuste);
   zone.addEventListener('focusin', ajuste);
-  zone.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.target.blur(); });
+  // un appui sur « ? » ouvre la bulle (et ferme les autres) ; un appui ailleurs, Échap ou un défilement la ferment (il n'y a pas de survol au toucher)
+  bouton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const ouvre = !zone.classList.contains('ouverte');
+    fermeLesBulles();
+    if (ouvre) { zone.classList.add('ouverte'); bouton.setAttribute('aria-expanded', 'true'); ajuste(); }
+  });
+  zone.addEventListener('keydown', (e) => { if (e.key === 'Escape') { fermeLesBulles(); e.target.blur(); } });
   if (new URLSearchParams(location.search).get('aide') === id) { zone.classList.add('ouverte'); setTimeout(ajuste, 0); }   // ?aide=… : bulle ouverte (captures)
   return zone;
 }
+
+function fermeLesBulles() {
+  document.querySelectorAll('.aide-schema.ouverte').forEach((z) => {
+    z.classList.remove('ouverte');
+    const b = z.querySelector('.bouton-aide');
+    if (b) b.setAttribute('aria-expanded', 'false');
+  });
+}
+document.addEventListener('click', fermeLesBulles);
+document.addEventListener('touchstart', (e) => { if (!e.target.closest('.aide-schema')) fermeLesBulles(); }, { passive: true });
+window.addEventListener('scroll', fermeLesBulles, { passive: true });
 
 function ajouteAides() {
   document.querySelectorAll('[data-schema]').forEach((t) => t.appendChild(aideSchema(t.dataset.schema)));
@@ -585,8 +630,8 @@ function ajouteAides() {
 
 const MODES = [
   { id: 'diagramme', titre: 'Diagramme de courbes', schema: 'diagramme' },
-  { id: 'conforme', titre: 'Action sur le groupe libre et ses lacets', schema: 'lacets' },
-  { id: 'triangulation', titre: 'Action sur le groupe libre et sa triangulation', schema: 'triangulation' },
+  { id: 'conforme', titre: 'Action sur le groupe libre et ses lacets', schema: 'lacets', limite: true },
+  { id: 'triangulation', titre: 'Action sur le groupe libre et sa triangulation', schema: 'triangulation', limite: true },
   { id: 'rubans', titre: 'Action sur le groupe libre et ses rubans', schema: 'rubans' },
 ];
 
@@ -624,7 +669,15 @@ function demarreTravailleur(mode, mot, lecteur) {
 function lanceCalculs(mot) {
   arreteTravailleurs();
   lecteurs.forEach((l) => l.recommence());
+  const brins = nbBrins(mot), lettres = mot.length;
+  const trop = [];
+  if (brins > MAX_BRINS_CONFORME) trop.push(`${brins} brins (limite : ${MAX_BRINS_CONFORME})`);
+  if (lettres > MAX_LETTRES_CONFORME) trop.push(`${lettres} lettres (limite : ${MAX_LETTRES_CONFORME})`);
   MODES.forEach((m, j) => {
+    if (m.limite && trop.length) {   // les vues « lacets » et « triangulation » sont limitées : on le dit au lieu de lancer un calcul trop long
+      lecteurs[j].indisponible([`Ce mot a ${trop.join(' et ')} : trop pour cette vue.`, 'Les autres vues sont calculées.']);
+      return;
+    }
     const w = demarreTravailleur(m.id, mot, lecteurs[j]);
     if (w) travailleurs.push(w);
   });
@@ -652,11 +705,14 @@ function mise_a_jour(texte, { immediat } = {}) {
   const r = lisMot(texte);
   const erreur = document.getElementById('erreur');
   if (r.erreur) {
-    erreur.textContent = r.erreur;
+    erreur.textContent = r.erreur + (motCourant !== null && motCourant !== '' ? ' (les résultats ci-dessous sont ceux du dernier mot valide)' : '');
     erreur.hidden = false;
+    document.body.classList.toggle('mot-invalide', motCourant !== null);
+    etatLimites(null);
     return;
   }
   erreur.hidden = true;
+  document.body.classList.remove('mot-invalide');
   const mot = r.mot;
   const cle = mot.join(' ');
   document.querySelectorAll('.exemple').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mot === cle)));
@@ -664,6 +720,7 @@ function mise_a_jour(texte, { immediat } = {}) {
   motCourant = cle;
   try { history.replaceState(null, '', mot.length ? '#' + encodeURIComponent(cle) : location.pathname); } catch (e) { /* file:// */ }
   afficheMot(mot);
+  etatLimites(mot);
   const classique = document.getElementById('canvas-classique');
   if (mot.length === 0) {
     classique.width = classique.height = 0;
@@ -693,8 +750,20 @@ function chargeBibliotheque() {
 function afficheLimites() {
   const l = document.getElementById('limites');
   if (!l) return;
-  l.innerHTML = `Limites : <b>${MAX_BRINS} brins</b> (σ<sub>1</sub> … σ<sub>${MAX_BRINS - 1}</sub>) et <b>${MAX_LETTRES} lettres</b> au plus ; ` +
-    `pour les films des lacets et de la triangulation, <b>${MAX_BRINS_CONFORME} brins</b> et <b>${MAX_LETTRES_CONFORME} lettres</b>.`;
+  l.innerHTML = `Limites de la page : <b>${MAX_BRINS} brins</b> (σ<sub>1</sub> … σ<sub>${MAX_BRINS - 1}</sub>) et <b>${MAX_LETTRES} lettres</b>. ` +
+    `Au-delà de <b>${MAX_BRINS_CONFORME} brins</b> ou de <b>${MAX_LETTRES_CONFORME} lettres</b>, les vues « lacets » et « triangulation » ne sont pas calculées ` +
+    `(les autres vues le sont).`;
+}
+
+// « Ce mot : N brins, M lettres », avec l'avertissement quand une vue est limitée.
+function etatLimites(mot) {
+  const e = document.getElementById('etat-limites');
+  if (!e) return;
+  if (!mot || mot.length === 0) { e.textContent = ''; return; }
+  const brins = nbBrins(mot), lettres = mot.length;
+  const hors = brins > MAX_BRINS_CONFORME || lettres > MAX_LETTRES_CONFORME;
+  e.innerHTML = `Ce mot : <b>${brins} brins</b>, <b>${lettres} lettre${lettres > 1 ? 's' : ''}</b>.` +
+    (hors ? ' <span class="attention">Les vues « lacets » et « triangulation » ne sont pas calculées pour ce mot.</span>' : '');
 }
 
 async function demarre() {

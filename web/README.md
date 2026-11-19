@@ -62,6 +62,11 @@ vue pour tout le film (`vueDe` dans `ardoise.js`), calculée sur toutes ses imag
 
 `index.html?fin` : pas de lecture automatique, les films s'arrêtent sur leur dernière image (pour les captures d'écran).
 
+Limites affichées sous le champ (« Limites de la page » et « Ce mot : N brins, M lettres », avec avertissement) ; un mot qui dépasse la page
+(8 brins, 40 lettres) donne une erreur et grise les résultats, qui restent ceux du dernier mot valide ; un mot qui dépasse les vues « lacets » et
+« triangulation » (6 brins, 14 lettres) y affiche un message au lieu de lancer le calcul. Infobulles : au toucher, un appui sur « ? »
+les ouvre, un appui ailleurs, Échap ou un défilement les ferment (le survol n'y existe pas).
+
 Adaptation aux petits écrans (`ardoise.css`, deux seuils : 1000 px, une seule colonne ; 640 px, marges réduites, exemples sur deux colonnes,
 commandes de lecture plus grandes, infobulle en feuille collée en bas de l'écran) ; testée à 390 px de large.
 
