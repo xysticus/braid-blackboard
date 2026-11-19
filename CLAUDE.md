@@ -93,7 +93,7 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   HTML + JavaScript + canvas ; le calcul est celui de `ocaml/lib/` compilé par js_of_ocaml (`ocaml/web/ardoise_web.ml`,
   `web/construit.sh` → `web/ardoise_lib.js`, suivi par git : le relancer avant de commiter quand l'OCaml change), un Web Worker par mode de méandre (diagramme, conforme,
   rubans, et le film de la triangulation mobile sans le maillage gris), films en polylignes redessinées sur le canvas. Voir un résultat : `python3 -m http.server` dans `web/` ;
-  déploiement : `web/deploie.sh` → `l'adresse du site` (rsync, règle de cache du Caddyfile : `web/README.md`).
+  déploiement : `web/deploie.sh` (rsync vers la cible de `web/deploie.conf`, local et non suivi par git ; règle de cache : `web/README.md`).
   Sous JavaScript, pas de récursion non terminale sur de longues listes (`List.concat`, `List.fold_right`) : la pile est
   petite.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,

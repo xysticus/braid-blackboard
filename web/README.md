@@ -25,10 +25,10 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
 ## Publication
 
 - **Test en local** : `web/construit.sh`, puis `python3 -m http.server` dans `web/`.
-- **serveur personnel** (option A de l'étude) : `web/deploie.sh` construit `ardoise_lib.js` chez soi puis copie la page par rsync dans
-  `/chemin/du/site/ardoise/` (sans sudo) ; elle est servie par Caddy sur `l'adresse du site`.
-  `web/deploie.sh -n` : essai à blanc. Une fois, avec sudo, ajouter au bloc `le site` du Caddyfile la règle de
-  cache (fichiers sans empreinte, revérifiés à chaque visite) :
+- **Serveur personnel** : `web/deploie.sh` construit `ardoise_lib.js` chez soi puis copie la page par rsync vers la cible donnée par
+  la variable `CIBLE` ou par le fichier local `web/deploie.conf` (non suivi par git, voir le script) ; `web/deploie.sh -n` : essai
+  à blanc. Avec Caddy, ajouter au bloc du site qui sert la page une règle de cache (fichiers sans empreinte, revérifiés à chaque
+  visite) :
 
   ```
   	# Ardoise à tresse : fichiers sans empreinte, revérifiés à chaque visite (ETag)
@@ -36,10 +36,9 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
   	header @ardoise Cache-Control "no-cache"
   ```
 
-  puis `sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy`.
+  puis valider et recharger Caddy (`caddy validate`, `systemctl reload caddy`).
 - `.github/workflows/pages.yml` : un workflow GitHub Pages, en déclenchement manuel, qui copie seulement les fichiers de `web/`
-  (dont `ardoise_lib.js`, suivi par git) : rien n'est compilé chez GitHub (la compilation d'OCaml y prenait 19 minutes). Il est resté
-  dans le dépôt ; le déploiement visé est serveur personnel.
+  (dont `ardoise_lib.js`, suivi par git) : rien n'est compilé chez GitHub (la compilation d'OCaml y prenait 19 minutes).
 
 Le film de la triangulation utilise le maillage grossier des films d'arcs (`Film.cree ~grossier:true`) : les arêtes partent
 en étoile de chaque trou, les brins s'enroulent autour du trou contourné et partent du clou en éventail.
