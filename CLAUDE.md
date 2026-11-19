@@ -74,8 +74,8 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   `bin/conforme.ml` → `imgs/conforme/film_*_ocaml.mp4`, identiques octet pour octet au Python (41 s au lieu de 1 min 35),
   seulement avec le raccord par triangulation (le défaut).
   Étape 8 faite : le premier bouquet (`lib/bouquet.ml` : la classe `Pousse` de `python/Bouquet.py`, `test/test_bouquet.ml`,
-  concordant à 1e-6 près ; 0,8 s au lieu de 30 s). L'escargot et le bouquet sont dans la page web (section « Hors des
-  tresses »), dessinés en canvas par `web/ardoise.js` (le dessin Cairo n'est pas traduit pour le bouquet).
+  concordant à 1e-6 près ; 0,8 s au lieu de 30 s). L'escargot et le bouquet sont dans la page web (section « Un peu de
+  poésie »), dessinés en canvas par `web/ardoise.js` (le dessin Cairo n'est pas traduit pour le bouquet).
   `dune test` dans `ocaml/` compare au Python (`test/reference_*`, écrits par
   `python ocaml/test/genere_reference*.py`). Travailler dans le clone
   côté Linux (`~/dev/braid-blackboard` sous WSL) : dune ne construit pas sur `/mnt/c` (pas de socket Unix). Le proxy
@@ -94,6 +94,8 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   `web/construit.sh` → `web/ardoise_lib.js`, suivi par git : le relancer avant de commiter quand l'OCaml change), un Web Worker par mode de méandre (diagramme, conforme,
   rubans, et le film de la triangulation mobile sans le maillage gris), films en polylignes redessinées sur le canvas. Voir un résultat : `python3 -m http.server` dans `web/` ;
   déploiement : `web/deploie.sh` (rsync vers la cible de `web/deploie.conf`, local et non suivi par git ; règle de cache : `web/README.md`).
+  Publiée aussi sur GitHub Pages (`https://xysticus.github.io/braid-blackboard/`) par le workflow manuel `.github/workflows/pages.yml`,
+  qui copie seulement les fichiers de `web/` (21 s ; `ardoise_lib.js` est dans git : relancer `construit.sh` avant de commiter).
   Sous JavaScript, pas de récursion non terminale sur de longues listes (`List.concat`, `List.fold_right`) : la pile est
   petite.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
@@ -425,6 +427,11 @@ environment.yml --prune` si l'environnement existe déjà).
 - Un mot de F_n = liste d'entiers non nuls : `i` pour x_i, `-i` pour x_i⁻¹.
 - Un automorphisme = liste des images des générateurs (`images[i]` est l'image de x_(i+1)).
 - Plusieurs fonctions travaillent par effet de bord (`simplifie`, `conjugaison_locale`) : le docstring le signale.
+- **IMPÉRATIF : ne rien écrire de sensible dans ce dépôt, qui est public** (GitHub). Ni l'existence, ni le nom, ni l'adresse du
+  serveur personnel de l'utilisateur ; ni identifiant de connexion, chemin d'hébergement, clé, mot de passe ou détail
+  d'installation ; ni dans les fichiers, ni dans les docs, ni dans les messages de commit, ni dans les sorties collées. Ces détails
+  vont dans des fichiers locaux ignorés par git (`web/deploie.conf`, `web/*.local.md`) ; on dit seulement « un serveur personnel ».
+  L'historique a été réécrit le 2026-11-19 pour en retirer de telles mentions ; vérifier avant chaque poussée.
 - Python ≥ 3.10 requis (`match`/`case` utilisés).
 - OCaml (`ocaml/`) : mêmes noms qu'en Python pour les fonctions et les types traduits (`mot_de_fn`,
   `simplifie`, `conjugaison_locale`, `calcule_autofn_de_tresse`…) ; si la signature diffère (argument, effet de bord),
