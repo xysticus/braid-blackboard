@@ -28,7 +28,7 @@ jobs:
       - name: Assemble le site
         run: |
           mkdir _site
-          cp web/index.html web/ardoise.css web/ardoise.js web/travail.js web/ardoise_lib.js _site/
+          cp web/index.html web/ardoise.css web/ardoise.js web/travail.js web/ardoise_lib.js web/favicon.svg _site/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
