@@ -91,7 +91,7 @@ Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
   identiques octet pour octet au Python avec le ffmpeg de conda (`FFMPEG=…/envs/braid-blackboard/bin/ffmpeg`).
 - `web/` : **l'ardoise à tresse en page web** (étude : `etude_page_web.md`, mode d'emploi : `web/README.md`). Page statique
   HTML + JavaScript + canvas ; le calcul est celui de `ocaml/lib/` compilé par js_of_ocaml (`ocaml/web/ardoise_web.ml`,
-  `web/construit.sh` → `web/ardoise_lib.js`, ignoré par git), un Web Worker par mode de méandre (diagramme, conforme,
+  `web/construit.sh` → `web/ardoise_lib.js`, suivi par git : le relancer avant de commiter quand l'OCaml change), un Web Worker par mode de méandre (diagramme, conforme,
   rubans, et le film de la triangulation mobile sans le maillage gris), films en polylignes redessinées sur le canvas. Voir un résultat : `python3 -m http.server` dans `web/` ;
   déploiement : `web/deploie.sh` → `l'adresse du site` (rsync, règle de cache du Caddyfile : `web/README.md`).
   Sous JavaScript, pas de récursion non terminale sur de longues listes (`List.concat`, `List.fold_right`) : la pile est

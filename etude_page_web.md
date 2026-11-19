@@ -116,7 +116,7 @@ ocaml/web/ardoise_web.ml      points d'entrée js_of_ocaml : analyse, images fix
 web/index.html, ardoise.css  page statique
 web/ardoise.js               interface : champ, liste, MathML, diagramme de tresse, lecteurs canvas
 web/travail.js               Web Worker : charge ardoise_lib.js, calcule, envoie les images au fil de l'eau
-web/ardoise_lib.js           produit par dune (js_of_ocaml), non suivi par git ou construit à la publication
+web/ardoise_lib.js           produit par dune (js_of_ocaml) ; suivi par git depuis le 2026-11-19 (voir plus bas : plus de compilation chez GitHub)
 ```
 
 - **Un Web Worker par film** (trois en tout, selon `navigator.hardwareConcurrency`) : l'interface reste fluide et le
@@ -308,6 +308,14 @@ voisines se rapprochent exponentiellement) et un calcul de 50 s à 7 min 30 cont
 que parce que ses pieds ont des positions imposées (écart régulier), ce qu'une construction par géodésiques de la surface
 trouée ne ferait pas. Les deux films de lacets restent chacun à leur rôle : dessin calculé (conforme), dessin simulé
 (triangulation).
+
+## 11 ter. Plus de compilation chez GitHub (2026-11-19)
+
+Le workflow qui compilait OCaml chez GitHub durait 19 minutes (17 pour le compilateur, que opam construit depuis les sources ;
+rien de binaire pour opam), et le second essai a échoué sur un incident réseau des miroirs Ubuntu. Voie retenue : `web/ardoise_lib.js`
+(167 Ko) est **suivi par git**, construit chez soi par `web/construit.sh` ; le workflow (déclenchement manuel) copie seulement les
+fichiers. Autres voies, écartées : l'image Docker `ocaml/opam:ubuntu-24.04-ocaml-5.4` (compilateur déjà là, environ 4 minutes,
+non essayée), le cache de `setup-ocaml` (utile seulement après un premier run réussi).
 
 ## 12. L'escargot et le premier bouquet dans la page (étude du 2026-11-19 ; fait le même jour : escargot par le pont, bouquet par la voie 2, traduit en OCaml)
 

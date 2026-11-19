@@ -15,7 +15,7 @@ film est une suite de polylignes redessinées sur le canvas, pas une vidéo. Ét
 ## Construire et voir
 
 ```
-web/construit.sh                  # compile la bibliothèque : web/ardoise_lib.js (non suivi par git)
+web/construit.sh                  # compile la bibliothèque : web/ardoise_lib.js (suivi par git : à relancer quand l'OCaml change)
 cd web && python3 -m http.server  # puis http://localhost:8000/
 ```
 
@@ -37,8 +37,9 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
   ```
 
   puis `sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy`.
-- `.github/workflows/pages.yml` : un workflow GitHub Pages (construit `ardoise_lib.js` chez GitHub, 19 minutes dont 17 pour
-  compiler OCaml). Il est resté dans le dépôt, en déclenchement manuel seulement (onglet Actions → Page web → Run workflow) ; le déploiement visé est serveur personnel.
+- `.github/workflows/pages.yml` : un workflow GitHub Pages, en déclenchement manuel, qui copie seulement les fichiers de `web/`
+  (dont `ardoise_lib.js`, suivi par git) : rien n'est compilé chez GitHub (la compilation d'OCaml y prenait 19 minutes). Il est resté
+  dans le dépôt ; le déploiement visé est serveur personnel.
 
 Le film de la triangulation utilise le maillage grossier des films d'arcs (`Film.cree ~grossier:true`) : les arêtes partent
 en étoile de chaque trou, les brins s'enroulent autour du trou contourné et partent du clou en éventail.
@@ -48,7 +49,7 @@ en étoile de chaque trou, les brins s'enroulent autour du trou contourné et pa
 - `index.html`, `ardoise.css`, `favicon.svg` (un croisement du diagramme de tresse) : la page ;
 - `ardoise.js` : lecture du mot (`1 -2 3`, `σ1 σ2^-1`, `σ₁σ₂⁻¹`, `s1^3`), MathML, diagramme classique, lecteurs de films ;
 - `travail.js` : le Web Worker (image fixe, puis images du film envoyées une à une) ;
-- `ardoise_lib.js` : produit par `construit.sh`.
+- `ardoise_lib.js` : produit par `construit.sh`, suivi par git (quelque 167 Ko).
 
 Les méandres qui sortent du cadre (une tresse chargée, à la triangulation) sont recadrés : zoom arrière seulement, une même
 vue pour tout le film (`vueDe` dans `ardoise.js`), calculée sur toutes ses images dès que le film est fini.
