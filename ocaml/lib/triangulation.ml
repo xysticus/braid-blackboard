@@ -157,6 +157,70 @@ module Maillage = struct
         boucle (n + 1) m courbes
     in
     boucle 0 m courbes
+
+  (* Nombre de points des courbes sur l'arête e. *)
+  let nb_traversees courbes e =
+    List.fold_left
+      (fun n courbe -> List.fold_left (fun n -> function Sur_arete (e', _) when e' = e -> n + 1 | _ -> n) n courbe)
+      0 courbes
+
+  (* Une arête à retourner pour que les courbes la traversent moins : après le flip ac → bd, le nombre de points sur bd est
+     plus petit que celui sur ac (la forme des courbes ne change pas, elles ont seulement moins de coudes à passer). À
+     traversées égales, le critère de Delaunay décide, comme avant : le couple (traversées, Delaunay) décroît, donc les flips
+     s'arrêtent. Les faisceaux de brins s'enroulant autour d'un même trou finissent ainsi le long d'arêtes qui vont vers ce
+     trou (en particulier depuis le clou), au lieu de se répartir sur de longues arêtes qu'ils traversent en biais. *)
+  (* Deux garde-fous, pour que les flips par traversées n'abîment pas la triangulation : un triangle presque plat (un angle
+     de plus de 150°) est retourné dès que Delaunay le demande, quelles que soient les traversées (sinon un sommet qui
+     passe de l'autre côté de l'arête le retourne : « triangle retourné ») ; et un flip qui diminue les traversées ne doit
+     pas créer d'angle de plus de 120° (sinon il serait aussitôt défait). *)
+  let angle_trop_plat = 150. *. Float.pi /. 180.
+  let angle_max_apres = 120. *. Float.pi /. 180.
+
+  let angle m s x y =
+    let u = m.pos.(x) -: m.pos.(s) and v = m.pos.(y) -: m.pos.(s) in
+    Float.atan2 (Float.abs (croix u v)) (scalaire u v)
+
+  (* plus grand angle des deux triangles abc et acd (avant le flip), abd et bcd (après) *)
+  let angle_max_avant m a b c d =
+    List.fold_left Float.max 0. [ angle m a b c; angle m b c a; angle m c a b; angle m a c d; angle m c d a; angle m d a c ]
+
+  let angle_max_apres_flip m a b c d =
+    List.fold_left Float.max 0. [ angle m a b d; angle m b d a; angle m d a b; angle m b c d; angle m c d b; angle m d b c ]
+
+  let cherche_arete_par_traversees m courbes =
+    let table = aretes m in
+    Aretes.to_seq table
+    |> Seq.find_map (fun ((a, c), tris) ->
+           match tris with
+           | [ t1; t2 ] ->
+             let b = Triangle.oppose t1 (a, c) and d = Triangle.oppose t2 (a, c) in
+             if not (convexe m a b c d) || Aretes.mem (Arete.v b d) table then None
+             else begin
+               let delaunay_dit_oui = cotangente m b a c +. cotangente m d a c < -1e-9 in
+               (* un triangle presque plat doit être retourné, quelles que soient les traversées : sinon un sommet qui
+                  passe de l'autre côté de l'arête le retourne *)
+               if delaunay_dit_oui && angle_max_avant m a b c d > angle_trop_plat then Some (a, b, c, d)
+               else begin
+                 let avant = nb_traversees courbes (a, c) in
+                 let bd = Arete.v b d in
+                 let apres = nb_traversees (List.map (fun courbe -> courbe_apres_flip m courbe a b c d) courbes) bd in
+                 if apres < avant && angle_max_apres_flip m a b c d <= angle_max_apres then Some (a, b, c, d)
+                 else if apres = avant && delaunay_dit_oui then Some (a, b, c, d)
+                 else None
+               end
+             end
+           | _ -> None)
+
+  let delaunay_par_traversees m courbes =
+    let rec boucle n m courbes =
+      if n = 10_000 then failwith "les flips ne s'arrêtent pas";
+      match cherche_arete_par_traversees m courbes with
+      | None -> (m, courbes)
+      | Some (a, b, c, d) ->
+        let m, courbes = retourne m a b c d courbes in
+        boucle (n + 1) m courbes
+    in
+    boucle 0 m courbes
 end
 
 let decalage_axe = 0.01

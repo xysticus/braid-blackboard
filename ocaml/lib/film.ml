@@ -189,7 +189,7 @@ let arrondi x =
   let r = Float.round x in
   if Float.abs (x -. Float.trunc x) = 0.5 then 2. *. Float.round (x /. 2.) else r
 
-let lettre ?images ?(sous_pas = 2) ?(taux = 0.15) ?vitesse ?rendu film sigma =
+let lettre ?images ?(sous_pas = 2) ?(taux = 0.15) ?vitesse ?(par_traversees = false) ?rendu film sigma =
   let us, longueurs = chemin_des_trous film sigma in
   let total = longueurs.(Array.length longueurs - 1) in
   let images =
@@ -208,7 +208,9 @@ let lettre ?images ?(sous_pas = 2) ?(taux = 0.15) ?vitesse ?rendu film sigma =
       let ecart = (abscisses film u).ecart in
       let film = place film sigma u in
       if not (Maillage.valide film.maillage) then failwith "triangle retourné : augmenter sous_pas";
-      let maillage, courbes = Maillage.delaunay film.maillage film.courbes in
+      let maillage, courbes =
+        (if par_traversees then Maillage.delaunay_par_traversees else Maillage.delaunay) film.maillage film.courbes
+      in
       let film = tend { film with maillage; courbes } taux ecart in
       (match rendu with Some f when pas mod sous_pas = 0 -> f film ecart | _ -> ());
       boucle (pas + 1) film

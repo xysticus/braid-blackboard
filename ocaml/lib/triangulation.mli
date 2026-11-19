@@ -116,6 +116,14 @@ module Maillage : sig
   val delaunay : t -> courbe list -> t * courbe list
   (** Retourne les arêtes qui ne sont pas de Delaunay jusqu'à ce qu'il n'y en ait plus. Lève [Failure] après
       10 000 flips. *)
+
+  val delaunay_par_traversees : t -> courbe list -> t * courbe list
+  (** Comme [delaunay], mais une arête est aussi retournée quand le flip diminue le nombre de points des courbes sur la
+      diagonale (traversées), même si elle est de Delaunay ; à traversées égales, c'est Delaunay qui décide ; un triangle
+      presque plat (plus de 150°) est toujours retourné quand Delaunay le demande, et un flip par traversées ne crée
+      pas d'angle de plus de 120°. Les faisceaux de brins qui s'enroulent autour d'un trou finissent ainsi le long d'arêtes
+      qui vont vers ce trou (en particulier depuis le clou), au lieu de se répartir sur de longues arêtes qu'ils traversent
+      en biais ; la forme des courbes ne change pas. Pas dans le Python : les films de référence restent en [delaunay]. *)
 end
 
 (** {1 Le maillage de départ} *)

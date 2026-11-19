@@ -75,11 +75,12 @@ val arrondi : float -> float
 (** Le [round] du Python : au plus proche, et à l'entier pair en cas d'égalité ([arrondi 12.5 = 12.]). *)
 
 val lettre :
-  ?images:int -> ?sous_pas:int -> ?taux:float -> ?vitesse:float -> ?rendu:(t -> float -> unit) ->
+  ?images:int -> ?sous_pas:int -> ?taux:float -> ?vitesse:float -> ?par_traversees:bool -> ?rendu:(t -> float -> unit) ->
   t -> Tresses.sigma Tresses.lettre -> t * int
 (** Un demi-tour à vitesse constante : à chaque sous-pas, [place], contrôle qu'aucun triangle ne s'est retourné
     (sinon [Failure]), [delaunay], [tend]. [rendu film ecart] est appelé à chaque image (tous les [sous_pas]
-    sous-pas). Rend le film et le nombre d'images. *)
+    sous-pas). Rend le film et le nombre d'images. [par_traversees] (faux par défaut, comme le Python) : les arêtes sont
+    aussi retournées pour que les brins aient moins d'arêtes à traverser ([Maillage.delaunay_par_traversees]). *)
 
 val portions_du_clou : t -> courbe -> ((int * int) * float) list
 (** Les deux bouts d'une courbe attachés au clou : [((début, fin), x)], les indices [début .. fin - 1] des points

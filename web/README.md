@@ -40,6 +40,9 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
 - `.github/workflows/pages.yml` : un workflow GitHub Pages (construit `ardoise_lib.js` chez GitHub, 19 minutes dont 17 pour
   compiler OCaml). Il est resté dans le dépôt, en déclenchement manuel seulement (onglet Actions → Page web → Run workflow) ; le déploiement visé est serveur personnel.
 
+Le film de la triangulation utilise les flips « par traversées » (`ocaml/lib/triangulation.ml`) : les brins du clou partent
+en éventail serré vers le trou qu'ils contournent.
+
 ## Les fichiers
 
 - `index.html`, `ardoise.css`, `favicon.svg` (un croisement du diagramme de tresse) : la page ;

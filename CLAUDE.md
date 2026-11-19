@@ -327,6 +327,11 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     bourgeon), limbe des feuilles. Voir `pistes_film_conforme.md`.
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
     clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
+    **Flips par traversées** (2026-11-19, OCaml seulement, option `par_traversees` de `Film.lettre`, utilisée par la page web) :
+    `Maillage.delaunay_par_traversees` retourne aussi une arête quand le flip diminue le nombre de points des courbes sur la
+    diagonale (à égalité, Delaunay ; garde-fous : triangle > 150° toujours retourné, pas d'angle > 120° créé) ; les brins du
+    clou partent en éventail droit vers le faisceau au lieu de monter le long d'arêtes qu'ils traversent en biais. Pas dans le
+    Python ni dans les films MP4 de référence (`test/test_traversees.ml` : mots relus justes).
     Autre retouche (2026-11-19, aussi en OCaml, `Film.cree`) : un décalage du bord bas n'est retenu que s'il laisse tous les
     sommets du bord dans le cadre, dans toutes les dispositions de la tresse (avec 24 px, le sommet du dernier trou allait sur
     le coin droit : « triangle retourné » sur une tresse aléatoire sur quatre à 5 brins et 12 lettres). Films des tresses d'essai

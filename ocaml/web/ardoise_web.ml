@@ -101,7 +101,7 @@ let joue_triangulation tresse ~sous_pas ~rendu =
   let k = ref 0 in
   ignore
     (List.fold_left
-       (fun film sigma -> fst (Film.lettre ~sous_pas ~rendu:(fun f e -> incr k; rendu f e !k) film sigma))
+       (fun film sigma -> fst (Film.lettre ~sous_pas ~par_traversees:true ~rendu:(fun f e -> incr k; rendu f e !k) film sigma))
        film tresse)
 
 (* Il reste, rarement (de 1 à 3 mots sur 100 à 6 brins et 14 lettres), un triangle plat que la rotation d'une paire retourne :

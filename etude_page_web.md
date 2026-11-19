@@ -272,6 +272,20 @@ rejouant avec 4 ou 8 sous-pas par image (0 échec sur 900 mots aléatoires dans 
 Essai écarté : retourner aussi les arêtes dont le quadrilatère est plat (angle exactement π) ne changeait presque rien
 (7 échecs à 2 sous-pas au lieu de 8 sur 300 mots).
 
+Le 2026-11-19 (demande de l'utilisateur : « les brins s'espacent régulièrement entre le clou et le trou 3, il faut les diriger
+vers le trou 1, le trou contourné ») : sur la tresse de référence, les brins qui partent du clou montaient le long de longues
+arêtes presque verticales, qu'ils devaient traverser en biais (écart / sinus : points répartis sur toute l'arête), puis
+tournaient à angle vif vers le trou contourné. Remède : **flips par traversées** (`Maillage.delaunay_par_traversees`,
+`Film.lettre ~par_traversees:true`) : une arête est aussi retournée quand le flip diminue le nombre de points des courbes
+sur la diagonale (les courbes y gagnent des arêtes qui vont dans leur sens, par exemple du clou vers le faisceau), à traversées
+égales Delaunay décide, un triangle presque plat (> 150°) est toujours retourné, et un flip par traversées ne crée pas d'angle
+> 120°. Sans ces garde-fous : « triangle retourné » dès la première lettre. Résultat : les brins du clou partent en éventail
+serré et droit vers le faisceau, les mots relus sont justes après chaque lettre (4 tresses), même taux d'échec que Delaunay
+(0 sur 300 jusqu'à 5 brins, 2-3 sur 100 à 6 brins et 14 lettres), calcul de 4 à 6 fois plus long en natif (moins de 1 s).
+Mode `triangulation` de la page ; le Python et les films MP4 de référence restent en Delaunay. Limite visible : avec peu de
+points par brin, un faisceau qui contourne un trou loin du clou fait un coin vif (le congé est borné à la moitié du plus
+court segment) ; piste : un budget de congé par segment.
+
 ## 12. L'escargot et le premier bouquet dans la page (étude du 2026-11-19 ; fait le même jour : escargot par le pont, bouquet par la voie 2, traduit en OCaml)
 
 Ni l'un ni l'autre n'a de mot de tresse : ce sont des films à chorégraphie libre (des trous qui suivent des chemins, des
