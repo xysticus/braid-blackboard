@@ -11,6 +11,7 @@
 (package
  (name ardoise)
  (allow_empty) ; la bibliothèque n'est pas publiée : le paquet ne sert qu'à déclarer les dépendances
+ (license MIT)
  (synopsis "Ardoise à tresse : réécriture en OCaml des algorithmes de braid-blackboard")
  (depends
   (ocaml (>= 5.4))

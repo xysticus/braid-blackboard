@@ -79,3 +79,7 @@ films :
   antennes.
 
 Mon livre de chevet sur les tresses : "[Le calcul des tresses](https://www.decitre.fr/livres/le-calcul-des-tresses-9782916352794.html)", [Patrick Dehornoy](https://www.decitre.fr/auteur/198862/Patrick+Dehornoy), Calvage & Mounet, Collection.-Nano
+
+## Licences
+
+Le code est sous [licence MIT](LICENSE) ; les textes, schémas, images et films sont sous [licence CC BY 4.0](LICENSE-CC-BY-4.0.md). Le détail est dans [LICENCES.md](LICENCES.md).
