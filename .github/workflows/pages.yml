@@ -3,10 +3,8 @@
 # « GitHub Actions ».
 name: Page web
 
+# Déclenchement manuel seulement (onglet Actions → Page web → Run workflow) : plus de lancement à chaque poussée.
 on:
-  push:
-    branches: [master]
-    paths: ['web/**', 'ocaml/lib/**', 'ocaml/web/**', 'ocaml/dune-project', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

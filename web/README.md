@@ -37,7 +37,7 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
 
   puis `sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy`.
 - `.github/workflows/pages.yml` : un workflow GitHub Pages (construit `ardoise_lib.js` chez GitHub, 19 minutes dont 17 pour
-  compiler OCaml). Il est resté dans le dépôt ; le déploiement visé est serveur personnel.
+  compiler OCaml). Il est resté dans le dépôt, en déclenchement manuel seulement (onglet Actions → Page web → Run workflow) ; le déploiement visé est serveur personnel.
 
 ## Les fichiers
 
