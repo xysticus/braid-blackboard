@@ -327,6 +327,11 @@ Il dessine maintenant les méandres et donne la même topologie qu'`AutoMorphPNG
     bourgeon), limbe des feuilles. Voir `pistes_film_conforme.md`.
     Retouche de `Triangulation.py` pour 35 trous : si les trois décalages habituels du bord bas sont trop près du
     clou, on prend celui qui en éloigne le plus (films des tresses inchangés).
+    Autre retouche (2026-11-19, aussi en OCaml, `Film.cree`) : un décalage du bord bas n'est retenu que s'il laisse tous les
+    sommets du bord dans le cadre, dans toutes les dispositions de la tresse (avec 24 px, le sommet du dernier trou allait sur
+    le coin droit : « triangle retourné » sur une tresse aléatoire sur quatre à 5 brins et 12 lettres). Films des tresses d'essai
+    inchangés. Reste, pour moins d'un mot sur cent, un triangle retourné (deux trous voisins et un bout de l'axe alignés à une image
+    clé), évité le plus souvent en rejouant avec plus de sous-pas (`web/`). Option `cadre` de `Film.cree` : fausse pour le bouquet.
 
 13. **Film par représentation conforme** (`python/Conforme.py`, `film_conforme` → `imgs/conforme/film_*.mp4`). Idée de l'utilisateur (2026-11-16) : relier les trous qui tournent aux trous voisins par des segments,
     et s'en servir comme pieds d'arcs, pour tendre les lacets « flasques » du film simultané.

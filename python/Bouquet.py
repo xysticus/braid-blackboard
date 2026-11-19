@@ -88,7 +88,7 @@ class Pousse(Film):
         self.groupes = groupes
         for g in groupes: g['trous'] = 2 if g['sorte'] == 'feuille' else 2 * g['petales'] + 1 # sépales : un de plus
         nb_trous = sum(g['trous'] for g in groupes)
-        super().__init__([nb_trous - 1], hauteur, largeur) # une tresse de nb_trous brins : seul l'état de départ sert
+        super().__init__([nb_trous - 1], hauteur, largeur, cadre=False) # une tresse de nb_trous brins : seul l'état de départ sert
         self.e = e = largeur / 800
         self.ecart, self.taux = ecart or 2.3 * e, taux
         clou = self.maillage.pos[self.clou]

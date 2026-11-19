@@ -261,8 +261,16 @@ applications.
 Ajoutée à la demande de l'utilisateur (le film « avec le clou » des films de départ, même moteur que le bouquet) : mode
 `triangulation` du pont, polylignes en droites et congés, maillage gris masqué, titre « Action sur le groupe libre et sa
 triangulation ». Calcul très rapide (0,1 à 2 s en JavaScript pour les 12 exemples, qui passent tous), mais jusqu'à 1 255 images
-(32 Mo) : mêmes limites que le conforme. Le film peut échouer sur certaines tresses (un triangle se retourne : 14 tresses
-aléatoires sur 60 à 5 brins et 12 lettres, sans remède par plus de sous-pas) : une piste pour plus tard.
+(32 Mo) : mêmes limites que le conforme. Le film échouait sur une tresse aléatoire sur quatre à 5 brins et 12 lettres (« triangle retourné ») : cause trouvée le
+jour même. Le décalage des sommets du bord bas (24 px quand un trou est à la verticale du clou) envoyait le sommet du
+dernier trou sur le coin droit dès qu'une disposition de la tresse mettait ce trou à plus de 776 px (idem à gauche) :
+`Film.cree` ne retient maintenant un décalage que s'il laisse tous les sommets dans le cadre, dans toutes les dispositions
+(OCaml et `Triangulation.py` ; option `cadre`, fausse pour le bouquet ; films des deux tresses d'essai inchangés octet pour
+octet). Reste, pour moins d'un mot sur cent dans les limites de la page, un triangle retourné (deux trous voisins et un bout
+de l'axe alignés exactement à une image clé, que la rotation suivante retourne) ; la page l'évite le plus souvent en
+rejouant avec 4 ou 8 sous-pas par image (0 échec sur 900 mots aléatoires dans un essai, 2 sur 300 dans un autre).
+Essai écarté : retourner aussi les arêtes dont le quadrilatère est plat (angle exactement π) ne changeait presque rien
+(7 échecs à 2 sous-pas au lieu de 8 sur 300 mots).
 
 ## 12. L'escargot et le premier bouquet dans la page (étude du 2026-11-19 ; fait le même jour : escargot par le pont, bouquet par la voie 2, traduit en OCaml)
 

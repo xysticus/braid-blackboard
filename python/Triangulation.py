@@ -203,7 +203,9 @@ def noeuds_de_polyligne(points, maillage, clou):
 class Film:
     '''Les trous en mouvement, leur triangulation et les lacets posés dessus.'''
 
-    def __init__(self, tresse, hauteur=800, largeur=800):
+    def __init__(self, tresse, hauteur=800, largeur=800, cadre=True):
+        '''cadre : le décalage des sommets du bord bas laisse tous les sommets dans le cadre, dans toutes les dispositions de la
+        tresse (faux pour les films dont seul l'état de départ sert : le bouquet).'''
         self.hauteur, self.largeur = hauteur, largeur
         e = largeur / 400 # échelle des longueurs en pixels (réglées pour 400 × 400)
         self.nb_trous = max(map(operator.abs, tresse), default=1) + 1
@@ -226,8 +228,15 @@ class Film:
         # décalage des sommets du bord bas : loin du clou ; si les trous sont trop serrés pour les trois décalages
         # habituels, celui qui éloigne le plus les sommets du clou
         def distance_au_clou(d): return min(abs(x + d - clou[0]) for x in xs0)
-        self.decalage_bas = next((d for d in (DECALAGE_BORD, 12 * e, -12 * e) if distance_au_clou(d) >= 8 * e),
-                                 max(np.linspace(-12 * e, 12 * e, 49), key=distance_au_clou))
+        # ... et qui ne pousse jamais un sommet du bord bas hors du cadre, dans aucune disposition de la tresse (avec 24 px,
+        # un dernier trou à plus de 776 px envoyait son sommet sur le coin droit : triangle retourné)
+        premiers = min(d[0][0] for d in self.dispositions + self.milieux)
+        derniers = max(d[0][-1] for d in self.dispositions + self.milieux)
+        def dans_le_cadre(d): return not cadre or (premiers + d >= 2 * e and derniers + d <= largeur - 2 * e)
+        candidats = list(np.linspace(-12 * e, 12 * e, 49))
+        self.decalage_bas = next((d for d in (DECALAGE_BORD, 12 * e, -12 * e)
+                                  if distance_au_clou(d) >= 8 * e and dans_le_cadre(d)),
+                                 max([d for d in candidats if dans_le_cadre(d)] or candidats, key=distance_au_clou))
         self.maillage, self.trous, self.clou, self.haut, self.bas = maillage_initial(
             trous, clou, hauteur, largeur, self.decalage_bas)
         self.y_axe = self.maillage.pos[self.trous[0]][1]

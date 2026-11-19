@@ -110,7 +110,7 @@ let cree ?(hauteur = 1080.) ?(largeur = 810.) ?(taux = 0.12) groupes =
   let groupes = Array.of_list groupes in
   let nb_trous = Array.fold_left (fun a g -> a + nb_trous_du_groupe g) 0 groupes in
   (* une tresse de nb_trous brins : seul l'état de départ sert *)
-  let film = Film.cree ~hauteur ~largeur [ Tresses.lettre_de_entier (nb_trous - 1) ] in
+  let film = Film.cree ~hauteur ~largeur ~cadre:false [ Tresses.lettre_de_entier (nb_trous - 1) ] in
   let e = largeur /. 800. in
   let ecart = 2.3 *. e in
   let clou = film.maillage.Maillage.pos.(film.clou) in

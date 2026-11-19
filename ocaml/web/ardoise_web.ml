@@ -104,9 +104,9 @@ let joue_triangulation tresse ~sous_pas ~rendu =
        (fun film sigma -> fst (Film.lettre ~sous_pas ~rendu:(fun f e -> incr k; rendu f e !k) film sigma))
        film tresse)
 
-(* Un triangle peut se retourner entre deux sous-pas (sur environ une tresse aléatoire de 12 lettres à 5 brins sur
-   quatre, plus de sous-pas n'y change rien) : on essaie 2, 4 puis 8 sous-pas par image, sans rien dessiner, ce qui donne
-   aussi le nombre d'images et la dernière image (l'image fixe). *)
+(* Il reste, rarement (de 1 à 3 mots sur 100 à 6 brins et 14 lettres), un triangle plat que la rotation d'une paire retourne :
+   un autre pas de temps l'évite le plus souvent. On essaie donc 2, 4 puis 8 sous-pas par image, sans rien dessiner, ce qui
+   donne aussi le nombre d'images et la dernière image (l'image fixe). Reste moins d'un mot sur cent qui ne passe pas. *)
 let prepare_triangulation tresse =
   let essai sous_pas =
     let derniere = ref None and n = ref 0 in

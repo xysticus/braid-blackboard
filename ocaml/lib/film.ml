@@ -299,7 +299,7 @@ let disposition nb_trous largeur (etat : Tresses.etat) =
   let cumul = ref 0. in
   { abscisses = Array.init nb_trous (fun k -> cumul := !cumul +. (float (comptes.(k) + 1) *. ecart); !cumul); ecart }
 
-let cree ?(hauteur = 800.) ?(largeur = 800.) ?(tension = 400) tresse =
+let cree ?(hauteur = 800.) ?(largeur = 800.) ?(tension = 400) ?(cadre = true) tresse =
   let e = largeur /. 400. in
   let nb_trous = 1 + List.fold_left (fun m (l : Tresses.sigma Tresses.lettre) -> max m l.indice) 1 tresse in
   let prefixe k = List.filteri (fun j _ -> j < k) tresse in
@@ -320,12 +320,22 @@ let cree ?(hauteur = 800.) ?(largeur = 800.) ?(tension = 400) tresse =
   (* décalage des sommets du bord bas : loin du clou ; si les trous sont trop serrés pour les trois décalages
      habituels, celui qui éloigne le plus les sommets du clou *)
   let distance_au_clou d = Array.fold_left (fun m x -> Float.min m (Float.abs (x +. d -. clou.x))) Float.infinity xs0 in
+  (* le décalage ne doit jamais pousser un sommet du bord bas hors du cadre, dans aucune des dispositions de la tresse :
+     avec 24 px de décalage, un dernier trou à plus de 776 px envoyait son sommet sur le coin droit (triangle retourné,
+     environ une tresse aléatoire sur quatre à 5 brins et 12 lettres) *)
+  let premiers, derniers =
+    Array.fold_left
+      (fun (pm, dm) (d : disposition) -> (Float.min pm d.abscisses.(0), Float.max dm d.abscisses.(Array.length d.abscisses - 1)))
+      (Float.infinity, Float.neg_infinity) (Array.append dispositions milieux)
+  in
+  let dans_le_cadre d = (not cadre) || (premiers +. d >= 2. *. e && derniers +. d <= largeur -. (2. *. e)) in
   let decalage_bas =
-    match List.find_opt (fun d -> distance_au_clou d >= 8. *. e) [ decalage_bord; 12. *. e; -12. *. e ] with
+    match List.find_opt (fun d -> distance_au_clou d >= 8. *. e && dans_le_cadre d) [ decalage_bord; 12. *. e; -12. *. e ] with
     | Some d -> d
     | None ->
-      Array.fold_left (fun m d -> if distance_au_clou d > distance_au_clou m then d else m) (-12. *. e)
-        (Tresses.linspace (-12. *. e) (12. *. e) 49)
+      let candidats = Array.to_list (Tresses.linspace (-12. *. e) (12. *. e) 49) in
+      let candidats = match List.filter dans_le_cadre candidats with [] -> candidats | l -> l in
+      List.fold_left (fun m d -> if distance_au_clou d > distance_au_clou m then d else m) (List.hd candidats) candidats
   in
   let mi = maillage_initial ~decalage_bas trous clou hauteur largeur in
   let pos = mi.maillage.Maillage.pos in
