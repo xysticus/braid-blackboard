@@ -117,7 +117,9 @@ let lit_mot (points : point array) (trous : point list) =
     |> List.sort compare |> List.map snd
   in
   let n = Array.length points in
-  let mot = List.concat (List.init (max 0 (n - 1)) (fun k -> lettres_du_segment points.(k) points.(k + 1))) in
+  (* concat_map et non concat : List.concat n'est pas récursive terminale, et une polyligne du film a des milliers de
+     points (dépassement de pile sous JavaScript) *)
+  let mot = List.concat_map (fun k -> lettres_du_segment points.(k) points.(k + 1)) (List.init (max 0 (n - 1)) Fun.id) in
   Reduit.simplifie (mot_de_fn_de_entiers mot)
 
 (* Arcs de cercle. *)

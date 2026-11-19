@@ -6,6 +6,8 @@ depends: [
   "ocaml" {>= "5.4"}
   "dune" {>= "3.17"}
   "cairo2"
+  "js_of_ocaml"
+  "js_of_ocaml-compiler"
   "alcotest" {with-test}
   "yojson" {with-test}
   "ocaml-lsp-server" {with-dev-setup}

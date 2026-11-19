@@ -1,0 +1,7 @@
+; Le pont entre la bibliothèque ardoise et la page web (voir ../../etude_page_web.md) : compilé en JavaScript par
+; js_of_ocaml, chargé par le Web Worker de ../../web/travail.js. Depuis ocaml/ :
+;   dune build --profile release web/ardoise_web.bc.js
+(executable
+ (name ardoise_web)
+ (libraries ardoise js_of_ocaml)
+ (modes js))

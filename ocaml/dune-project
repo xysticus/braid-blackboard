@@ -17,6 +17,9 @@
   dune
   ; cairo2 demande la bibliothèque C et pkg-config : sudo apt install libcairo2-dev pkg-config
   cairo2
+  ; la page web (web/, ../web/) : la bibliothèque compilée en JavaScript
+  js_of_ocaml
+  js_of_ocaml-compiler
   (alcotest :with-test)
   (yojson :with-test)
   (ocaml-lsp-server :with-dev-setup)

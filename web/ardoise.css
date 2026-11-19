@@ -1,0 +1,81 @@
+:root {
+  --fond: #f6f5f1;
+  --carte: #ffffff;
+  --encre: #1d2330;
+  --doux: #626b7d;
+  --trait: #dcdad2;
+  --accent: #2459b8;
+  --erreur: #b3261e;
+  --ok: #2e7d4f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #14171d; --carte: #1d212a; --encre: #e8eaf0; --doux: #9aa3b5; --trait: #343a47; --accent: #7aa7ff;
+    --erreur: #ff8a80; --ok: #7fd1a0;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--fond); color: var(--encre);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+header, main, footer { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+header { padding-top: 28px; }
+h1 { font-size: 1.9rem; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; margin: 0 0 12px; }
+.sous-titre, .info, .aide { color: var(--doux); margin: 4px 0; }
+.info { font-size: 0.92rem; }
+.aide { font-size: 0.88rem; }
+code { background: color-mix(in srgb, var(--trait) 45%, transparent); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
+
+#saisie label { display: block; font-weight: 600; margin-bottom: 6px; }
+#mot {
+  width: 100%; font: inherit; font-size: 1.15rem; padding: 10px 14px; border-radius: 8px;
+  border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
+}
+#mot:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
+.erreur { color: var(--erreur); margin: 6px 0 0; font-weight: 500; }
+
+#exemples { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-top: 12px; }
+.exemple {
+  text-align: left; font: inherit; cursor: pointer; padding: 8px 12px; border-radius: 8px;
+  border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
+}
+.exemple:hover { border-color: var(--accent); }
+.exemple[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--carte)); }
+.exemple .nom { display: block; font-size: 1.05rem; overflow-wrap: anywhere; }
+.exemple .legende { display: block; font-size: 0.8rem; color: var(--doux); line-height: 1.3; }
+
+.carte { background: var(--carte); border: 1px solid var(--trait); border-radius: 12px; padding: 16px 18px; }
+.math-ligne { font-size: 1.3rem; line-height: 2.1; }
+.math-ligne math { margin-right: 0.12em; }
+.deux-colonnes { display: grid; grid-template-columns: minmax(260px, 380px) 1fr; gap: 18px; align-items: start; }
+.trois-colonnes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.defile { max-height: 640px; overflow: auto; }
+#canvas-classique { display: block; margin: 0 auto; max-width: 100%; }
+
+#fn-images { display: grid; gap: 4px; font-size: 1.1rem; }
+.fn-ligne { display: grid; grid-template-columns: auto auto 1fr; gap: 0.6em; align-items: baseline; }
+.fn-ligne .mot { min-width: 0; overflow-wrap: anywhere; }
+.fn-ligne .fleche { color: var(--doux); }
+.fn-ligne.identite .mot { color: var(--doux); }
+
+.panneau { background: var(--carte); border: 1px solid var(--trait); border-radius: 12px; padding: 12px 12px 10px; }
+.panneau h3 { font-size: 1rem; margin: 0 0 8px; }
+.panneau canvas { display: block; width: 100%; aspect-ratio: 1; background: #fff; border-radius: 6px; border: 1px solid var(--trait); }
+.etat { display: flex; align-items: center; gap: 10px; min-height: 32px; margin-top: 8px; font-size: 0.9rem; color: var(--doux); }
+.etat progress { flex: 1; height: 8px; accent-color: var(--accent); }
+.etat button {
+  font: inherit; width: 34px; height: 30px; border-radius: 6px; cursor: pointer;
+  border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
+}
+.etat button:hover { border-color: var(--accent); }
+.etat input[type=range] { flex: 1; accent-color: var(--accent); }
+.etat .ko { color: var(--erreur); }
+.etat .ok { color: var(--ok); }
+footer { color: var(--doux); font-size: 0.85rem; padding-bottom: 28px; }
+
+@media (max-width: 1000px) {
+  .trois-colonnes, .deux-colonnes { grid-template-columns: 1fr; }
+}

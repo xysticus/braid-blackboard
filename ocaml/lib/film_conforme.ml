@@ -59,6 +59,29 @@ let nb_croisements ?(rayon = 12.) lignes clou =
   done;
   !total
 
+(* Dessin de l'état e de la lettre l au temps s ; si les arcs sortent par le haut, on aplatit davantage (réduction) :
+   rend les lignes et la réduction. En Python, [lettre.reduction] est un attribut modifié en place ; ici un argument. *)
+let dessin_reduit (l : Conforme.lettre) e s =
+  let essai = Conforme.dessin l ~reduction:1. e s in
+  let y_min = List.fold_left (fun a p -> Array.fold_left (fun a q -> Float.min a q.y) a p) Float.infinity essai in
+  if y_min < 10. then
+    let reduction = (l.y_axe -. 10.) /. (l.y_axe -. y_min) in
+    (Conforme.dessin l ~reduction e s, reduction)
+  else (essai, 1.)
+
+(* L'image finale de la tresse (l'image clé après la dernière lettre), dans le cadre intérieur : la lettre est celle de
+   la dernière lettre, dessinée à la fin du demi-tour. Sert d'image fixe à la page web. *)
+let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
+  let n_lettres = List.length tresse in
+  if n_lettres = 0 then invalid_arg "image_finale : tresse vide";
+  let nb_trous = List.fold_left (fun a (l : _ Tresses.lettre) -> max a l.indice) 0 tresse + 1 in
+  let prefixe n = List.filteri (fun i _ -> i < n) tresse in
+  let etat n = Tresses.etat_de_tresse ~nb_trous (prefixe n) in
+  let k = n_lettres - 1 in
+  let l = Conforme.lettre ~hauteur:(hauteur -. (2. *. marge)) ~largeur:(largeur -. (2. *. marge)) (etat k) (etat (k + 1)) (List.nth tresse k) in
+  let lignes, reduction = dessin_reduit l 1 1. in
+  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou }
+
 (* Le film : pour chaque lettre, l'état k dessiné sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la
    verticale par la triangulation pendant la fenêtre (part du mouvement). [rendu] est appelé avec chaque image dans
    l'ordre (la première est l'image clé de départ). Le cadre intérieur fait (hauteur − 2 marge) × (largeur − 2 marge).
@@ -86,16 +109,6 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~m
         Array.map (fun s -> lisse (Float.min 1. (Float.max 0. ((s -. (0.5 -. (fenetre /. 2.))) /. fenetre)))) temps
       in
       let dans_fenetre = List.filter (fun n -> 0. < poids_de.(n) && poids_de.(n) < 1.) (List.init images (fun n -> n + 1)) in
-      (* dessin de l'état e au temps s ; si les arcs sortent par le haut, on aplatit davantage (réduction) : rend les
-         lignes et la réduction *)
-      let dessin_reduit e s =
-        let essai = Conforme.dessin l ~reduction:1. e s in
-        let y_min = List.fold_left (fun a p -> Array.fold_left (fun a q -> Float.min a q.y) a p) Float.infinity essai in
-        if y_min < 10. then
-          let reduction = (l.y_axe -. 10.) /. (l.y_axe -. y_min) in
-          (Conforme.dessin l ~reduction e s, reduction)
-        else (essai, 1.)
-      in
       let precedent = ref None and triangule = ref None in
       for n = 1 to images do
         let s = temps.(n) and poids = poids_de.(n) in
@@ -106,7 +119,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~m
               | Some r -> r
               | None ->
                   let n_b = List.nth dans_fenetre (List.length dans_fenetre - 1) + 1 in
-                  let arrivee, r_b = dessin_reduit 1 temps.(n_b) in
+                  let arrivee, r_b = dessin_reduit l 1 temps.(n_b) in
                   let s_a, r_a, depart = Option.get !precedent in
                   let r =
                     Raccord.raccord
@@ -125,7 +138,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~m
           end
           else
             let e = if poids = 0. then 0 else 1 in
-            let lignes, reduction = dessin_reduit e s in
+            let lignes, reduction = dessin_reduit l e s in
             if poids = 0. then precedent := Some (s, reduction, lignes);
             (lignes, reduction)
         in

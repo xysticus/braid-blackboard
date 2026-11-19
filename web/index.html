@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ardoise à tresse</title>
+<link rel="stylesheet" href="ardoise.css">
+</head>
+<body>
+<header>
+  <h1>Ardoise à tresse</h1>
+  <p class="sous-titre">Une tresse d'Artin, son diagramme, son action sur le groupe libre, et les méandres que les trous entraînent.</p>
+</header>
+
+<main>
+  <section id="saisie">
+    <label for="mot">Mot de tresse</label>
+    <input id="mot" type="text" spellcheck="false" autocomplete="off"
+           placeholder="1 -2 3 -1 2     ou     σ1 σ2^-1 σ3     ou     s1^3 s2">
+    <p id="erreur" class="erreur" hidden></p>
+    <p class="aide">Entiers non nuls séparés par des espaces : <b>k</b> pour σ<sub>k</sub>, <b>-k</b> pour σ<sub>k</sub><sup>−1</sup>.
+       Les écritures <code>σ2⁻¹</code>, <code>s2^-1</code>, <code>s1^3</code> sont acceptées.</p>
+    <div id="exemples" aria-label="Tresses d'exemple"></div>
+  </section>
+
+  <section id="notation" class="carte">
+    <h2>Le mot</h2>
+    <div id="mot-math" class="math-ligne"></div>
+    <p id="mot-info" class="info"></p>
+  </section>
+
+  <div class="deux-colonnes">
+    <section class="carte" id="classique">
+      <h2>Diagramme de tresse</h2>
+      <div class="defile"><canvas id="canvas-classique"></canvas></div>
+    </section>
+    <section class="carte" id="groupe-libre">
+      <h2>Action sur le groupe libre <span id="titre-fn"></span></h2>
+      <div id="fn-images"></div>
+    </section>
+  </div>
+
+  <section id="meandres">
+    <h2>Les méandres</h2>
+    <p class="info">Chaque lacet est l'image d'un générateur : un lacet qui part du clou, tourne autour des trous. L'image fixe est
+       celle de l'arrivée ; le film, calculé en tâche de fond, la remplace dès qu'il est prêt.</p>
+    <div class="trois-colonnes" id="panneaux"></div>
+  </section>
+</main>
+
+<footer>
+  <p>Calcul en OCaml compilé en JavaScript (<code>ocaml/lib</code>), dessin sur canvas. Voir <code>etude_page_web.md</code>.</p>
+</footer>
+
+<script src="ardoise.js"></script>
+</body>
+</html>
