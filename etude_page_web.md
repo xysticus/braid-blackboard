@@ -301,6 +301,14 @@ lobes déformés) : les arêtes de l'anneau sont plus courtes que l'espace qu'un
 brins, plus les dégagements aux sommets de `tend`), donc les points s'y entassent ou sont repoussés. Une structure en secteurs
 ne peut marcher que si sa taille suit l'épaisseur du faisceau : c'est l'argument pour partir des arcs conformes eux-mêmes.
 
+Piste « triangulation hyperbolique à partir des arcs conformes » : abandonnée (2026-11-19). L'essai de 2026-11-16 (métrique de
+Klein des triangles de Delaunay, `python/Geodesiques.py`, voir `pistes_film_conforme.md`, piste 1 bis) donnait une topologie
+sûre et de beaux dessins sur les tresses légères, mais des brins qui se confondent sur les tresses chargées (des géodésiques
+voisines se rapprochent exponentiellement) et un calcul de 50 s à 7 min 30 contre quelques secondes ; le conforme n'est lisible
+que parce que ses pieds ont des positions imposées (écart régulier), ce qu'une construction par géodésiques de la surface
+trouée ne ferait pas. Les deux films de lacets restent chacun à leur rôle : dessin calculé (conforme), dessin simulé
+(triangulation).
+
 ## 12. L'escargot et le premier bouquet dans la page (étude du 2026-11-19 ; fait le même jour : escargot par le pont, bouquet par la voie 2, traduit en OCaml)
 
 Ni l'un ni l'autre n'a de mot de tresse : ce sont des films à chorégraphie libre (des trous qui suivent des chemins, des
