@@ -295,6 +295,12 @@ concentriques autour du trou contourné et partent du clou en éventail droit. M
 Les flips par traversées, ajoutés au maillage grossier, le dégradent (brins rectilignes vers un sommet lointain) : la page
 utilise le maillage grossier et Delaunay. Le Python et les films MP4 de référence restent sur l'échelle.
 
+Essai écarté (idée de l'utilisateur : des « secteurs » autour des trous) : un anneau de 6 à 12 sommets satellites autour de chaque
+trou, qui suivent leur trou, dans le maillage grossier. Mots relus justes, aucun échec, mais le dessin se dégrade (brins crénelés,
+lobes déformés) : les arêtes de l'anneau sont plus courtes que l'espace qu'un faisceau demande (écart entre brins × nombre de
+brins, plus les dégagements aux sommets de `tend`), donc les points s'y entassent ou sont repoussés. Une structure en secteurs
+ne peut marcher que si sa taille suit l'épaisseur du faisceau : c'est l'argument pour partir des arcs conformes eux-mêmes.
+
 ## 12. L'escargot et le premier bouquet dans la page (étude du 2026-11-19 ; fait le même jour : escargot par le pont, bouquet par la voie 2, traduit en OCaml)
 
 Ni l'un ni l'autre n'a de mot de tresse : ce sont des films à chorégraphie libre (des trous qui suivent des chemins, des
