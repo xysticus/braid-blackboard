@@ -22,6 +22,13 @@ const EXEMPLES = [
 
 const MAX_BRINS = 8;     // les limites de la page (les mêmes que dans ocaml/web/ardoise_web.ml)
 const MAX_LETTRES = 40;
+const MAX_BRINS_CONFORME = 6;     // le film conforme, le plus long à calculer
+const MAX_LETTRES_CONFORME = 14;
+
+// Une seule palette pour toutes les vues : le brin i du diagramme de tresse, le lacet image de x_i dans les trois films
+// et la ligne x_i ↦ … de l'action sur F_n ont la même couleur (les variables CSS --c0 … --c7 de ardoise.css, un peu
+// éclaircies en thème sombre, reprennent ces teintes pour le texte).
+const PALETTE = ['#d92626', '#1a9926', '#2640d9', '#bf9900', '#a626a6', '#0d9aa6', '#e6761a', '#6b4fbb'];
 
 // ---------------------------------------------------------------- lecture du mot
 
@@ -118,7 +125,7 @@ function afficheFn(mot, ardoise) {
   Array.from(r.fn).forEach((image, j) => {
     const entiers = Array.from(image);
     const identite = entiers.length === 1 && entiers[0] === j + 1;
-    lignes.push(`<div class="fn-ligne${identite ? ' identite' : ''}">${xMath(j + 1, 1)}<span class="fleche">↦</span>` +
+    lignes.push(`<div class="fn-ligne${identite ? ' identite' : ''}" style="color: var(--c${j % PALETTE.length})">${xMath(j + 1, 1)}<span class="fleche">↦</span>` +
       `<span class="mot">${motFnMath(entiers)}</span></div>`);
   });
   zone.innerHTML = lignes.join('');
@@ -128,7 +135,6 @@ function afficheFn(mot, ardoise) {
 
 // Les générateurs de haut en bas, un brin par couleur qui suit son brin d'un croisement à l'autre ; au croisement
 // σ_k positif le brin qui va de droite à gauche passe dessus (comme dans les notebooks, ipynbks/CanvasTresse*.ipynb).
-const COULEURS_BRINS = ['#2e9e44', '#e6b800', '#ee6fa8', '#d62728', '#1f5fd6', '#f28e2b', '#7a4fc4', '#1aa6a6'];
 
 function dessineTresse(canvas, mot) {
   const brins = nbBrins(mot);
@@ -147,7 +153,7 @@ function dessineTresse(canvas, mot) {
   ctx.fillRect(0, 0, largeur, hauteur);
   ctx.lineCap = 'butt';
   const brin = Math.max(2.2, maille / 9), trou = maille / 3;
-  const couleurs = Array.from({ length: brins }, (_, i) => COULEURS_BRINS[i % COULEURS_BRINS.length]);
+  const couleurs = Array.from({ length: brins }, (_, i) => PALETTE[i % PALETTE.length]);
 
   const diagonale = (x0, x1, couleur) => {
     const trace = (largeurTrait, couleurTrait, d) => {
@@ -187,8 +193,6 @@ function dessineTresse(canvas, mot) {
 
 // ---------------------------------------------------------------- dessin d'une image de méandre
 
-const COULEURS_CONFORME = ['#ff0000', '#00b300', '#0000ff', '#b3b300', '#b300b3', '#00b3b3'];
-const COULEURS_ARCS = ['#d92626', '#1a9926', '#2640d9', '#bf9900', '#a626a6', '#0d9aa6'];
 
 function trace(ctx, p) {
   if (p.length < 2) return;
@@ -215,18 +219,18 @@ function dessineImage(canvas, image, mode) {
   ctx.lineJoin = 'round';
   image.lacets.forEach((p, i) => {
     if (mode === 'conforme') {
-      ctx.strokeStyle = COULEURS_CONFORME[i % COULEURS_CONFORME.length];
+      ctx.strokeStyle = PALETTE[i % PALETTE.length];
       ctx.lineWidth = 3.5;
       trace(ctx, p);
     } else if (mode === 'diagramme') {
       ctx.strokeStyle = '#fff';           // liseré blanc : les brins voisins restent lisibles
       ctx.lineWidth = 0.85 * image.ecart;
       trace(ctx, p);
-      ctx.strokeStyle = COULEURS_ARCS[i % COULEURS_ARCS.length];
+      ctx.strokeStyle = PALETTE[i % PALETTE.length];
       ctx.lineWidth = 2.2;
       trace(ctx, p);
     } else {
-      ctx.strokeStyle = COULEURS_ARCS[i % COULEURS_ARCS.length];
+      ctx.strokeStyle = PALETTE[i % PALETTE.length];
       ctx.lineWidth = 2.5;
       trace(ctx, p);
     }
@@ -243,8 +247,7 @@ function dessineImage(canvas, image, mode) {
 // ---------------------------------------------------------------- un lecteur : image fixe, puis film
 
 const IMAGES_PAR_SECONDE = 25;
-const PAUSE_DEBUT = 12;   // en images, comme les films MP4 : 0,5 s au début, 1,5 s à la fin
-const PAUSE_FIN = 38;
+const PAUSE_DEBUT = 12;   // en images : 0,5 s sur la première image, puis le film se joue une fois et s'arrête sur la dernière
 
 class Lecteur {
   constructor(parent, mode, titre) {
@@ -318,10 +321,11 @@ class Lecteur {
     this.bouton = this.etat.querySelector('button');
     this.curseur = this.etat.querySelector('input');
     this.bouton.onclick = () => (this.lecture ? this.arrete() : this.joue());
+    this.bouton.title = 'lecture / pause (relance le film s\'il est fini)';
     this.curseur.oninput = () => { this.arrete(); this.t = Number(this.curseur.value); this.montre(); };
   }
 
-  duree() { return PAUSE_DEBUT + (this.images.length - 1) + PAUSE_FIN; }
+  duree() { return PAUSE_DEBUT + (this.images.length - 1); }
 
   montre() {
     const n = this.images.length;
@@ -332,6 +336,7 @@ class Lecteur {
 
   joue() {
     if (this.images.length < 2) return;
+    if (this.t >= this.duree() - 1) this.t = 0;   // relancer un film fini : on repart du début
     this.lecture = true;
     if (this.bouton) this.bouton.textContent = '⏸';
     this.derniere = performance.now();
@@ -339,7 +344,12 @@ class Lecteur {
       if (!this.lecture) return;
       this.t += (maintenant - this.derniere) * IMAGES_PAR_SECONDE / 1000;
       this.derniere = maintenant;
-      if (this.t >= this.duree()) this.t = 0;
+      if (this.t >= this.duree() - 1) {   // fin : on reste sur la dernière image
+        this.t = this.duree() - 1;
+        this.montre();
+        this.arrete();
+        return;
+      }
       this.montre();
       requestAnimationFrame(pas);
     };
@@ -356,8 +366,8 @@ class Lecteur {
 
 const MODES = [
   { id: 'diagramme', titre: 'Diagramme de courbes' },
-  { id: 'conforme', titre: 'Représentation conforme' },
-  { id: 'rubans', titre: 'Rubans' },
+  { id: 'conforme', titre: 'Action sur le groupe libre et ses lacets' },
+  { id: 'rubans', titre: 'Action sur le groupe libre et ses rubans' },
 ];
 
 let lecteurs = [];
@@ -436,7 +446,15 @@ function chargeBibliotheque() {
   });
 }
 
+function afficheLimites() {
+  const l = document.getElementById('limites');
+  if (!l) return;
+  l.innerHTML = `Limites : <b>${MAX_BRINS} brins</b> (σ<sub>1</sub> … σ<sub>${MAX_BRINS - 1}</sub>) et <b>${MAX_LETTRES} lettres</b> au plus ; ` +
+    `pour le film des lacets (le plus long à calculer), <b>${MAX_BRINS_CONFORME} brins</b> et <b>${MAX_LETTRES_CONFORME} lettres</b>.`;
+}
+
 async function demarre() {
+  afficheLimites();
   const exemples = document.getElementById('exemples');
   EXEMPLES.forEach((e) => {
     const b = document.createElement('button');

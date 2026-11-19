@@ -124,8 +124,9 @@ web/ardoise_lib.js           produit par dune (js_of_ocaml), non suivi par git o
   (une lettre à la fois).
 - **Changer de mot** : on tue les workers en cours (`terminate`) et on repart. Un petit cache par mot (en mémoire) évite
   de recalculer si l'on revient à un mot déjà vu.
-- **Publication** : une page statique, donc GitHub Pages (le dépôt est déjà sur GitHub). `ardoise_lib.js` est soit
-  validé dans le dépôt, soit construit par une action GitHub.
+- **Publication** : une page statique. Un workflow GitHub Pages qui construit `ardoise_lib.js` existe
+  (`.github/workflows/pages.yml` : la construction réussit en 19 minutes, dont 17 pour compiler OCaml ; Pages n'est pas
+  activé). Le déploiement visé : test en local, puis serveur personnel servi par Caddy (section 11).
 
 ### Données entre le calcul et le dessin
 Une image = `{ lacets : Float32Array[], trous : Float32Array, clou : [x, y] }`, repère de la page 800 × 800 comme
@@ -188,7 +189,7 @@ la représentation de Burau…), dis-le avant que je fige la liste.
 3. ~~**Page minimale** : champ, mot en MathML, mot de F_n, diagramme classique, liste des 12 tresses.~~ Fait (`web/`).
 4. ~~**Lecteurs canvas** pour les trois modes, remplacement image fixe → film, progression.~~ Fait. Les 12 tresses d'exemple
    passent sans erreur ni anomalie dans les trois modes (essai sous node).
-5. **Finitions** : annulation d'un calcul quand on change de mot, cache, messages d'erreur, publication sur GitHub Pages.
+5. **Finitions** : annulation d'un calcul quand on change de mot, cache, messages d'erreur, déploiement sur serveur personnel (Caddy).
 
 Chaque étape est visible dans le navigateur ; la 1 décide de tout le reste.
 
@@ -216,3 +217,41 @@ Chaque étape est visible dans le navigateur ; la 1 décide de tout le reste.
 2. La liste de la section 7 te convient-elle ? Faut-il un tour complet à 4 ou 5 brins, ou plus de tresses négatives ?
 3. Limite de taille du mot libre : 6 brins et 14 lettres pour le conforme te va-t-elle ?
 4. Les films du bouquet et de l'escargot ne sont pas dans la page (ils n'ont pas de mot de tresse) : on les laisse de côté ?
+
+## 11. Déploiement sur serveur personnel (étude du 2026-11-19, rien n'a été modifié sur le serveur)
+
+Constat (lecture seule par ssh) : Caddy actif, `/etc/caddy/Caddyfile` appartenant à root (modifier et recharger
+demande sudo, avec mot de passe). Le site **`le site`** sert déjà `/chemin/du/site` (dossier à toi) : une page
+d'accueil `index.html` et un dossier par application (les autres applications du site), avec compression (`encode zstd gzip`), en-têtes de sécurité, cache de longue durée pour `/<app>/assets/…`
+(fichiers à empreinte) et `no-cache` pour les pages d'entrée (`index.html`, `sw.js`, manifeste).
+
+**Option A (recommandée) : `l'adresse du site`.** Aucun DNS, aucun nouveau certificat. Il suffit de copier
+`web/` dans `/chemin/du/site/ardoise/` (dossier créable sans sudo). Les chemins de la page sont relatifs : les Web Workers
+et `ardoise_lib.js` se chargent sous ce sous-chemin sans changement. Seul souci : nos fichiers (`ardoise.js`,
+`travail.js`, `ardoise_lib.js`, `ardoise.css`) n'ont pas d'empreinte et ne sont pas sous `assets/` : Caddy envoie
+`ETag` et `Last-Modified`, donc un navigateur peut les garder quelques heures par heuristique et servir un vieux JS après
+un redéploiement. Une petite addition au Caddyfile, dans le bloc `le site`, règle cela (revalidation à chaque
+visite, réponse 304 presque gratuite) :
+
+```
+	# Ardoise à tresse : fichiers sans empreinte, revérifiés à chaque visite (ETag)
+	@ardoise path /ardoise/*.js /ardoise/*.css /ardoise/*.svg
+	header @ardoise Cache-Control "no-cache"
+```
+
+puis `sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy` (à faire par toi ; sauvegarde
+habituelle : `Caddyfile.avant-…`). Sans cette addition, tout marche, avec le risque de cache. On peut aussi ajouter une
+entrée « Ardoise à tresse » dans `/chemin/du/site/index.html` (la page d'accueil des applications, à ta main).
+
+**Option B : `un sous-domaine`.** Un enregistrement DNS en plus, un bloc `un sous-domaine { root * … file_server
+encode zstd gzip }` dans le Caddyfile (sudo), certificat automatique. Plus propre pour l'adresse, plus de travail ; rien
+n'y gagne la page.
+
+**Mise en place proposée (A).** Un script `web/deploie.sh` : `construit.sh` (compile `ardoise_lib.js` chez toi, en
+quelques secondes), puis `rsync -av --delete` de `index.html`, `ardoise.css`, `ardoise.js`, `travail.js`,
+`ardoise_lib.js`, `favicon.svg` vers `utilisateur@serveur:/chemin/du/site/ardoise/`. Pas de compilation sur le serveur
+(inutile d'y installer OCaml) ; le dépôt git du serveur (`depot-nu`) reste le simple dépôt qu'il est. Le test en local
+(`python3 -m http.server` dans `web/`) garde sa place avant chaque envoi.
+
+Décisions à prendre : A ou B ; ajoute-t-on la règle de cache au Caddyfile (recommandé) ; une carte dans l'accueil des
+applications.

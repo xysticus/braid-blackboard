@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- un croisement du diagramme de tresse, vu de haut en bas : le brin vert passe sur le rouge (mêmes teintes que la page) -->
+  <rect width="64" height="64" rx="14" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="butt">
+    <path d="M20 4 C20 32 44 32 44 60" stroke="#d92626" stroke-width="8"/>
+    <path d="M44 4 C44 32 20 32 20 60" stroke="#ffffff" stroke-width="15"/>
+    <path d="M44 4 C44 32 20 32 20 60" stroke="#1a9926" stroke-width="8"/>
+  </g>
+</svg>

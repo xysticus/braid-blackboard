@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ardoise à tresse</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="ardoise.css">
 </head>
 <body>
@@ -20,6 +21,7 @@
     <p id="erreur" class="erreur" hidden></p>
     <p class="aide">Entiers non nuls séparés par des espaces : <b>k</b> pour σ<sub>k</sub>, <b>-k</b> pour σ<sub>k</sub><sup>−1</sup>.
        Les écritures <code>σ2⁻¹</code>, <code>s2^-1</code>, <code>s1^3</code> sont acceptées.</p>
+    <p class="aide" id="limites"></p>
     <div id="exemples" aria-label="Tresses d'exemple"></div>
   </section>
 
@@ -43,7 +45,7 @@
   <section id="meandres">
     <h2>Les méandres</h2>
     <p class="info">Chaque lacet est l'image d'un générateur : un lacet qui part du clou, tourne autour des trous. L'image fixe est
-       celle de l'arrivée ; le film, calculé en tâche de fond, la remplace dès qu'il est prêt.</p>
+       celle de l'arrivée ; le film, calculé en tâche de fond, la remplace dès qu'il est prêt et se joue une fois.</p>
     <div class="trois-colonnes" id="panneaux"></div>
   </section>
 </main>

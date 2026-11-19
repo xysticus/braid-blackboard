@@ -23,15 +23,25 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
 
 ## Publication
 
-`.github/workflows/pages.yml` publie la page sur GitHub Pages à chaque poussée sur `master` qui touche `web/` ou la
-bibliothèque OCaml : il installe OCaml 5.4 et js_of_ocaml, lance `construit.sh` (donc `ardoise_lib.js` n'est jamais dans
-git) puis dépose `index.html`, `ardoise.css`, `ardoise.js`, `travail.js` et `ardoise_lib.js`. À régler une fois dans le
-dépôt GitHub : Settings → Pages → Source : « GitHub Actions ». Les chemins de la page sont relatifs : elle marche sous
-`https://<compte>.github.io/braid-blackboard/`.
+- **Test en local** : `web/construit.sh`, puis `python3 -m http.server` dans `web/`.
+- **serveur personnel** (option A de l'étude) : `web/deploie.sh` construit `ardoise_lib.js` chez soi puis copie la page par rsync dans
+  `/chemin/du/site/ardoise/` (sans sudo) ; elle est servie par Caddy sur `l'adresse du site`.
+  `web/deploie.sh -n` : essai à blanc. Une fois, avec sudo, ajouter au bloc `le site` du Caddyfile la règle de
+  cache (fichiers sans empreinte, revérifiés à chaque visite) :
+
+  ```
+  	# Ardoise à tresse : fichiers sans empreinte, revérifiés à chaque visite (ETag)
+  	@ardoise path /ardoise/*.js /ardoise/*.css /ardoise/*.svg
+  	header @ardoise Cache-Control "no-cache"
+  ```
+
+  puis `sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy`.
+- `.github/workflows/pages.yml` : un workflow GitHub Pages (construit `ardoise_lib.js` chez GitHub, 19 minutes dont 17 pour
+  compiler OCaml). Il est resté dans le dépôt ; le déploiement visé est serveur personnel.
 
 ## Les fichiers
 
-- `index.html`, `ardoise.css` : la page ;
+- `index.html`, `ardoise.css`, `favicon.svg` (un croisement du diagramme de tresse) : la page ;
 - `ardoise.js` : lecture du mot (`1 -2 3`, `σ1 σ2^-1`, `σ₁σ₂⁻¹`, `s1^3`), MathML, diagramme classique, lecteurs de films ;
 - `travail.js` : le Web Worker (image fixe, puis images du film envoyées une à une) ;
 - `ardoise_lib.js` : produit par `construit.sh`.

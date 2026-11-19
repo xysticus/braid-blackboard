@@ -7,11 +7,13 @@
   --accent: #2459b8;
   --erreur: #b3261e;
   --ok: #2e7d4f;
+  --c0: #d92626; --c1: #1a9926; --c2: #2640d9; --c3: #bf9900; --c4: #a626a6; --c5: #0d9aa6; --c6: #e6761a; --c7: #6b4fbb;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --fond: #14171d; --carte: #1d212a; --encre: #e8eaf0; --doux: #9aa3b5; --trait: #343a47; --accent: #7aa7ff;
     --erreur: #ff8a80; --ok: #7fd1a0;
+    --c0: #ff6b6b; --c1: #4cc760; --c2: #7b93ff; --c3: #e6c027; --c4: #d572d5; --c5: #3cc7d4; --c6: #ff9a4d; --c7: #a58cf0;
   }
 }
 * { box-sizing: border-box; }
@@ -58,8 +60,8 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 #fn-images { display: grid; gap: 4px; font-size: 1.1rem; }
 .fn-ligne { display: grid; grid-template-columns: auto auto 1fr; gap: 0.6em; align-items: baseline; }
 .fn-ligne .mot { min-width: 0; overflow-wrap: anywhere; }
-.fn-ligne .fleche { color: var(--doux); }
-.fn-ligne.identite .mot { color: var(--doux); }
+.fn-ligne .fleche { opacity: 0.7; }
+.fn-ligne.identite { opacity: 0.55; }
 
 .panneau { background: var(--carte); border: 1px solid var(--trait); border-radius: 12px; padding: 12px 12px 10px; }
 .panneau h3 { font-size: 1rem; margin: 0 0 8px; }
