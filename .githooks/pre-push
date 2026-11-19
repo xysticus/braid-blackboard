@@ -1,0 +1,20 @@
+#!/bin/sh
+# Avant chaque push : reconstruit web/ardoise_lib.js (l'OCaml compilé en JavaScript) et refuse de pousser s'il n'est plus celui qui est
+# commité, pour que le site publié (workflow GitHub Pages, lancé par le push) ait toujours le JS à jour.
+# Activé par : git config core.hooksPath .githooks   (à refaire après un clone ; les hooks ne sont pas versionnés par défaut)
+# Pour passer outre (à éviter) : git push --no-verify
+racine="$(git rev-parse --show-toplevel)"
+cd "$racine" || exit 1
+
+if ! "$racine/web/construit.sh" >/dev/null 2>&1; then
+  echo "pre-push : web/construit.sh a échoué (OCaml ou js_of_ocaml indisponible ?). Lance-le à la main pour voir l'erreur :" >&2
+  echo "           web/construit.sh" >&2
+  exit 1
+fi
+
+if ! git diff --quiet -- web/ardoise_lib.js; then
+  echo "pre-push : web/ardoise_lib.js n'est plus à jour avec l'OCaml : il vient d'être reconstruit." >&2
+  echo "           Commite-le puis repousse :  git add web/ardoise_lib.js && git commit -m \"ardoise_lib.js à jour\" && git push" >&2
+  exit 1
+fi
+exit 0

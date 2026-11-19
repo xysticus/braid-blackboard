@@ -3,8 +3,12 @@
 # les fichiers sont seulement copiés. Réglage à faire une fois : Settings → Pages → Source : « GitHub Actions ».
 name: Page web
 
-# Déclenchement manuel seulement (onglet Actions → Page web → Run workflow) : plus de lancement à chaque poussée.
+# Lancé par chaque push sur master qui touche web/ (le hook .githooks/pre-push a reconstruit ardoise_lib.js avant) ; aussi à la main
+# (onglet Actions → Page web → Run workflow).
 on:
+  push:
+    branches: [master]
+    paths: ['web/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

@@ -37,8 +37,11 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
   ```
 
   puis valider et recharger Caddy (`caddy validate`, `systemctl reload caddy`).
-- `.github/workflows/pages.yml` : un workflow GitHub Pages, en déclenchement manuel, qui copie seulement les fichiers de `web/`
-  (dont `ardoise_lib.js`, suivi par git) : rien n'est compilé chez GitHub (la compilation d'OCaml y prenait 19 minutes).
+- `.github/workflows/pages.yml` : le workflow GitHub Pages, lancé par chaque push sur `master` qui touche `web/` (et à la main :
+  onglet Actions). Il copie seulement les fichiers de `web/` (dont `ardoise_lib.js`, suivi par git) : rien n'est compilé chez GitHub
+  (la compilation d'OCaml y prenait 19 minutes). Pour que le JS publié soit toujours à jour, le hook `.githooks/pre-push` lance
+  `web/construit.sh` avant chaque push et refuse de pousser si `ardoise_lib.js` a changé (à commiter, puis repousser). À activer
+  une fois par clone : `git config core.hooksPath .githooks` ; `git push --no-verify` passe outre (à éviter).
 
 Le film de la triangulation utilise le maillage grossier des films d'arcs (`Film.cree ~grossier:true`) : les arêtes partent
 en étoile de chaque trou, les brins s'enroulent autour du trou contourné et partent du clou en éventail.
