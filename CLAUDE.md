@@ -35,7 +35,9 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   ardoise, puis un chapitre facultatif. La plomberie est dans `python/Interface.py` : lecture du mot écrit (`lis_mot`, mêmes limites :
   8 brins et 40 lettres, 6 brins et 14 lettres pour les lacets et la triangulation), douze exemples, lecteur `ipywidgets`
   (curseur et bouton de lecture, ni vidéo ni `ffmpeg` ; le curseur change l'image par le noyau, donc `en_calcul` cache
-  les lecteurs déjà affichés pendant qu'un film se calcule, et un nouveau lecteur n'existe qu'une fois son film prêt), un film par fonction (`film_diagramme_de_courbes`, `film_lacets`
+  les lecteurs déjà affichés pendant qu'un film se calcule, et un nouveau lecteur n'existe qu'une fois son film prêt ; pendant le calcul, une barre `IntProgress` (`progression`,
+  `avance` ; le noyau occupé peut envoyer des messages au navigateur, pas en recevoir) avance par lettre, ou par image pour
+  l'escargot et le bouquet ; `dessins_conforme` a un rappel facultatif `progres`), un film par fonction (`film_diagramme_de_courbes`, `film_lacets`
   — `dessins_conforme` + `surface_conforme` de `Conforme.py`, que `film_conforme` utilise aussi —, `film_triangulation`,
   `film_rubans`), deux films sans mot (`film_escargot`, `film_bouquet`, dans le chapitre « Un peu de poésie » après
   l'ardoise, chacun derrière un bouton `a_la_demande` : rien ne se calcule en « exécuter toutes les cellules », 8 s au lieu

@@ -418,10 +418,11 @@ def nb_croisements(lignes, clou, rayon=12):
 
 
 def dessins_conforme(tresse, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.5,
-                     verifie=False, raccord='triangulation'):
+                     verifie=False, raccord='triangulation', progres=None):
     """Calcule les images du film de `film_conforme` sans les dessiner ni les écrire : renvoie (dessins, durees,
     anomalies). Un dessin est (lignes, trous, clou, axe), à peindre avec `surface_conforme` ; durees : la durée de
-    chaque image en millisecondes (pause comprise). Mêmes paramètres que `film_conforme`."""
+    chaque image en millisecondes (pause comprise). Mêmes paramètres que `film_conforme`, et progres : fonction appelée
+    après chaque lettre avec (nombre de lettres faites, nombre de lettres)."""
     nb_trous = max(map(operator.abs, tresse), default=5) + 1
     h_int, l_int = hauteur - 2 * marge, largeur - 2 * marge
     cle = etat_de_tresse([], nb_trous)
@@ -503,6 +504,7 @@ def dessins_conforme(tresse, duree=40, pause=500, hauteur=400, largeur=400, marg
             dessins.append((lignes, trous, lettre.clou, dessin_axe))
             durees.append(duree)
         cle = suivante
+        if progres: progres(k + 1, len(tresse))
     durees[-1] = 3 * pause # pas de pause entre les lettres : seulement sur la première et la dernière image
     return dessins, durees, anomalies
 

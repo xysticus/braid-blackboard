@@ -4,6 +4,7 @@ mobile, rubans), l'escargot et le bouquet, et l'ardoise elle-même (`Ardoise`). 
 `Arcs.py` et `Triangulation.py`, et au notebook pour le diagramme de tresse et l'action sur le groupe libre.
 Module : rien ne s'exécute à l'import.'''
 
+import contextlib
 import functools
 import re
 import weakref
@@ -117,6 +118,32 @@ def lecteur(images, largeur=500, ms=40):
     return boite
 
 
+BARRE = {'active': None}      # la barre de progression que les films font avancer (voir `progression`)
+
+
+@contextlib.contextmanager
+def progression(sortie):
+    """Montre dans `sortie` (un `Output`) une barre de progression, que les films font avancer par `avance` tant que dure le
+    bloc. Le noyau occupé ne peut pas recevoir de message du navigateur, mais il peut en envoyer : la barre avance."""
+    barre = widgets.IntProgress(value=0, min=0, max=100, description='Calcul :', layout=widgets.Layout(width='380px'))
+    sortie.clear_output()
+    with sortie:
+        display(barre)
+    BARRE['active'] = barre
+    try:
+        yield
+    finally:
+        BARRE['active'] = None
+
+
+def avance(fait, total, debut=0.0, fin=1.0):
+    """Fait avancer la barre active : `fait` étapes sur `total`, dans la part [debut, fin] de la barre (sans effet s'il n'y
+    en a pas)."""
+    barre = BARRE['active']
+    if barre is not None:
+        barre.value = round(100 * (debut + (fin - debut) * fait / total))
+
+
 def en_calcul(film):
     """Décorateur des fonctions qui calculent un film. Pendant le calcul, le noyau ne répond plus : un lecteur déjà affiché
     ferait avancer son curseur sans changer d'image. On le cache jusqu'à la fin du calcul ; le nouveau lecteur n'existe
@@ -137,16 +164,22 @@ def film_diagramme_de_courbes(tresse):
     """Un seul point fixe, à gauche ; les arcs sont les segments de l'axe, que la tresse emporte (`Arcs.DiagrammeCourbes`)."""
     film = DiagrammeCourbes(tresse)
     images = [png(film.cadre(lisere=True))]
-    for sigma in tresse:
+    for k, sigma in enumerate(tresse):
         film.lettre(sigma, rendu=lambda f: images.append(png(f.cadre(lisere=True))))
+        avance(k + 1, len(tresse))
     return lecteur(images)
 
 
 @en_calcul
 def film_lacets(tresse):
     """Les lacets par représentation conforme (`Conforme.dessins_conforme`)."""
-    dessins, durees, anomalies = dessins_conforme(tresse, hauteur=800, largeur=800, marge=60)
-    return lecteur([png(surface_conforme(d, 800, 800, 60, largeur_brin=3)) for d in dessins])
+    dessins, durees, anomalies = dessins_conforme(tresse, hauteur=800, largeur=800, marge=60,
+                                                  progres=lambda fait, total: avance(fait, total, 0, 0.8))
+    images = []
+    for i, dessin in enumerate(dessins, start=1):
+        images.append(png(surface_conforme(dessin, 800, 800, 60, largeur_brin=3)))
+        avance(i, len(dessins), 0.8, 1)
+    return lecteur(images)
 
 
 @en_calcul
@@ -154,8 +187,9 @@ def film_triangulation(tresse):
     """Les lacets sur une triangulation mobile (`Triangulation.Film`), sans tracer ses arêtes."""
     film = Film(tresse)
     images = [png(film.cadre(ecart=film.dispositions[0][1], avec_arêtes=False))]
-    for sigma in tresse:
+    for k, sigma in enumerate(tresse):
         film.lettre(sigma, avec_arêtes=False, rendu=lambda surface: images.append(png(surface)))
+        avance(k + 1, len(tresse))
     return lecteur(images)
 
 
@@ -164,8 +198,9 @@ def film_rubans(tresse):
     """Les lacets sans clou : le bord d'un ruban tendu entre un trou fixe et son trou voyageur (`Arcs.FilmArcs`)."""
     film = FilmArcs(tresse, ecart_fixes=30)
     images = [png(film.cadre(rubans=True))]
-    for sigma in tresse:
+    for k, sigma in enumerate(tresse):
         film.lettre(sigma, rendu=lambda f: images.append(png(f.cadre(rubans=True))))
+        avance(k + 1, len(tresse))
     return lecteur(images)
 
 
@@ -175,10 +210,12 @@ def film_escargot(duree=12.0, images_par_seconde=25):
     from Escargot import Escargot
     escargot = Escargot()
     images = [png(escargot.dessine(0.0))]
-    for n in range(1, round(duree * images_par_seconde) + 1):
+    nombre = round(duree * images_par_seconde)
+    for n in range(1, nombre + 1):
         t = n / images_par_seconde
         escargot.deplace(escargot.choregraphie(t), pas_max=2 * escargot.e)
         images.append(png(escargot.dessine(t)))
+        avance(n, nombre)
     return lecteur(images, largeur=640, ms=round(1000 / images_par_seconde))
 
 
@@ -191,9 +228,11 @@ def film_bouquet(duree=13.5, images_par_seconde=25, saccade=2):
     pousse = Pousse(copy.deepcopy(BOUQUET))
     pas = saccade / images_par_seconde
     images = [png(pousse.dessine(0.0))]
-    for n in range(1, round(duree / pas) + 1):
+    nombre = round(duree / pas)
+    for n in range(1, nombre + 1):
         pousse.deplace(*pousse.cibles(n * pas), pas_max=2 * pousse.e)
         images.append(png(pousse.dessine(n * pas)))
+        avance(n, nombre)
     return lecteur(images, largeur=420, ms=round(1000 * pas))
 
 
@@ -205,11 +244,9 @@ def a_la_demande(film, etiquette='Calculer le film'):
 
     def clic(_):
         bouton.disabled = True
-        sortie.clear_output()
-        with sortie:
-            display(widgets.HTML('Calcul en cours…'))
         try:
-            resultat = film()
+            with progression(sortie):
+                resultat = film()
             bouton.layout.display = 'none'
         except Exception as erreur:
             resultat = widgets.HTML(f'<span style="color:#b00020">Le calcul a échoué : {type(erreur).__name__} {erreur}</span>')
@@ -287,10 +324,9 @@ class Ardoise:
             with sortie:
                 display(widgets.HTML(f'Ce mot a {" et ".join(raisons)} : trop pour ce film. Les autres films sont calculés.'))
             return
-        with sortie:
-            display(widgets.HTML('Calcul en cours…'))
         try:
-            resultat = fabrique(mot)
+            with progression(sortie):
+                resultat = fabrique(mot)
         except Exception as erreur:
             resultat = widgets.HTML(f'<span style="color:#b00020">Le calcul a échoué : {type(erreur).__name__} {erreur}</span>')
         sortie.clear_output()
