@@ -71,7 +71,7 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 - `docs/ocaml.md` : état des étapes OCaml, installation. `docs/page_web.md` : fabrication, publication et déploiement de la page.
 - `docs/prochaines_etapes.md` : objectifs et avancement du film des méandres.
 - `pistes_film_conforme.md`, `plan_ocaml.md`, `etude_page_web.md`, `conventions_de_signe.md` (β de l'article *Des matrices pour des
-  tresses* = β⁻¹ chez nous : on garde nos conventions), `etude_lignes_de_construction.md` (rien d'implémenté).
+  tresses* = β⁻¹ chez nous : on garde nos conventions), `etude_lignes_de_construction.md` (lignes de construction facultatives, notebook et page web : rien d'implémenté).
 
 ## Conventions
 

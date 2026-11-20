@@ -4,6 +4,7 @@ Idée : comme le lecteur des films (`lecteur` dans `python/Interface.py`) est le
 case « lignes de construction ». Elle montre, sous le sujet, ce qui sert à le fabriquer (l'axe et la ligne brisée,
 la triangulation…). Ce serait un deuxième jeu d'images, calculé en même temps que le film, et le lecteur passerait de l'un
 à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. Rien n'est implémenté.
+La dernière section, « Sur la page web », transpose l'étude à la page, où le principe est différent (et bien moins cher).
 
 ## Ce qui existe déjà, film par film
 
@@ -72,3 +73,67 @@ même ordre que B. B n'aurait d'intérêt que pour modifier le style de la const
 - **Les mots longs** : même limite de l'ardoise que pour les films seuls ? La mémoire du navigateur et du noyau double.
 - **Lisibilité** : en gris clair et trait fin, comme `construction=True` des lacets ; vérifier que les arêtes ne noient pas
   le sujet quand la tresse est chargée.
+
+## Sur la page web
+
+**Le principe est autre.** La page ne fabrique pas d'images : une « image » est faite de nombres (les polylignes des lacets, la
+position des trous), calculés par un Web Worker et redessinés sur un canvas par `dessineImage` (`web/ardoise.js`). Le lecteur
+(`Lecteur`) garde toutes les images en mémoire et possède déjà sa barre de progression. Il n'y a donc **pas de deuxième jeu
+d'images** : chaque image gagne un champ `construction` (des segments), que `dessineImage` trace *avant* les lacets si une case est
+cochée. Cocher ou décocher redessine l'image courante : instantané, sans worker.
+
+### Ce qui existe déjà, film par film
+
+| Film de la page | Lignes de construction | Où dans le code | Pour en faire un champ de l'image |
+|---|---|---|---|
+| Diagramme de courbes, rubans | les arêtes du maillage grossier | `image_arcs` (`ocaml/web/ardoise_web.ml`) a déjà `film.maillage` | un champ de plus : les arêtes (`Triangulation.Maillage.aretes`) |
+| Triangulation | les arêtes du maillage grossier | `image_triangulation` a déjà `film.maillage` | idem (la page ne les trace pas aujourd'hui : « sans le maillage gris ») |
+| Lacets | l'axe et la ligne brisée L–A–B–R | **Python seulement** (`Lettre.aretes`, et les opacités de `dessin_axe` pendant le raccord) ; `Film_conforme.image` n'a que `lignes`, `trous`, `clou` | **le seul vrai travail** : porter `aretes` en OCaml (une douzaine de lignes) et les opacités du raccord, avec un test contre la référence Python |
+| Escargot, bouquet | rien | — | à ne pas faire |
+
+### Ce que cela coûte (mesuré)
+
+Mesures en OCaml sur `[1, -2, 1, -2, 3]`, dernière image, maillage de la page :
+
+| Film | Points des lacets | Arêtes du maillage | Données en plus |
+|---|---|---|---|
+| Rubans | 2 544 (5 088 nombres) | 69 (276 nombres) | environ +5 % |
+| Diagramme de courbes | 2 092 (4 184 nombres) | 60 (240 nombres) | environ +6 % |
+| Triangulation | 7 450 (14 900 nombres) | 60 (240 nombres) | environ +2 % |
+
+Rien à calculer en plus (les positions sont déjà dans le maillage), et 60 à 70 segments à tracer par image : négligeable. On peut
+donc **toujours** envoyer la construction ; la case ne commande que le tracé. La question « calculer le deuxième jeu seulement
+si demandé » de la section précédente ne se pose pas ici.
+
+**Pourquoi c'est bien moins cher que dans le notebook :** le notebook envoie des images rasterisées (PNG), et un deuxième jeu
+double le rendu et la mémoire ; la page envoie des vecteurs, et la construction n'en est qu'un petit supplément.
+
+### Ce que ferait la page
+
+1. `ocaml/web/ardoise_web.ml` : `image` reçoit un champ facultatif `construction` (segments à plat, `x0, y0, x1, y1, …`).
+   `travail.js` n'a rien à changer : `enFloat32` convertit déjà les tableaux de nombres.
+2. Lacets : le port de `aretes` et des opacités du raccord (voir ci-dessus), avec un test dans `dune test` contre une référence écrite
+   par `python ocaml/test/genere_reference_conforme.py`. Les films MP4 d'OCaml ne changent pas.
+3. `web/ardoise.js` : `dessineImage` trace `image.construction` en premier, en gris clair et trait fin ; `etendue` (qui décide du
+   zoom arrière) **ignore** la construction : l'axe des lacets va à ±10 000 et les arêtes du maillage touchent le bord du cadre,
+   et l'un comme l'autre dézoomeraient tout le film ; `Lecteur` reçoit une case par film, qui redessine l'image courante, cachée
+   pour l'escargot, le bouquet et les films « indisponibles ».
+4. `web/index.html` et `web/ardoise.css` : l'étiquette et le style de la case ; une phrase dans l'infobulle de chaque film.
+5. `web/construit.sh` : `ardoise_lib.js` est reconstruit et commité (le hook `pre-push` le refuse sinon).
+
+### Questions ouvertes
+
+- **Rubans : arêtes ou arcs ?** Un ruban est l'épaississement d'un arc (`Arcs.polyligne` est déjà calculé). Tracer l'arc au centre du ruban
+  dirait bien plus que les arêtes du maillage ; c'est un second ensemble de polylignes (environ +100 % de données, pour ce film
+  seulement). À décider en regardant des images ; pareil pour le diagramme de courbes, dont les arcs *sont* les segments de l'axe.
+- **Lacets : le raccord.** Pendant le raccord, les segments L–A et B–R s'estompent pendant que L–B et A–R apparaissent : si le tracé
+  les montre sans estompage, ils sautent. Il faut donc les opacités, d'où le port plus lourd que les autres films.
+- **Par défaut décochée.** Et l'état de la case : conservé quand le mot change ? (je pense que oui).
+- **Une case par film** (demandé) ou aussi une case commune ?
+
+### Une remarque pour le notebook
+
+Le coût du notebook vient de ce qu'il envoie des PNG. Un lecteur qui redessinerait des polylignes, par exemple sur un canvas
+d'`ipycanvas` (déjà dans `environment.yml`), rendrait la construction presque gratuite, comme sur la page. Ce serait un autre
+chantier (réécrire dans le notebook le dessin que fait `dessineImage`), à comparer avec la recommandation de la section
+précédente (deux jeux d'images complets).
