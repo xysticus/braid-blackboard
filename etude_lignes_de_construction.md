@@ -117,8 +117,15 @@ identiques octet pour octet entre Python et OCaml). Pour que le notebook montre 
     clou** ; les rubans ont leurs *n* trous voyageurs et **n trous fixes espacés de 30 px sur une ligne en bas, sans clou**. Le bas
     des rubans est donc fait de plusieurs petits éventails serrés qui ne bougent pas ; celui de la triangulation d'un seul, qui
     converge vers le clou.
-  - Les deux films n'ont pas non plus la même échelle (la triangulation remplit le cadre, les rubans sont plus petits et plus
-    resserrés), ce qui accentue la différence d'aspect.
+  - **La différence d'aspect vient surtout du nombre de brins à dessiner, pas du maillage.** Le film de la triangulation dessine les
+    images des générateurs : pour `[1, -2, 1, -2, 3]`, des mots de 17, 5, 15 et 1 lettres, soit 38 passages autour des trous, et
+    des polylignes qui coupent l'axe 52 fois ; chaque passage est un brin de plus à loger. Il les tasse à écart fixe (`ecart`,
+    `tend`) et élargit la disposition des trous en proportion : d'où les faisceaux serrés autour des trous. Le film des rubans n'a
+    qu'**un arc simple par générateur** (4 ici), sans enroulement : quelques traits fins, et un cadre bien moins rempli (même chose
+    sur la tresse de référence à 5 brins : mots de 5, 7, 3, 5 et 1 lettres, soit 21 passages, contre 5 arcs). C'est l'argument du
+    diagramme de courbes : un arc par générateur porte la même information que le lacet.
+  - **Conséquence pour la construction :** sous un faisceau dense, les arêtes expliquent où les brins se plient ; sous quelques arcs
+    simples, il y a presque rien à expliquer. Cela confirme que la triangulation est le premier film à équiper.
   - **Gris clair à 1,5 px** : discret, presque une toile de fond ; trop faible pour les rubans, qui sont fins.
   - **Gris moyen à 2,2 px** : lisible pour les deux films, sans écraser les lacets. C'est le réglage à retenir pour une première version.
   - Pour les rubans, les arêtes se lisent mais disent peu : un ruban suit presque toujours une arête (de son trou fixe à son trou
