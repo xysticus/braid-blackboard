@@ -353,7 +353,10 @@ function etendue(images) {
   for (const im of images) {
     im.lacets.forEach(parcourt);
     parcourt(im.trous);
-    parcourt(im.clou);
+    // les films d'arcs (diagramme de courbes, rubans) n'ont pas de clou : le leur est un point factice hors du cadre, qui ne doit
+    // pas dicter le zoom ; ce sont leurs trous fixes, dessinés, qui comptent
+    if (im.fixes && im.fixes.length > 0) parcourt(im.fixes);
+    else parcourt(im.clou);
   }
   return { x0, y0, x1, y1 };
 }
@@ -375,10 +378,12 @@ function vueDe(canvas, images, mode) {
 // Les films qui ont des lignes de construction facultatives (image.construction : des segments à plat, x0, y0, x1, y1, …,
 // et, quand ils s'estompent, image.opacites : un nombre par segment) : la case « lignes de construction » du lecteur les
 // trace en gris sous les lacets. Elles ne comptent pas dans `etendue` (le zoom ne dépend que des lacets, des trous et du clou).
-// Pour chaque film, l'infobulle de la case dit ce que ce sont.
+// Pour chaque film, une phrase dit ce que sont ces lignes : elle s'ouvre dans la bulle du « ? » à côté de la case « construction »
+// (au survol, au clavier ou à l'appui).
 const MODES_AVEC_CONSTRUCTION = new Map([
-  ['triangulation', 'trace en gris le maillage sur lequel les brins sont posés'],
-  ['conforme', 'trace en gris l\'axe et la ligne brisée L–A–B–R sur laquelle le dessin est fait (elle se plie pendant le demi-tour)'],
+  ['triangulation', 'Le maillage (une triangulation) sur lequel les brins sont posés : il se déplace avec les trous, et les brins le suivent et se tendent.'],
+  ['diagramme', 'Le maillage (une triangulation) sur lequel les arcs sont posés et tendus : il se déplace avec les trous.'],
+  ['conforme', 'L\'axe et la ligne brisée L–A–B–R sur lesquels le dessin est construit. Pendant le demi-tour, la ligne de départ et celle d\'arrivée s\'estompent l\'une dans l\'autre, et le dessin passe alors par une triangulation mobile.'],
 ]);
 const GRIS_CONSTRUCTION = '#999';
 const TRAIT_CONSTRUCTION = 2.2;   // pour un canvas de 800 de large, comme les lacets
@@ -559,13 +564,16 @@ class Lecteur {
     this.etat.innerHTML = `<button type="button" title="lecture / pause">⏸</button>` +
       `<input type="range" min="0" max="${duree - 1}" step="1" value="0" aria-label="position dans le film">` +
       (MODES_AVEC_CONSTRUCTION.has(this.mode)
-        ? `<label title="${MODES_AVEC_CONSTRUCTION.get(this.mode)}"><input type="checkbox" class="construction"${this.construction ? ' checked' : ''}> lignes de construction</label>`
+        ? `<label><input type="checkbox" class="construction"${this.construction ? ' checked' : ''}> construction</label><span class="emplacement-aide"></span>`
         : '') +
-      (message ? `<span class="ko" title="${message}">⚠</span>` : '<span class="ok">film</span>');
+      (message ? `<span class="ko" title="${message}">⚠</span>` : '');
     this.bouton = this.etat.querySelector('button');
     this.curseur = this.etat.querySelector('input[type=range]');
     const case_ = this.etat.querySelector('input.construction');
     if (case_) case_.onchange = () => { this.construction = case_.checked; this.montre(); };
+    const place = this.etat.querySelector('.emplacement-aide');
+    if (place) place.replaceWith(aideBulle('construction-' + this.mode, 'Lignes de construction : explication',
+      `<span class="texte-bulle"><b>Lignes de construction.</b> ${MODES_AVEC_CONSTRUCTION.get(this.mode)}</span>`));
     this.bouton.onclick = () => (this.lecture ? this.arrete() : this.joue());
     this.bouton.title = 'lecture / pause (relance le film s\'il est fini)';
     this.curseur.oninput = () => { this.arrete(); this.t = Number(this.curseur.value); this.montre(); };
@@ -613,20 +621,20 @@ class Lecteur {
 const SCHEMAS = {
   tresse: ['Diagramme de tresse', 'Un croisement σᵢ et son inverse σᵢ⁻¹, puis l\'exemple σ₁σ₂⁻¹ lu de haut en bas.'],
   fn: ['Action sur le groupe libre', 'Les lacets x₁ et x₂ avant et après σ₁ : x₁ ↦ x₁x₂x₁⁻¹ et x₂ ↦ x₁.'],
-  diagramme: ['Diagramme de courbes', 'Un point fixe à gauche ; les arcs sont les segments de l\'axe, que le demi-tour de deux trous emporte.'],
-  lacets: ['Lacets conformes', 'Des demi-cercles du demi-plan et leurs images par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R. La case « lignes de construction » trace l\'axe et cette ligne brisée.'],
+  diagramme: ['Diagramme de courbes', 'Un point fixe à gauche ; les arcs sont les segments de l\'axe, que le demi-tour de deux trous emporte. La case « lignes de construction » trace le maillage en gris.'],
+  lacets: ['Lacets conformes', 'Des demi-cercles du demi-plan et leurs images par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R. La case « lignes de construction » trace l\'axe et cette ligne brisée ; pendant le demi-tour, elles s\'estompent et le dessin passe par une triangulation mobile.'],
   triangulation: ['Triangulation mobile', 'Un maillage et des points sur ses arêtes ; quand les trous tournent, les brins suivent et se tendent. La case « lignes de construction » trace le maillage en gris.'],
   rubans: ['Rubans', 'Un ruban par trou voyageur, du trou fixe (la queue) au trou voyageur ; après le demi-tour, les rubans s\'enroulent.'],
 };
 
 // Un bouton « ? » qui montre le schéma au survol et au clavier (Tab). Rend l'élément à ajouter près d'un titre.
-function aideSchema(id) {
-  const [titre, alt] = SCHEMAS[id];
+// Un « ? » qui ouvre une bulle : au survol, au clavier ou à l'appui. `contenu` est le HTML de la bulle (un schéma ou un texte).
+function aideBulle(id, libelle, contenu) {
   const zone = document.createElement('span');
   zone.className = 'aide-schema';
   zone.dataset.schema = id;
-  zone.innerHTML = `<button type="button" class="bouton-aide" aria-label="Schéma explicatif : ${titre}" aria-describedby="bulle-${id}">?</button>` +
-    `<span class="bulle" role="tooltip" id="bulle-${id}"><span class="cadre"><img src="schemas/${id}.svg" alt="${alt}" width="440" height="250"></span></span>`;
+  zone.innerHTML = `<button type="button" class="bouton-aide" aria-label="${libelle}" aria-describedby="bulle-${id}">?</button>` +
+    `<span class="bulle" role="tooltip" id="bulle-${id}"><span class="cadre">${contenu}</span></span>`;
   const bulle = zone.querySelector('.bulle');
   const ajuste = () => {   // reste dans la fenêtre
     bulle.style.left = '0px';
@@ -650,6 +658,12 @@ function aideSchema(id) {
   zone.addEventListener('keydown', (e) => { if (e.key === 'Escape') { fermeLesBulles(); e.target.blur(); } });
   if (new URLSearchParams(location.search).get('aide') === id) { zone.classList.add('ouverte'); setTimeout(ajuste, 0); }   // ?aide=… : bulle ouverte (captures)
   return zone;
+}
+
+// La bulle d'un titre : le schéma de la méthode de dessin.
+function aideSchema(id) {
+  const [titre, alt] = SCHEMAS[id];
+  return aideBulle(id, `Schéma explicatif : ${titre}`, `<img src="schemas/${id}.svg" alt="${alt}" width="440" height="250">`);
 }
 
 function fermeLesBulles() {

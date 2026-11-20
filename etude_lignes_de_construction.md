@@ -3,8 +3,8 @@
 Idée : comme le lecteur des films (`lecteur` dans `python/Interface.py`) est le nôtre, on peut offrir pour chaque film une
 case « lignes de construction ». Elle montre, sous le sujet, ce qui sert à le fabriquer (l'axe et la ligne brisée,
 la triangulation…). Ce serait un deuxième jeu d'images, calculé en même temps que le film, et le lecteur passerait de l'un
-à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. **Fait (2026-11-20) : la case des films de la triangulation et
-des lacets de la page web** (voir « Ce qui est fait » à la fin) ; le reste n'est pas implémenté.
+à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. **Fait (2026-11-20) : la case des films de la triangulation, des lacets
+et du diagramme de courbes de la page web** (voir « Ce qui est fait » à la fin) ; le reste n'est pas implémenté.
 La dernière section, « Sur la page web », transpose l'étude à la page, où le principe est différent (et bien moins cher).
 
 ## Ce qui existe déjà, film par film
@@ -196,7 +196,7 @@ précédente (deux jeux d'images complets).
   `travail.js` ; la mise en page à 390 px de large tient sur une ligne. **Pas vérifié** : le chemin réel par le Web Worker (les canvas
   de la vraie page étaient encore vides quand la capture a été prise : Edge sans fenêtre n'attend pas les workers) ; la lecture
   animée avec la case cochée.
-- **Pas fait** : les rubans, le diagramme de courbes, le notebook.
+- **Pas fait** : les rubans, le notebook.
 
 ### Les lacets, le même jour
 
@@ -210,7 +210,26 @@ précédente (deux jeux d'images complets).
 - `ocaml/web/ardoise_web.ml` : `image` a aussi un champ facultatif `opacites` (un nombre par segment) ; `web/ardoise.js` :
   `traceSegments` trace un segment à la fois quand il y a des opacités ; la case a une infobulle par film (le maillage pour la
   triangulation ; l'axe et la ligne brisée L–A–B–R pour les lacets).
+- **Ce que la case dit vrai, et ce qu'elle ne dit pas** : hors du raccord, le dessin est la carte conforme de la région au-dessus de la
+  ligne brisée, qui en est donc bien le support. Pendant le raccord (la moitié de chaque demi-tour), le dessin passe par une triangulation
+  mobile (`Raccord`) ; les deux lignes brisées qui s'estompent l'une dans l'autre sont les références entre lesquelles on raccorde, pas
+  le support du dessin à ce moment. Le « ? » à côté de la case « construction » le dit dans une bulle (survol, clavier ou appui ; une phrase sous le lecteur avait été essayée
+  d'abord, puis remplacée à la demande de l'utilisateur) : la première version promettait « la ligne brisée sur laquelle le dessin est
+  fait », et n'était visible qu'au survol de la case. Pour le diagramme de courbes et la triangulation, c'est exact : les courbes sont des points
+  posés sur les arêtes du maillage affiché, qui se déplace, se retourne et tend les courbes à chaque pas.
 - **Vérifié dans Edge** (même page de test que pour la triangulation, sur `[1, -2, 1, -2, 3]`) : avant le raccord, la ligne brisée L–A–B–R
   passe par les trous ; au milieu du raccord, le losange L–A–B–R avec ses segments à demi estompés ; à la fin, l'axe droit. Pas vérifié :
   le chemin réel par le Web Worker et la lecture animée (à essayer sur la vraie page).
+
+### Le diagramme de courbes, le même jour
+
+- Décision de l'utilisateur, contre ma recommandation (les arcs *sont* déjà les segments entre les trous, donc la construction n'a rien
+  d'équivalent à la ligne brisée des lacets, et les arêtes dominent un dessin de quelques fils fins) : **l'aspect esthétique et dynamique de
+  la triangulation qui bouge sous les arcs** justifie la case. Elle trace les arêtes du maillage (`image_arcs`, `aretes_a_plat`) ; pas pour
+  les rubans.
+- **Un défaut du zoom, révélé par la case** : `image_arcs` envoie un « clou » factice à (−100, −100), hors du cadre, que `etendue` comptait
+  comme un vrai point : la vue reculait et décalait le dessin (le diagramme de courbes était petit, tout en bas de son cadre, depuis
+  l'origine de la page), et avec les arêtes elle laissait voir le bord du maillage (le rectangle bombé à 40 px hors de l'image).
+  Corrigé : pour les films d'arcs, `etendue` compte les trous fixes et non le clou. Le diagramme et les rubans remplissent leur cadre.
+- Vérifié dans Edge (page de test) : la case sur le diagramme (image finale et image 30), et les rubans sans case, recentrés.
 

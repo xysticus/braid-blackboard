@@ -8,8 +8,8 @@
    tresse), ou "escargot" ou "bouquet" (films sans tresse : le mot est ignoré, les images ont d'autres champs, voir
    image_escargot et image_bouquet).
    Une image : { lacets : [[x0, y0, x1, y1, …], …], trous : [x, y, …], fixes : [x, y, …], clou : [x, y],
-   ecart : nombre } dans un cadre de 800 × 800 ; les films de la triangulation et des lacets (conforme) ajoutent
-   construction : [x0, y0, x1, y1, …], les lignes de construction (les arêtes du maillage ; l'axe et la ligne brisée L–A–B–R),
+   ecart : nombre } dans un cadre de 800 × 800 ; les films de la triangulation, du diagramme de courbes et des lacets (conforme)
+   ajoutent construction : [x0, y0, x1, y1, …], les lignes de construction (les arêtes du maillage ; l'axe et la ligne brisée L–A–B–R),
    à tracer en gris sous les lacets si la page le demande (case « lignes de construction »). Les lacets ajoutent aussi
    opacites : [a0, a1, …], l'opacité de chaque segment (ils s'estompent pendant le raccord). [rendu] est appelé avec (image, numéro, total) pour chaque image du
    film. Les échecs (tresse vide, limites, exceptions du calcul) reviennent en texte, jamais en exception JS : le
@@ -117,7 +117,10 @@ let methode_arcs = function
 let image_arcs rubans (film : Arcs.t) =
   let pos = film.maillage.Triangulation.Maillage.pos in
   let lacets = List.mapi (fun k _ -> if rubans then Arcs.ruban film k else Arcs.polyligne film k) film.courbes in
-  image ~fixes:(Array.map (fun s -> pos.(s)) film.fixes) ~ecart:film.ecart lacets (Array.map (fun s -> pos.(s)) film.voyageurs) { x = -100.; y = -100. }
+  (* les lignes de construction : les arêtes du maillage sous les arcs du diagramme de courbes (pas sous les rubans) *)
+  let construction = if rubans then None else Some (aretes_a_plat film.maillage) in
+  image ~fixes:(Array.map (fun s -> pos.(s)) film.fixes) ~ecart:film.ecart ?construction lacets (Array.map (fun s -> pos.(s)) film.voyageurs)
+    { x = -100.; y = -100. }
 
 (* --- la triangulation mobile (lib/film.ml, le film de Dessin.film_triangule sans le maillage gris), sur le maillage
    grossier des films d'arcs (Film.cree ~grossier:true) --- *)
