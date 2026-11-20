@@ -32,11 +32,14 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   Liens Binder dans le README, ne pas casser leurs chemins. `Ardoise.ipynb` : un cahier qui se lit seul. Il écrit
   le travail sur le mot de tresse (action d'Artin : `conjugaison_locale`, `simplifie`, `calcule_autofn_de_tresse`, recopiés
   de `tresses.py`, sans test ; diagramme de tresse en pycairo), explique les quatre films, puis son
-  ardoise (dernière cellule). La plomberie est dans `python/Interface.py` : lecture du mot écrit (`lis_mot`, mêmes limites :
+  ardoise, puis un chapitre facultatif. La plomberie est dans `python/Interface.py` : lecture du mot écrit (`lis_mot`, mêmes limites :
   8 brins et 40 lettres, 6 brins et 14 lettres pour les lacets et la triangulation), douze exemples, lecteur `ipywidgets`
-  (curseur et bouton de lecture : ni vidéo ni `ffmpeg`), un film par fonction (`film_diagramme_de_courbes`, `film_lacets`
+  (curseur et bouton de lecture, ni vidéo ni `ffmpeg` ; le curseur change l'image par le noyau, donc `en_calcul` cache
+  les lecteurs déjà affichés pendant qu'un film se calcule, et un nouveau lecteur n'existe qu'une fois son film prêt), un film par fonction (`film_diagramme_de_courbes`, `film_lacets`
   — `dessins_conforme` + `surface_conforme` de `Conforme.py`, que `film_conforme` utilise aussi —, `film_triangulation`,
-  `film_rubans`) et la classe `Ardoise` (champ, menu, onglets calculés à la demande ; on lui donne la fonction du
+  `film_rubans`), deux films sans mot (`film_escargot`, `film_bouquet`, dans le chapitre « Un peu de poésie » après
+  l'ardoise, chacun derrière un bouton `a_la_demande` : rien ne se calcule en « exécuter toutes les cellules », 8 s au lieu
+  d'une minute ; leurs classes `Escargot` et `Pousse` donnent déjà une image à la fois) et la classe `Ardoise` (champ, menu, onglets calculés à la demande ; on lui donne la fonction du
   diagramme et celle de l'action). Notebook commité sans sorties ; pas de test automatique de l'interface (essayée par une
   exécution `nbconvert` d'une cellule par action).
 - `python/AutoMorphPNG.py` : version script complète (pycairo → PNG) de l'algorithme de dessin

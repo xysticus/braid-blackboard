@@ -1,10 +1,12 @@
 '''Interface `ipywidgets` de l'ardoise (notebook `ipynbks/Ardoise.ipynb`) : lecture d'un mot de tresse écrit à la main, lecteur
 de film (curseur et bouton de lecture), les quatre films de lacets (diagramme de courbes, lacets conformes, triangulation
-mobile, rubans) et l'ardoise elle-même (`Ardoise`). Ne contient aucun calcul sur les tresses : il les demande à `Conforme.py`,
+mobile, rubans), l'escargot et le bouquet, et l'ardoise elle-même (`Ardoise`). Ne contient aucun calcul sur les tresses : il les demande à `Conforme.py`,
 `Arcs.py` et `Triangulation.py`, et au notebook pour le diagramme de tresse et l'action sur le groupe libre.
 Module : rien ne s'exécute à l'import.'''
 
+import functools
 import re
+import weakref
 from io import BytesIO
 
 import ipywidgets as widgets
@@ -98,6 +100,9 @@ def png(surface):
     return tampon.getvalue()
 
 
+LECTEURS = weakref.WeakSet()    # les lecteurs créés (voir `en_calcul`)
+
+
 def lecteur(images, largeur=500, ms=40):
     """Un film : la suite d'images (octets PNG), avec un bouton de lecture et un curseur (une image toutes les ms
     millisecondes, 25 images par seconde par défaut)."""
@@ -107,9 +112,27 @@ def lecteur(images, largeur=500, ms=40):
                                 layout=widgets.Layout(width=f'{largeur - 120}px'))
     widgets.jslink((jeu, 'value'), (curseur, 'value'))          # la lecture avance le curseur
     curseur.observe(lambda changement: setattr(vue, 'value', images[changement['new']]), names='value')
-    return widgets.VBox([vue, widgets.HBox([jeu, curseur])])
+    boite = widgets.VBox([vue, widgets.HBox([jeu, curseur])])
+    LECTEURS.add(boite)
+    return boite
 
 
+def en_calcul(film):
+    """Décorateur des fonctions qui calculent un film. Pendant le calcul, le noyau ne répond plus : un lecteur déjà affiché
+    ferait avancer son curseur sans changer d'image. On le cache jusqu'à la fin du calcul ; le nouveau lecteur n'existe
+    qu'une fois le film prêt."""
+    @functools.wraps(film)
+    def calcule(*arguments, **options):
+        caches = [l for l in LECTEURS if l.layout.display != 'none']
+        for l in caches: l.layout.display = 'none'
+        try:
+            return film(*arguments, **options)
+        finally:
+            for l in caches: l.layout.display = None
+    return calcule
+
+
+@en_calcul
 def film_diagramme_de_courbes(tresse):
     """Un seul point fixe, à gauche ; les arcs sont les segments de l'axe, que la tresse emporte (`Arcs.DiagrammeCourbes`)."""
     film = DiagrammeCourbes(tresse)
@@ -119,13 +142,14 @@ def film_diagramme_de_courbes(tresse):
     return lecteur(images)
 
 
+@en_calcul
 def film_lacets(tresse):
     """Les lacets par représentation conforme (`Conforme.dessins_conforme`)."""
-    dessins, durees, anomalies = dessins_conforme(tresse, hauteur=800, largeur=800, marge=60, verifie=True)
-    images = [png(surface_conforme(d, 800, 800, 60, largeur_brin=3)) for d in dessins]
-    return widgets.VBox([lecteur(images), widgets.HTML(f'{len(anomalies)} anomalie(s) (mots relus, croisements)')])
+    dessins, durees, anomalies = dessins_conforme(tresse, hauteur=800, largeur=800, marge=60)
+    return lecteur([png(surface_conforme(d, 800, 800, 60, largeur_brin=3)) for d in dessins])
 
 
+@en_calcul
 def film_triangulation(tresse):
     """Les lacets sur une triangulation mobile (`Triangulation.Film`), sans tracer ses arêtes."""
     film = Film(tresse)
@@ -135,6 +159,7 @@ def film_triangulation(tresse):
     return lecteur(images)
 
 
+@en_calcul
 def film_rubans(tresse):
     """Les lacets sans clou : le bord d'un ruban tendu entre un trou fixe et son trou voyageur (`Arcs.FilmArcs`)."""
     film = FilmArcs(tresse, ecart_fixes=30)
@@ -144,8 +169,61 @@ def film_rubans(tresse):
     return lecteur(images)
 
 
+@en_calcul
+def film_escargot(duree=12.0, images_par_seconde=25):
+    """Un escargot fait de rubans : trous fixes à gauche, chorégraphie libre (`Escargot.Escargot`). Pas de mot de tresse."""
+    from Escargot import Escargot
+    escargot = Escargot()
+    images = [png(escargot.dessine(0.0))]
+    for n in range(1, round(duree * images_par_seconde) + 1):
+        t = n / images_par_seconde
+        escargot.deplace(escargot.choregraphie(t), pas_max=2 * escargot.e)
+        images.append(png(escargot.dessine(t)))
+    return lecteur(images, largeur=640, ms=round(1000 / images_par_seconde))
+
+
+@en_calcul
+def film_bouquet(duree=13.5, images_par_seconde=25, saccade=2):
+    """Un bouquet d'iris qui pousse : les trous montent depuis le clou et tirent des lacets (`Bouquet.Pousse`). Pas de mot de
+    tresse. Chaque image calculée est montrée `saccade` fois (l'aspect image par image des films de plantes qui poussent)."""
+    import copy
+    from Bouquet import Pousse, BOUQUET
+    pousse = Pousse(copy.deepcopy(BOUQUET))
+    pas = saccade / images_par_seconde
+    images = [png(pousse.dessine(0.0))]
+    for n in range(1, round(duree / pas) + 1):
+        pousse.deplace(*pousse.cibles(n * pas), pas_max=2 * pousse.e)
+        images.append(png(pousse.dessine(n * pas)))
+    return lecteur(images, largeur=420, ms=round(1000 * pas))
+
+
+def a_la_demande(film, etiquette='Calculer le film'):
+    """Un bouton qui calcule le film (une fonction sans argument) au clic, puis montre son lecteur à la place du bouton.
+    Tant qu'on ne clique pas, rien ne se calcule : « exécuter toutes les cellules » reste rapide."""
+    bouton = widgets.Button(description=etiquette, button_style='primary')
+    sortie = widgets.Output()
+
+    def clic(_):
+        bouton.disabled = True
+        sortie.clear_output()
+        with sortie:
+            display(widgets.HTML('Calcul en cours…'))
+        try:
+            resultat = film()
+            bouton.layout.display = 'none'
+        except Exception as erreur:
+            resultat = widgets.HTML(f'<span style="color:#b00020">Le calcul a échoué : {type(erreur).__name__} {erreur}</span>')
+            bouton.disabled = False
+        sortie.clear_output()
+        with sortie:
+            display(resultat)
+
+    bouton.on_click(clic)
+    return widgets.VBox([bouton, sortie])
+
+
 # (titre de l'onglet, fonction, limité par MAX_BRINS_LACETS et MAX_LETTRES_LACETS)
-FILMS = [('Diagramme de courbes', film_diagramme_de_courbes, False),
+FILMS = [('Courbes', film_diagramme_de_courbes, False),
          ('Lacets', film_lacets, True),
          ('Triangulation', film_triangulation, True),
          ('Rubans', film_rubans, False)]
