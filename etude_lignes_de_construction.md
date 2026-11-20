@@ -11,7 +11,7 @@ La dernière section, « Sur la page web », transpose l'étude à la page, où 
 | Film | Lignes de construction | Où | Pour en faire un deuxième jeu |
 |---|---|---|---|
 | Lacets | l'axe et la ligne brisée L–A–B–R, en gris | `surface_conforme(..., construction=True)` : les données sont déjà dans chaque dessin | rien à recalculer : on rend chaque dessin deux fois |
-| Triangulation | les arêtes de la triangulation, en gris | `Film.cadre(avec_arêtes=True)` | `Film.lettre` ne passe à `rendu` que la surface : il faut une petite retouche pour obtenir les deux (l'écart `ecart`, nécessaire à `cadre`, reste interne à `lettre`) |
+| Triangulation | les arêtes de la triangulation, en gris (**le maillage en deux bandes du Python**, voir plus bas : ce n'est pas celui de la page) | `Film.cadre(avec_arêtes=True)` | `Film.lettre` ne passe à `rendu` que la surface : il faut une petite retouche pour obtenir les deux (l'écart `ecart`, nécessaire à `cadre`, reste interne à `lettre`) |
 | Rubans | les arêtes de la triangulation | `FilmArcs.cadre(avec_aretes=True)` | `rendu` reçoit le film : on appelle `cadre` deux fois, sans retouche |
 | Courbes | les arêtes de la triangulation | idem (`DiagrammeCourbes` hérite de `FilmArcs`) | idem |
 | Escargot, bouquet | rien : leur `dessine` est écrit pour eux | — | à écrire ; et une triangulation de 35 trous n'éclaire pas grand-chose : à ne pas faire d'abord |
@@ -91,6 +91,27 @@ cochée. Cocher ou décocher redessine l'image courante : instantané, sans work
 | Lacets | l'axe et la ligne brisée L–A–B–R | **Python seulement** (`Lettre.aretes`, et les opacités de `dessin_axe` pendant le raccord) ; `Film_conforme.image` n'a que `lignes`, `trous`, `clou` | **le seul vrai travail** : porter `aretes` en OCaml (une douzaine de lignes) et les opacités du raccord, avec un test contre la référence Python |
 | Escargot, bouquet | rien | — | à ne pas faire |
 
+### Le maillage de la page n'est pas celui du notebook
+
+Le film de la triangulation de la page utilise le **maillage grossier** (`Film.cree ~grossier:true`, OCaml seulement) : un maillage de
+Delaunay dont les arêtes partent en étoile de chaque trou et du clou, celui des films d'arcs. Le Python (donc le notebook, et les films
+MP4 de référence) garde l'ancien maillage **en deux bandes** : des verticales par les trous et des diagonales. Les deux films de la
+triangulation ne se ressemblent donc pas, et leurs lignes de construction non plus. La raison est l'histoire du dépôt : les deux bandes
+ont été conçues d'abord ; le maillage grossier est venu avec les films d'arcs, puis a été ajouté à `Film.cree` le 2026-11-19 pour la
+page, et n'a **pas été porté en Python** (`grossier` vaut faux par défaut « comme le Python » : les films MP4 de référence restent
+identiques octet pour octet entre Python et OCaml). Pour que le notebook montre les mêmes arêtes que la page, il faudrait porter
+`grossier` en Python (`Film.__init__`) : un travail à part, qui changerait le film de la triangulation du notebook.
+
+### Essais d'images (2026-11-20)
+
+- **L'arc au centre des rubans** (en trait noir fin) : sans intérêt. Les quatre arcs se superposent aux rubans, et l'on voit le même
+  dessin en plus sombre. Écarté.
+- **Les arêtes sous les rubans** : presque invisibles avec le style du Python (0,7 px, gris très clair) : des fils fins en éventail.
+  C'est le style qui les rend illisibles, pas le maillage : ce sont les mêmes arêtes que celles du film de la triangulation.
+- **Les arêtes du maillage grossier sous le film de la triangulation, à 3 px** (l'image de la page, tracé gris) : lisibles, et
+  elles expliquent le dessin : chaque brin est une suite de points sur des arêtes, et il se plie là où il les traverse. Le trait est
+  un peu lourd (il rivalise avec les couleurs) : un gris plus clair et un trait de 1,5 à 2 px sont à essayer.
+
 ### Ce que cela coûte (mesuré)
 
 Mesures en OCaml sur `[1, -2, 1, -2, 3]`, dernière image, maillage de la page :
@@ -123,9 +144,10 @@ double le rendu et la mémoire ; la page envoie des vecteurs, et la construction
 
 ### Questions ouvertes
 
-- **Rubans : arêtes ou arcs ?** Un ruban est l'épaississement d'un arc (`Arcs.polyligne` est déjà calculé). Tracer l'arc au centre du ruban
-  dirait bien plus que les arêtes du maillage ; c'est un second ensemble de polylignes (environ +100 % de données, pour ce film
-  seulement). À décider en regardant des images ; pareil pour le diagramme de courbes, dont les arcs *sont* les segments de l'axe.
+- **Quels films ?** Par ordre d'intérêt : la **triangulation** (les arêtes expliquent le dessin), les **lacets** (l'axe et la ligne
+  brisée, mais c'est le port le plus lourd). Pour les **rubans** et le **diagramme de courbes**, l'arc au centre est écarté ; les
+  arêtes sont les mêmes que pour la triangulation, mais ne se liront qu'avec un style plus marqué que celui du Python : à essayer
+  avant de décider d'en mettre une case.
 - **Lacets : le raccord.** Pendant le raccord, les segments L–A et B–R s'estompent pendant que L–B et A–R apparaissent : si le tracé
   les montre sans estompage, ils sautent. Il faut donc les opacités, d'où le port plus lourd que les autres films.
 - **Par défaut décochée.** Et l'état de la case : conservé quand le mot change ? (je pense que oui).
