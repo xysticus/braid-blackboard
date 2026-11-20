@@ -456,12 +456,14 @@ class Film:
         pas = np.hypot(*np.moveaxis(np.diff(positions, axis=0), 2, 0)).sum(axis=1)
         return us, np.concatenate(([0], np.cumsum(pas)))
 
-    def lettre(self, sigma, images=None, sous_pas=2, taux=0.15, largeur_brin=None, rendu=None, vitesse=None):
+    def lettre(self, sigma, images=None, sous_pas=2, taux=0.15, largeur_brin=None, rendu=None, vitesse=None,
+               avec_arêtes=True):
         '''Un demi-tour (σ_i : sens de SENS_DE_SIGMA). Les trous avancent à vitesse constante : le temps de la lettre
         est reparamétré par la longueur du chemin parcouru par l'ensemble des trous, et sans `images` imposé, la
         lettre dure (longueur du chemin) / vitesse images (vitesse en pixels par image, par défaut VITESSE à
         l'échelle de la largeur) : les petits mouvements sont courts, les grands longs, sans à-coup d'une lettre à
         l'autre. rendu : fonction appelée avec chaque image (surface Cairo) ; sans elle, rien n'est dessiné.
+        avec_arêtes : les arêtes de la triangulation sont tracées en gris sous les lacets.
         Renvoie le nombre d'images.'''
         us, longueurs = self.chemin_des_trous(sigma)
         if images is None:
@@ -475,7 +477,7 @@ class Film:
             assert self.maillage.valide(), "triangle retourné : augmenter sous_pas"
             self.maillage.delaunay(self.courbes)
             self.tend(taux, ecart)
-            if rendu and pas % sous_pas == 0: rendu(self.cadre(largeur_brin=largeur_brin, ecart=ecart))
+            if rendu and pas % sous_pas == 0: rendu(self.cadre(largeur_brin=largeur_brin, ecart=ecart, avec_arêtes=avec_arêtes))
         return images
 
 

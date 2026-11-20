@@ -29,9 +29,10 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 ## Organisation
 
 - `ipynbks/` : notebooks historiques (ipycanvas pour le canvas HTML5, `AutoMorphCairo.ipynb` en pycairo).
-  Liens Binder dans le README, ne pas casser leurs chemins. `Ardoise.ipynb` : les vues 0 (diagramme de tresse en
-  pycairo), 2 (lacets, `dessins_conforme` + `surface_conforme` de `Conforme.py`, que `film_conforme` utilise aussi) et 4
-  (rubans, `FilmArcs.cadre`) de la page web, avec le Python du dépôt ; chaque film est une suite d'images PNG avec un
+  Liens Binder dans le README, ne pas casser leurs chemins. `Ardoise.ipynb` : le mot en LaTeX et les vues 0 (diagramme de tresse en
+  pycairo), 1 (`DiagrammeCourbes`), 2 (lacets, `dessins_conforme` + `surface_conforme` de `Conforme.py`, que
+  `film_conforme` utilise aussi), 3 (triangulation, `Film`) et 4 (rubans, `FilmArcs.cadre`) de la page web, avec le Python
+  du dépôt ; chaque film est une suite d'images PNG avec un
   lecteur `ipywidgets` (curseur et bouton de lecture, comme la page : ni vidéo ni `ffmpeg`) ; notebook commité sans
   sorties.
 - `python/AutoMorphPNG.py` : version script complète (pycairo → PNG) de l'algorithme de dessin
