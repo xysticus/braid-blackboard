@@ -84,7 +84,27 @@ topologie se compare.
 - La page avec `-1 2` n'a pas été comparée à la figure à l'œil : la correspondance vient du raisonnement ci-dessus et
   de la comparaison de `1 -2` avec la figure retournée.
 - Burau : le calcul de Fox sur notre action d'Artin devrait redonner les matrices de l'article, au remplacement près
-  de σ_i par σ_i⁻¹ (donc de q par q⁻¹, ou d'une transposition). Pas encore calculé.
+  de σ_i par σ_i⁻¹ (donc de q par q⁻¹, ou d'une transposition). Pas encore calculé : voir « À faire » ci-dessous.
+
+## À faire : vérifier la correspondance avec Burau par le calcul de Fox
+
+Les matrices de l'article (figure 6) sont la représentation de Burau **réduite**. Nos images d'automorphismes
+(`calcule_autofn_de_tresse`) en donnent la version non réduite, par le calcul de Fox :
+
+1. dériver chaque mot image φ(x_i) par rapport à chaque générateur x_j, avec ∂(uv) = ∂u + u·∂v et ∂(x⁻¹) = −x⁻¹ ;
+2. remplacer chaque x_j par la variable t : on obtient une matrice n × n à coefficients dans ℤ[t, t⁻¹], la ligne i
+   venant de φ(x_i) ;
+3. passer à la forme réduite (taille n − 1) pour comparer avec l'article.
+
+Exemple pour σ₁ (x₁ ↦ x₁x₂x₁⁻¹, x₂ ↦ x₁) : ∂(x₁x₂x₁⁻¹)/∂x₁ = 1 − t, ∂(x₁x₂x₁⁻¹)/∂x₂ = t, ∂x₁/∂x₁ = 1,
+∂x₁/∂x₂ = 0, d'où la matrice [[1 − t, t], [1, 0]] : la matrice de Burau classique de σ₁.
+
+Comparer ensuite les matrices de nos σ_i avec celles de l'article, en tenant compte des décalages de conventions :
+σ_i échangé avec σ_i⁻¹ (sens du temps, voir plus haut), variable t ou q inversée, transposition (l'article met les
+images en colonnes, le calcul de Fox ci-dessus les met en lignes). Si elles coïncident à ce changement près, la
+correspondance de signes est établie sur un résultat chiffré, et pas seulement par le raisonnement sur les figures.
+Une fonction de quelques dizaines de lignes de Python suffirait (polynômes de Laurent en t), avec un test sur les trois
+générateurs de B₄.
 
 ## Si l'on voulait suivre l'article
 
