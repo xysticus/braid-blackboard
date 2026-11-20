@@ -434,7 +434,10 @@ environment.yml --prune` si l'environnement existe déjà).
   serveur personnel de l'utilisateur ; ni identifiant de connexion, chemin d'hébergement, clé, mot de passe ou détail
   d'installation ; ni dans les fichiers, ni dans les docs, ni dans les messages de commit, ni dans les sorties collées. Ces détails
   vont dans des fichiers locaux ignorés par git (`web/deploie.conf`, `web/*.local.md`) ; on dit seulement « un serveur personnel ».
-  L'historique a été réécrit le 2026-11-19 pour en retirer de telles mentions ; vérifier avant chaque poussée.
+  Aucun élément privé non plus : ni adresse mail (seule l'adresse masquée `noreply` de GitHub est permise, dans les commits),
+  ni chemin qui contient un nom d'utilisateur (écrire `~/...` ou un chemin relatif au dépôt), ni nom de machine, ni nom
+  d'employeur. L'historique a été réécrit le 2026-11-19 pour en retirer de telles mentions ; vérifier le diff et le message
+  avant chaque commit et chaque poussée.
 - Python ≥ 3.10 requis (`match`/`case` utilisés).
 - OCaml (`ocaml/`) : mêmes noms qu'en Python pour les fonctions et les types traduits (`mot_de_fn`,
   `simplifie`, `conjugaison_locale`, `calcule_autofn_de_tresse`…) ; si la signature diffère (argument, effet de bord),

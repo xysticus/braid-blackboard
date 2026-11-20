@@ -3,7 +3,10 @@
 # opam de ocaml/ (js_of_ocaml) : eval $(opam env --switch=ocaml) si besoin.
 set -e
 cd "$(dirname "$0")/../ocaml"
-command -v dune >/dev/null 2>&1 || eval "$(opam env --switch=.)"
+# le switch local d'abord : un dune d'un autre switch (default) trouvé dans le PATH n'a pas js_of_ocaml
+if [ -d _opam ] && command -v opam >/dev/null 2>&1; then
+  eval "$(opam env --switch=. --set-switch)"
+fi
 dune build --profile release web/ardoise_web.bc.js
 cp -f _build/default/web/ardoise_web.bc.js ../web/ardoise_lib.js
 chmod u+w ../web/ardoise_lib.js
