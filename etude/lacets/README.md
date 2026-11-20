@@ -6,7 +6,7 @@ Une page, `index.html`, avec les mêmes tresses d'essai que la page publique et 
 
 - lecteur pas à pas : image précédente / suivante, une lettre en arrière / en avant, début, fin, curseur, saut à une image, lecture à 2, 5, 12 ou 25 images par seconde ; le numéro de l'image, la lettre (σᵢ) et le pas dans la lettre sont affichés ;
 - lignes de construction (l'axe et la ligne brisée L–A–B–R, estompées pendant le raccord) ;
-- tangentes aux arcs, aux points où un lacet coupe une ligne de construction visible (opacité ≥ 15 %) : direction du segment de la polyligne du lacet qui traverse. Pendant le raccord (deux lignes de construction qui s'estompent l'une dans l'autre), les rencontres sur la ligne la plus claire (opacité ≤ 50 %) sont éphémères : un petit cercle gris, sans tangente ; seule la ligne la plus foncée (et les lignes pleines : l'axe, A–B) impose sa tangente.
+- tangentes aux arcs, aux points où un lacet coupe une ligne de construction (opacité > 0) : direction du segment de la polyligne du lacet qui traverse. Pendant le raccord (deux lignes de construction qui s'estompent l'une dans l'autre), les rencontres sur la ligne la plus claire (opacité ≤ 50 %) sont éphémères : un point fantôme (petit cercle gris clair, sans tangente, case « points fantômes » : il n'impose ni sa tangente ni sa position, l'arc l'induit) ; seule la ligne la plus foncée (et les lignes pleines : l'axe, A–B) impose sa tangente.
 
 Le calcul est celui de `web/` (`web/travail.js` charge `web/ardoise_lib.js`, qu'on reconstruit par `web/construit.sh`). Voir la page :
 

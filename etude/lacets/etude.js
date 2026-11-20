@@ -24,10 +24,11 @@ const MAX_LETTRES = 14;
 const IMAGES_PAR_LETTRE = 48;   // nombre_images_conforme de ocaml/web/ardoise_web.ml
 const ECHELLE = 2;              // 1600 / 800
 const PALETTE = ['#d92626', '#1a9926', '#2640d9', '#bf9900', '#a626a6', '#0d9aa6', '#e6761a', '#6b4fbb'];
-const OPACITE_MIN = 0.15;       // une ligne de construction plus estompée n'a ni tangentes ni points
 // Pendant le raccord, la ligne de départ (L–A, B–R : opacité 1 − poids) et la ligne d'arrivée (L–B, A–R : opacité poids) coexistent, l'une
 // s'estompant dans l'autre. Les rencontres sur la ligne la plus claire sont éphémères : elles n'imposent pas leur tangente (elles sont
-// tracées en gris, sans tangente) ; celles de la ligne la plus foncée, et de toutes les lignes pleines (axe, A–B), l'imposent.
+// tracées en gris clair, sans tangente : des points « fantômes », ni leur tangente ni leur position ne sont imposées, c'est l'arc, fixé par ses deux
+// extrémités et ses deux tangentes, qui les induit) ; celles de la ligne la plus foncée, et de toutes les lignes pleines (axe, A–B), l'imposent.
+// Les fantômes sont tracés même sur une ligne presque effacée (toute ligne que le calcul fournit, c'est-à-dire d'opacité > 0).
 const SEUIL_IMPOSE = 0.5;       // une ligne en transition impose ses tangentes si son opacité dépasse ce seuil
 const LONGUEUR_TANGENTE = 38;   // en pixels de l'image de 800
 
@@ -77,7 +78,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -126,7 +127,6 @@ function toutesRencontres(image) {
   const sortie = [];
   if (!c) return sortie;
   for (let s = 0; 4 * s + 3 < c.length; s++) {
-    if (o && o[s] < OPACITE_MIN) continue;
     const impose = !o || o[s] >= 1 - 1e-6 || o[s] > SEUIL_IMPOSE;
     const a = [c[4 * s], c[4 * s + 1]], b = [c[4 * s + 2], c[4 * s + 3]];
     image.lacets.forEach((p, i) => rencontres(p, a, b).forEach((r) => sortie.push({ ...r, lacet: i, segment: s, impose })));
@@ -175,7 +175,7 @@ function dessine(k) {
   disques(ctx, image.trous, 4, '#000');
   disques(ctx, image.clou, 4, '#000');
   let n = 0, eph = 0;
-  if (etat.tangentes || etat.points) {
+  if (etat.tangentes || etat.points || etat.fantomes) {
     const rs = toutesRencontres(image);
     n = rs.length;
     eph = rs.filter((q) => !q.impose).length;
@@ -188,15 +188,17 @@ function dessine(k) {
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
       }
     }
-    if (etat.points) {
-      for (const r of rs) {
-        ctx.beginPath(); ctx.arc(r.x, r.y, r.impose ? 4.5 : 3.5, 0, 2 * Math.PI);
-        ctx.fillStyle = '#fff'; ctx.fill();
-        ctx.strokeStyle = r.impose ? PALETTE[r.lacet % PALETTE.length] : '#aaa'; ctx.lineWidth = r.impose ? 2 : 1.5; ctx.stroke();
-      }
+    for (const r of rs) {
+      if (r.impose ? !etat.points : !etat.fantomes) continue;
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.impose ? 4.5 : 5, 0, 2 * Math.PI);
+      ctx.fillStyle = r.impose ? '#fff' : 'rgba(200, 200, 200, 0.55)';   // le fantôme : un disque gris clair translucide, le lacet reste visible dessous
+      ctx.fill();
+      ctx.strokeStyle = r.impose ? PALETTE[r.lacet % PALETTE.length] : '#a8a8a8';
+      ctx.lineWidth = r.impose ? 2 : 1.6;
+      ctx.stroke();
     }
   }
-  $('compte-tangentes').textContent = etat.tangentes || etat.points ? `${n} rencontre${n > 1 ? 's' : ''}` + (eph ? ` (dont ${eph} éphémère${eph > 1 ? 's' : ''}, sans tangente)` : '') : '';
+  $('compte-tangentes').textContent = etat.tangentes || etat.points || etat.fantomes ? `${n} rencontre${n > 1 ? 's' : ''}` + (eph ? ` (dont ${eph} fantôme${eph > 1 ? 's' : ''})` : '') : '';
 }
 
 // ---------------------------------------------------------------- le lecteur
@@ -260,6 +262,7 @@ function brancheCommandes() {
   $('c-construction').onchange = (e) => { etat.construction = e.target.checked; redessine(); };
   $('c-tangentes').onchange = (e) => { etat.tangentes = e.target.checked; redessine(); };
   $('c-points').onchange = (e) => { etat.points = e.target.checked; redessine(); };
+  $('c-fantomes').onchange = (e) => { etat.fantomes = e.target.checked; redessine(); };
   $('vitesse').onchange = (e) => { etat.ips = Number(e.target.value); };
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input[type=text], input[type=number], select') || etat.images.length < 2) return;
