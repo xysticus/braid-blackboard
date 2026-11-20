@@ -29,12 +29,16 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 ## Organisation
 
 - `ipynbks/` : notebooks historiques (ipycanvas pour le canvas HTML5, `AutoMorphCairo.ipynb` en pycairo).
-  Liens Binder dans le README, ne pas casser leurs chemins. `Ardoise.ipynb` : le mot en LaTeX et les vues 0 (diagramme de tresse en
-  pycairo), 1 (`DiagrammeCourbes`), 2 (lacets, `dessins_conforme` + `surface_conforme` de `Conforme.py`, que
-  `film_conforme` utilise aussi), 3 (triangulation, `Film`) et 4 (rubans, `FilmArcs.cadre`) de la page web, avec le Python
-  du dépôt ; chaque film est une suite d'images PNG avec un
-  lecteur `ipywidgets` (curseur et bouton de lecture, comme la page : ni vidéo ni `ffmpeg`) ; notebook commité sans
-  sorties.
+  Liens Binder dans le README, ne pas casser leurs chemins. `Ardoise.ipynb` : un cahier qui se lit seul. Il écrit
+  le travail sur le mot de tresse (action d'Artin : `conjugaison_locale`, `simplifie`, `calcule_autofn_de_tresse`, recopiés
+  de `tresses.py`, sans test ; diagramme de tresse en pycairo), explique les quatre films, puis son
+  ardoise (dernière cellule). La plomberie est dans `python/Interface.py` : lecture du mot écrit (`lis_mot`, mêmes limites :
+  8 brins et 40 lettres, 6 brins et 14 lettres pour les lacets et la triangulation), douze exemples, lecteur `ipywidgets`
+  (curseur et bouton de lecture : ni vidéo ni `ffmpeg`), un film par fonction (`film_diagramme_de_courbes`, `film_lacets`
+  — `dessins_conforme` + `surface_conforme` de `Conforme.py`, que `film_conforme` utilise aussi —, `film_triangulation`,
+  `film_rubans`) et la classe `Ardoise` (champ, menu, onglets calculés à la demande ; on lui donne la fonction du
+  diagramme et celle de l'action). Notebook commité sans sorties ; pas de test automatique de l'interface (essayée par une
+  exécution `nbconvert` d'une cellule par action).
 - `python/AutoMorphPNG.py` : version script complète (pycairo → PNG) de l'algorithme de dessin
   des automorphismes. Sert de référence fonctionnelle.
 - `python/tresses.py` : **base commune** importée par les deux scripts suivants : mots de F_n et action d'Artin
