@@ -107,10 +107,22 @@ identiques octet pour octet entre Python et OCaml). Pour que le notebook montre 
 - **L'arc au centre des rubans** (en trait noir fin) : sans intérêt. Les quatre arcs se superposent aux rubans, et l'on voit le même
   dessin en plus sombre. Écarté.
 - **Les arêtes sous les rubans** : presque invisibles avec le style du Python (0,7 px, gris très clair) : des fils fins en éventail.
-  C'est le style qui les rend illisibles, pas le maillage : ce sont les mêmes arêtes que celles du film de la triangulation.
+  C'est surtout le style qui les rend illisibles (voir la comparaison à style identique plus bas).
 - **Les arêtes du maillage grossier sous le film de la triangulation, à 3 px** (l'image de la page, tracé gris) : lisibles, et
   elles expliquent le dessin : chaque brin est une suite de points sur des arêtes, et il se plie là où il les traverse. Le trait est
-  un peu lourd (il rivalise avec les couleurs) : un gris plus clair et un trait de 1,5 à 2 px sont à essayer.
+  un peu lourd (il rivalise avec les couleurs) : un gris plus clair et un trait plus fin sont à essayer.
+- **Rubans et triangulation, à style identique** (le vrai code OCaml, dessiné comme `dessineImage`, tresse `[1, -2, 1, -2, 3]`) :
+  - Les deux maillages sont construits par la même fonction (`Raccord.maillage_du_raccord` : triangulation de Delaunay, bord convexe
+    hors de l'image) mais **à partir de points différents** : la triangulation a ses *n* trous et **un seul point en bas, le
+    clou** ; les rubans ont leurs *n* trous voyageurs et **n trous fixes espacés de 30 px sur une ligne en bas, sans clou**. Le bas
+    des rubans est donc fait de plusieurs petits éventails serrés qui ne bougent pas ; celui de la triangulation d'un seul, qui
+    converge vers le clou.
+  - Les deux films n'ont pas non plus la même échelle (la triangulation remplit le cadre, les rubans sont plus petits et plus
+    resserrés), ce qui accentue la différence d'aspect.
+  - **Gris clair à 1,5 px** : discret, presque une toile de fond ; trop faible pour les rubans, qui sont fins.
+  - **Gris moyen à 2,2 px** : lisible pour les deux films, sans écraser les lacets. C'est le réglage à retenir pour une première version.
+  - Pour les rubans, les arêtes se lisent mais disent peu : un ruban suit presque toujours une arête (de son trou fixe à son trou
+    voyageur), il ne s'y plie pas.
 
 ### Ce que cela coûte (mesuré)
 
@@ -146,7 +158,7 @@ double le rendu et la mémoire ; la page envoie des vecteurs, et la construction
 
 - **Quels films ?** Par ordre d'intérêt : la **triangulation** (les arêtes expliquent le dessin), les **lacets** (l'axe et la ligne
   brisée, mais c'est le port le plus lourd). Pour les **rubans** et le **diagramme de courbes**, l'arc au centre est écarté ; les
-  arêtes sont les mêmes que pour la triangulation, mais ne se liront qu'avec un style plus marqué que celui du Python : à essayer
+  arêtes sont celles d'un maillage de même construction que pour la triangulation (voir ci-dessus), et lisibles avec le style plus marqué : à essayer
   avant de décider d'en mettre une case.
 - **Lacets : le raccord.** Pendant le raccord, les segments L–A et B–R s'estompent pendant que L–B et A–R apparaissent : si le tracé
   les montre sans estompage, ils sautent. Il faut donc les opacités, d'où le port plus lourd que les autres films.
