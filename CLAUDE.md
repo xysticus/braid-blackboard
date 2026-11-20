@@ -23,6 +23,8 @@ Deux représentations :
   autour de n trous (`dessine_auto_de_tresse(...)`).
 
 Référence mathématique : *Le calcul des tresses*, P. Dehornoy.
+Conventions de signe comparées à celles de l'article *Des matrices pour des tresses* (Images des mathématiques, 2026) :
+`conventions_de_signe.md` (β de l'article = β⁻¹ chez nous ; on garde nos conventions).
 
 ## Organisation
 
