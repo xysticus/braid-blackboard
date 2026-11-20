@@ -12,6 +12,7 @@ type image = {
   clou : point;
   construction : (point * point * float) list;
       (** Les lignes de construction : des segments avec leur opacité (> 0), l'axe et A–B toujours à 1. *)
+  ab : int;  (** l'indice dans [construction] du segment A–B (les morceaux de l'axe le précèdent) *)
 }
 (* Une image du film, dans le cadre intérieur (avant le décalage de la marge). *)
 
@@ -22,6 +23,8 @@ let lisse u = u *. u *. (3. -. (2. *. u))
 (* Les lignes de construction d'une image au temps s (le [dessin_axe] du Python) : les morceaux de l'axe et A–B, puis
    L–A et B–R qui s'estompent (opacité 1 − poids) pendant que L–B et A–R apparaissent (opacité poids), poids étant la part
    du raccord : 0 sur la ligne brisée L–A–B–R de l'état k, 1 sur L–B–A–R de l'état k+1. Les segments invisibles sont omis. *)
+let indice_ab l ~reduction s = List.length (fst (Conforme.aretes l ~reduction s))
+
 let construction l ~reduction s ~poids =
   let axe, cinq = Conforme.aretes l ~reduction s in
   let avec alpha (p, q) = (p, q, alpha) in
@@ -99,7 +102,7 @@ let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
   let k = n_lettres - 1 in
   let l = Conforme.lettre ~hauteur:(hauteur -. (2. *. marge)) ~largeur:(largeur -. (2. *. marge)) (etat k) (etat (k + 1)) (List.nth tresse k) in
   let lignes, reduction = dessin_reduit l 1 1. in
-  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1. }
+  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1.; ab = indice_ab l ~reduction 1. }
 
 (* Le film : pour chaque lettre, l'état k dessiné sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la
    verticale par la triangulation pendant la fenêtre (part du mouvement). [rendu] est appelé avec chaque image dans
@@ -107,7 +110,7 @@ let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
    verifie : relit les mots et compte les croisements sur chaque image. Rend les anomalies. L'ordre des calculs est
    celui du Python, y compris celui des appels qui remplissent le cache des cartes : les derniers chiffres en
    dépendent. *)
-let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~marge ~rendu tresse =
+let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ~hauteur ~largeur ~marge ~rendu tresse =
   let entiers = List.map Tresses.entier_de_lettre tresse in
   let nb_trous = (match entiers with [] -> 5 | _ -> List.fold_left (fun a x -> max a (abs x)) 0 entiers) + 1 in
   let h_int = hauteur -. (2. *. marge) and l_int = largeur -. (2. *. marge) in
@@ -118,7 +121,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~m
   let premiere = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat 0) (etat 1) (List.hd tresse) in
   rendu
     { lignes = Conforme.dessin premiere ~reduction:1. 0 0.; trous = Conforme.trous_ecran premiere ~reduction:1. 0.;
-      clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0. };
+      clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0. };
   List.iteri
     (fun k sigma ->
       let l = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat k) (etat (k + 1)) sigma in
@@ -151,7 +154,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~m
                   r
             in
             let f = List.length (List.filter (fun m -> m < n) dans_fenetre) in
-            let lignes, erreurs = Raccord.lignes r f poids in
+            let lignes, erreurs = Raccord.lignes ~sans_fantomes ~libre r f poids in
             List.iter (fun (lacet, e) -> anomalies := { lettre = k; image = n; detail = Printf.sprintf "lacet %d : %s" lacet e } :: !anomalies) erreurs;
             (lignes, Raccord.reduction r s)
           end
@@ -171,7 +174,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~m
           let nb = nb_croisements lignes l.clou in
           if nb > 0 then anomalies := { lettre = k; image = n; detail = Printf.sprintf "%d croisements" nb } :: !anomalies
         end;
-        rendu { lignes; trous; clou = l.clou; construction = construction l ~reduction s ~poids }
+        rendu { lignes; trous; clou = l.clou; construction = construction l ~reduction s ~poids; ab = indice_ab l ~reduction s }
       done)
     tresse;
   List.rev !anomalies

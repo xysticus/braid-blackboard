@@ -227,6 +227,7 @@ type raccord = {
   arrivee : point array list array;  (** le dessin d'arrivée ramené à chaque instant *)
   reduction : float -> float;
   tournants : sommet list;  (** les deux trous qui tournent (sommets du maillage) *)
+  voisins : sommet option * sommet option;  (** les trous L et R, voisins des deux qui tournent (aucun au bord de l'image) *)
   phases : float * float * float * float;
 }
 
@@ -272,7 +273,14 @@ let raccord ?(sous_pas = 8) ?(phases = (0., 0.35, 0.65, 1.)) ~positions ~clou ~l
     arr.(j - 1) <- transporte arr.(j) triangles (snd etats.(j)) avant
   done;
   { image_de; etats; i_trous; i_clou; depart = dep; arrivee = arr; reduction;
-    tournants = List.map (List.nth i_trous) tournants; phases }
+    tournants = List.map (List.nth i_trous) tournants;
+    voisins =
+      (match tournants with
+       | [ a; b ] ->
+           ( (if a > 0 then Some (List.nth i_trous (a - 1)) else None),
+             if b + 1 < List.length i_trous then Some (List.nth i_trous (b + 1)) else None )
+       | _ -> (None, None));
+    phases }
 
 let reduction r s = r.reduction s
 
@@ -291,13 +299,88 @@ let tangente courbe au_debut =
 
 let melange q a b = ((1. -. q) *: a) +: (q *: b)
 
+(* Les arêtes « fantômes » au poids donné : les arêtes entre trous qui portent la plus claire des deux lignes de construction, la ligne
+   de départ L–A–B–R (opacité 1 − poids) ou celle d'arrivée L–B–A–R (opacité poids). La plus claire (opacité <= 1/2) n'impose rien :
+   ni sa tangente ni sa position. *)
+let aretes_fantomes r poids =
+  match (r.tournants, r.voisins) with
+  | [ a; b ], (l, rr) ->
+      let e x y = match (x, y) with Some x, Some y -> [ Arete.v x y ] | _ -> [] in
+      (if poids >= 0.5 then e l (Some a) @ e (Some b) rr else []) @ if poids <= 0.5 then e l (Some b) @ e (Some a) rr else []
+  | _ -> []
+
+(* Les arêtes entre trous qui portent la plus foncée des lignes de construction, au poids donné : A–B (toujours pleine) et la ligne
+   de départ (L–A, B–R) avant le milieu, celle d'arrivée (L–B, A–R) après. Une rencontre sur elles impose sa position et sa
+   tangente (l'arc passe perpendiculairement à la ligne). A–B n'est pas dans la liste : un pied sur A–B impose seulement son
+   passage (sa tangente imposée faisait des S quand la courbe l'aborde en oblique). *)
+let aretes_sombres r poids =
+  match (r.tournants, r.voisins) with
+  | [ a; b ], (l, rr) ->
+      let e x y = match (x, y) with Some x, Some y -> [ Arete.v x y ] | _ -> [] in
+      (if poids < 0.5 then e l (Some a) @ e (Some b) rr else []) @ if poids > 0.5 then e l (Some b) @ e (Some a) rr else []
+  | _ -> []
+
+(* La forme libre d'une suite de pieds (le départ et l'arrivée de la suite, et les pieds intérieurs avec l'arête qu'ils traversent) :
+   la courbe n'est plus une ligne brisée qui se plie à chaque pied : seuls les pieds sur une arête sombre sont des « ancres »
+   (position et tangente imposées) ; entre deux ancres, les pieds libres sont reliés par la ligne brisée aux coudes arrondis.
+   - le départ et l'arrivée de la suite : la tangente de la courbe voisine (avant, apres), sinon la corde ;
+   - un pied sur une arête sombre impose sa position et sa tangente : la perpendiculaire à l'arête, dans le sens de la marche ;
+   - un pied sur une autre arête (côtés du clou ou du bord) n'est pas une ancre : il reste un point de passage de la ligne brisée.
+   Les points fantômes (pieds sur l'arête la plus claire) ne sont pas là : [sans_pieds_fantomes] les a retirés avant. Aux ancres, la
+   courbe est tangente (une paire d'arcs, [arrondit]) : pas de coin. *)
+let forme_libre ~sombre ~pos ~trous ?avant ?apres pieds aretes =
+  let n = Array.length pieds in
+  if n < 2 then pieds
+  else
+    let unitaire d = let l = norme d in if l < 1e-12 then None else Some ((1. /. l) *: d) in
+    let aretes = Array.of_list aretes in
+    (* les ancres : le départ, l'arrivée, et les pieds posés sur une arête sombre ; leur tangente (le sens de la marche) *)
+    let tangente_sombre i =
+      if i - 1 < Array.length aretes && sombre aretes.(i - 1) then
+        let u, v = (aretes.(i - 1) : Arete.t :> sommet * sommet) in
+        let s = pos.(v) -: pos.(u) in
+        match (unitaire { x = -.s.y; y = s.x }, unitaire (pieds.(i + 1) -: pieds.(i - 1))) with
+        | Some nrm, Some corde -> Some (if scalaire nrm corde >= 0. then nrm else oppose nrm)
+        | _ -> None
+      else None
+    in
+    let ancres = ref [ (0, avant) ] in
+    for i = 1 to n - 2 do
+      match tangente_sombre i with Some t -> ancres := (i, Some t) :: !ancres | None -> ()
+    done;
+    let ancres = Array.of_list (List.rev ((n - 1, apres) :: !ancres)) in
+    (* entre deux ancres, la ligne brisée des pieds libres aux coudes arrondis (des cercles, jamais d'à-coup de courbure),
+       tangente aux ancres. Essai écarté : remplacer la paire d'arcs de départ par un tronçon droit dans la direction imposée
+       (point virtuel sur la tangente, un seul congé) : plus de S, mais des coins marqués et des croisements (3 images
+       douteuses sur 1 -2 1 -2, aucune avec la paire d'arcs). *)
+    let morceaux =
+      List.init (Array.length ancres - 1) (fun k ->
+          let i, ti = ancres.(k) and j, tj = ancres.(k + 1) in
+          arrondit ?depart:ti ?arrivee:tj ~trous (Array.sub pieds i (j - i + 1)))
+    in
+    Array.concat (List.hd morceaux :: List.map (fun m -> Array.sub m 1 (Array.length m - 1)) (List.tl morceaux))
+
+(* Fusionne les morceaux consécutifs d'une suite en cordes qui se rejoignent sur une arête fantôme : le pied y est supprimé, la corde
+   ne passe plus par ce point. Chaque morceau : (triangle, départ, arrivée, arête de sortie). *)
+let sans_pieds_fantomes fantomes suite =
+  let joint p q = Array.append p (Array.sub q 1 (Array.length q - 1)) in
+  Array.of_list
+    (List.rev
+       (Array.fold_left
+          (fun acc ((_, pd, pa, a) as x) ->
+            match acc with
+            | (t, pd0, pa0, Some e) :: reste when List.mem e fantomes -> (t, joint pd0 pd, joint pa0 pa, a) :: reste
+            | _ -> x :: acc)
+          [] suite))
+
 (* Lacets de l'image f de la fenêtre au poids donné (0 : départ, 1 : arrivée), et les anomalies (lacet, message).
    Chaque lacet est découpé en morceaux entre ses pieds sur les arêtes ; les pieds des deux dessins se correspondent
    un à un. Les pieds glissent sur leurs arêtes entre phases 1 et 2 (l'ordre sur chaque arête est gardé). Les morceaux
    d'un triangle qui touche un des trous qui tournent, ou qui contient un bigone, passent par les cordes : tension
    (phases 0 → 1), glissement en cordes arrondies, courbure (phases 2 → 3) ; les autres passent directement du morceau de
    départ à celui d'arrivée pendant le glissement (le mélange de deux courbes d'un triangle reste dans ce triangle). *)
-let lignes r f poids =
+let lignes ?(sans_fantomes = false) ?(libre = false) r f poids =
+  let sans_fantomes = sans_fantomes || libre in
   let j = r.image_de.(f) in
   let triangles, pos = r.etats.(j) in
   let maillage = Maillage.cree pos triangles in
@@ -361,6 +444,7 @@ let lignes r f poids =
                     incr k
                   done;
                   let suite = Array.sub morceaux debut (!k - debut) in
+                  let suite = if sans_fantomes then sans_pieds_fantomes (aretes_fantomes r poids) suite else suite in
                   let _, pd0, pa0, _ = suite.(0) in
                   let pieds =
                     Array.append [| melange glisse pd0.(0) pa0.(0) |]
@@ -368,7 +452,13 @@ let lignes r f poids =
                   in
                   let avant = if debut > 0 then Option.bind courbes.(debut - 1) (fun c -> tangente c false) else None in
                   let apres = if !k < nb then Option.bind courbes.(!k) (fun c -> tangente c true) else None in
-                  let cordes = arrondit ?depart:avant ?arrivee:apres ~trous pieds in
+                  let cordes =
+                    if libre then
+                      let sombres = aretes_sombres r poids in
+                      let aretes = List.filter_map (fun (_, _, _, a) -> a) (Array.to_list (Array.sub suite 0 (Array.length suite - 1))) in
+                      forme_libre ~sombre:(fun e -> List.mem e sombres) ~pos ~trous ?avant ?apres pieds aretes
+                    else arrondit ?depart:avant ?arrivee:apres ~trous pieds
+                  in
                   let forme =
                     if 0. < glisse && glisse < 1. then cordes
                     else

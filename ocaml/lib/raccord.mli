@@ -75,6 +75,10 @@ val raccord :
 val reduction : raccord -> float -> float
 (** La réduction (aplatissement supplémentaire) au temps s : interpolée entre [r_a] et [r_b]. *)
 
-val lignes : raccord -> int -> float -> point array list * (int * string) list
+val lignes : ?sans_fantomes:bool -> ?libre:bool -> raccord -> int -> float -> point array list * (int * string) list
 (** [lignes r f poids] : les lacets de l'image f de la fenêtre au poids donné (0 : départ, 1 : arrivée), et les
-    anomalies (lacet, message) : traversées différentes entre les deux dessins. *)
+    anomalies (lacet, message) : traversées différentes entre les deux dessins. [sans_fantomes] (faux par défaut) : les
+    cordes ne passent plus par les pieds posés sur les arêtes entre trous de la plus claire des deux lignes de construction
+    (celle dont l'opacité est <= 1/2) : ces « points fantômes » n'imposent ni leur tangente ni leur position. [libre] (faux par
+    défaut, implique [sans_fantomes]) : les cordes ne sont plus une ligne brisée aux coudes arrondis mais des paires d'arcs entre
+    pieds, un pied sur la ligne la plus foncée imposant sa position et sa tangente (perpendiculaire à la ligne) ; voir [forme_libre]. *)

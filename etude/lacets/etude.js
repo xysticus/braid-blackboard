@@ -78,7 +78,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -129,7 +129,7 @@ function toutesRencontres(image) {
   for (let s = 0; 4 * s + 3 < c.length; s++) {
     const impose = !o || o[s] >= 1 - 1e-6 || o[s] > SEUIL_IMPOSE;
     const a = [c[4 * s], c[4 * s + 1]], b = [c[4 * s + 2], c[4 * s + 3]];
-    image.lacets.forEach((p, i) => rencontres(p, a, b).forEach((r) => sortie.push({ ...r, lacet: i, segment: s, impose })));
+    image.lacets.forEach((p, i) => rencontres(p, a, b).forEach((r) => sortie.push({ ...r, lacet: i, segment: s, impose, tangente: impose && !(etat.libre && s === image.ab) })));   // arcs libres : pas de tangente imposée sur A–B (sa position, si)
   }
   return sortie;
 }
@@ -180,7 +180,7 @@ function dessine(k) {
     n = rs.length;
     eph = rs.filter((q) => !q.impose).length;
     if (etat.tangentes) {
-      for (const r of rs.filter((q) => q.impose)) {
+      for (const r of rs.filter((q) => q.tangente)) {
         const a = [r.x - LONGUEUR_TANGENTE * r.dx, r.y - LONGUEUR_TANGENTE * r.dy], b = [r.x + LONGUEUR_TANGENTE * r.dx, r.y + LONGUEUR_TANGENTE * r.dy];
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 4.2;   // un liseré blanc : la tangente reste lisible sur les lacets voisins
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
@@ -262,6 +262,7 @@ function brancheCommandes() {
   $('c-construction').onchange = (e) => { etat.construction = e.target.checked; redessine(); };
   $('c-tangentes').onchange = (e) => { etat.tangentes = e.target.checked; redessine(); };
   $('c-points').onchange = (e) => { etat.points = e.target.checked; redessine(); };
+  $('c-libre').onchange = (e) => { etat.libre = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // recalcule le film, et revient à la même image
   $('c-fantomes').onchange = (e) => { etat.fantomes = e.target.checked; redessine(); };
   $('vitesse').onchange = (e) => { etat.ips = Number(e.target.value); };
   document.addEventListener('keydown', (e) => {
@@ -316,10 +317,11 @@ function lance(mot) {
       $('numero').max = String(etat.total);
       $('commandes').hidden = false;
       const demande = new URLSearchParams(location.search).get('image');   // ?image=N : s'ouvre sur l'image N (captures)
-      va(demande ? Number(demande) - 1 : 0);
+      va(etat.reprise !== null ? etat.reprise : demande ? Number(demande) - 1 : 0);
+      etat.reprise = null;
     }
   };
-  w.postMessage({ mode: 'conforme', mot });
+  w.postMessage({ mode: etat.libre ? 'conforme_libre' : 'conforme', mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
 let motCourant = null;
@@ -348,6 +350,7 @@ window.addEventListener('DOMContentLoaded', () => {
     b.onclick = () => { champ.value = e.mot.join(' '); miseAJour(champ.value); };
     $('exemples').appendChild(b);
   });
+  if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
   brancheCommandes();
   let minuterie = null;
   champ.addEventListener('input', () => { clearTimeout(minuterie); minuterie = setTimeout(() => miseAJour(champ.value), 400); });
