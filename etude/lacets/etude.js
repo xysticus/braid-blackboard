@@ -24,7 +24,11 @@ const MAX_LETTRES = 14;
 const IMAGES_PAR_LETTRE = 48;   // nombre_images_conforme de ocaml/web/ardoise_web.ml
 const ECHELLE = 2;              // 1600 / 800
 const PALETTE = ['#d92626', '#1a9926', '#2640d9', '#bf9900', '#a626a6', '#0d9aa6', '#e6761a', '#6b4fbb'];
-const OPACITE_MIN = 0.15;       // une ligne de construction plus estompée n'a pas de tangentes
+const OPACITE_MIN = 0.15;       // une ligne de construction plus estompée n'a ni tangentes ni points
+// Pendant le raccord, la ligne de départ (L–A, B–R : opacité 1 − poids) et la ligne d'arrivée (L–B, A–R : opacité poids) coexistent, l'une
+// s'estompant dans l'autre. Les rencontres sur la ligne la plus claire sont éphémères : elles n'imposent pas leur tangente (elles sont
+// tracées en gris, sans tangente) ; celles de la ligne la plus foncée, et de toutes les lignes pleines (axe, A–B), l'imposent.
+const SEUIL_IMPOSE = 0.5;       // une ligne en transition impose ses tangentes si son opacité dépasse ce seuil
 const LONGUEUR_TANGENTE = 38;   // en pixels de l'image de 800
 
 // Les icônes des boutons (SVG, même dessin pour un pas en avant et un pas en arrière : un triangle et une barre verticale).
@@ -123,8 +127,9 @@ function toutesRencontres(image) {
   if (!c) return sortie;
   for (let s = 0; 4 * s + 3 < c.length; s++) {
     if (o && o[s] < OPACITE_MIN) continue;
+    const impose = !o || o[s] >= 1 - 1e-6 || o[s] > SEUIL_IMPOSE;
     const a = [c[4 * s], c[4 * s + 1]], b = [c[4 * s + 2], c[4 * s + 3]];
-    image.lacets.forEach((p, i) => rencontres(p, a, b).forEach((r) => sortie.push({ ...r, lacet: i, segment: s })));
+    image.lacets.forEach((p, i) => rencontres(p, a, b).forEach((r) => sortie.push({ ...r, lacet: i, segment: s, impose })));
   }
   return sortie;
 }
@@ -169,12 +174,13 @@ function dessine(k) {
   image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3.5; trace(ctx, p); });
   disques(ctx, image.trous, 4, '#000');
   disques(ctx, image.clou, 4, '#000');
-  let n = 0;
+  let n = 0, eph = 0;
   if (etat.tangentes || etat.points) {
     const rs = toutesRencontres(image);
     n = rs.length;
+    eph = rs.filter((q) => !q.impose).length;
     if (etat.tangentes) {
-      for (const r of rs) {
+      for (const r of rs.filter((q) => q.impose)) {
         const a = [r.x - LONGUEUR_TANGENTE * r.dx, r.y - LONGUEUR_TANGENTE * r.dy], b = [r.x + LONGUEUR_TANGENTE * r.dx, r.y + LONGUEUR_TANGENTE * r.dy];
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 4.2;   // un liseré blanc : la tangente reste lisible sur les lacets voisins
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
@@ -184,13 +190,13 @@ function dessine(k) {
     }
     if (etat.points) {
       for (const r of rs) {
-        ctx.beginPath(); ctx.arc(r.x, r.y, 4.5, 0, 2 * Math.PI);
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.impose ? 4.5 : 3.5, 0, 2 * Math.PI);
         ctx.fillStyle = '#fff'; ctx.fill();
-        ctx.strokeStyle = PALETTE[r.lacet % PALETTE.length]; ctx.lineWidth = 2; ctx.stroke();
+        ctx.strokeStyle = r.impose ? PALETTE[r.lacet % PALETTE.length] : '#aaa'; ctx.lineWidth = r.impose ? 2 : 1.5; ctx.stroke();
       }
     }
   }
-  $('compte-tangentes').textContent = etat.tangentes || etat.points ? `${n} rencontre${n > 1 ? 's' : ''}` : '';
+  $('compte-tangentes').textContent = etat.tangentes || etat.points ? `${n} rencontre${n > 1 ? 's' : ''}` + (eph ? ` (dont ${eph} éphémère${eph > 1 ? 's' : ''}, sans tangente)` : '') : '';
 }
 
 // ---------------------------------------------------------------- le lecteur
