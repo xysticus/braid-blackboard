@@ -85,7 +85,8 @@ des lacets et du diagramme de courbes de la page web ; le reste est à l'étude)
   serveur personnel de l'utilisateur ; ni identifiant de connexion, chemin d'hébergement, clé, mot de passe ou détail
   d'installation ; ni dans les fichiers, ni dans les docs, ni dans les messages de commit, ni dans les sorties collées. Ces détails
   vont dans des fichiers locaux ignorés par git (`web/deploie.conf`, `web/*.local.md`) ; on dit seulement « un serveur personnel ».
-  Aucun élément privé non plus : ni adresse mail (seule l'adresse masquée `noreply` de GitHub est permise, dans les commits),
+  Auteur **et** committer de chaque commit : `xysticus` et l'adresse noreply de GitHub, jamais le vrai nom (vérifier
+  `git config user.name` avant de commiter ; le hook `pre-push` refuse sinon). Aucun élément privé non plus : ni adresse mail (seule l'adresse masquée `noreply` de GitHub est permise, dans les commits),
   ni chemin qui contient un nom d'utilisateur (écrire `~/...` ou un chemin relatif au dépôt), ni nom de machine, ni nom
   d'employeur. L'historique a été réécrit le 2026-11-19 pour en retirer de telles mentions ; vérifier le diff et le message
   avant chaque commit et chaque poussée.

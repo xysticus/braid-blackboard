@@ -6,6 +6,29 @@
 racine="$(git rev-parse --show-toplevel)"
 cd "$racine" || exit 1
 
+# Dépôt public : les commits à pousser doivent avoir pour auteur et committer « xysticus » et l'adresse masquée de GitHub
+# (jamais le vrai nom, ni une adresse personnelle ou professionnelle). Lit sur l'entrée standard les références poussées.
+zero="0000000000000000000000000000000000000000"
+mauvais=""
+while read -r ref_locale sha_locale ref_distante sha_distante; do
+  [ "$sha_locale" = "$zero" ] && continue
+  if [ "$sha_distante" = "$zero" ]; then
+    plage="$sha_locale --not --remotes"
+  else
+    plage="$sha_distante..$sha_locale"
+  fi
+  # shellcheck disable=SC2086
+  mauvais="$mauvais$(git log --format='%h %an <%ae> / %cn <%ce>' $plage | awk '
+    { ok = ($2 == "xysticus" && $3 ~ /@users\.noreply\.github\.com>$/ && $5 == "xysticus" && $6 ~ /@users\.noreply\.github\.com>$/)
+      if (!ok) print }')"
+done
+if [ -n "$mauvais" ]; then
+  echo "pre-push : auteur ou committer non conforme (attendu : xysticus et l'adresse noreply de GitHub) :" >&2
+  echo "$mauvais" >&2
+  echo "           Régler : git config user.name xysticus ; git config user.email <adresse noreply> ; puis réécrire ces commits." >&2
+  exit 1
+fi
+
 if ! "$racine/web/construit.sh" >/dev/null 2>&1; then
   echo "pre-push : web/construit.sh a échoué (OCaml ou js_of_ocaml indisponible ?). Lance-le à la main pour voir l'erreur :" >&2
   echo "           web/construit.sh" >&2
