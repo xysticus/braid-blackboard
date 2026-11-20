@@ -1,0 +1,36 @@
+/* Le banc d'essai des lacets : la feuille de la page publique (../../web/ardoise.css) plus ce qui lui manque. */
+header, main, footer { max-width: 1700px; }
+
+.commandes { flex-wrap: wrap; }
+.commandes button { width: auto; min-width: 40px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; }
+.commandes button svg { display: block; }
+#joue { margin-right: 10px; }
+.commandes input[type=range] { min-width: 120px; }
+.commandes input[type=number] { width: 5.5em; font: inherit; padding: 2px 4px; border: 1.5px solid var(--trait); border-radius: 6px;
+  background: var(--carte); color: var(--encre); }
+#position { font-variant-numeric: tabular-nums; color: var(--encre); }
+.options { flex-wrap: wrap; gap: 16px; }
+.options select { font: inherit; padding: 1px 4px; border-radius: 6px; border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre); }
+[hidden] { display: none !important; }
+
+/* Le lecteur à gauche, le mot et les exemples à droite ; le canvas (1600 × 1600 de définition) est affiché à la hauteur de la fenêtre. */
+main.etude { grid-template-columns: auto minmax(260px, 1fr); grid-template-areas: "lecteur saisie"; align-items: start; gap: 18px; }
+#lecteur { grid-area: lecteur; }
+#saisie { grid-area: saisie; }
+:root { --cote: max(380px, calc(100vh - 335px)); }   /* côté affiché du canvas */
+/* largeur fixe (le canvas + le remplissage et le cadre du panneau) : le texte qui change d'une image ou d'une tresse à l'autre ne la fait plus varier */
+#lecteur { width: calc(var(--cote) + 26px); max-width: 100%; }
+#lecteur canvas { width: 100%; height: auto; aspect-ratio: 1; }
+#position { flex: 1; min-width: 0; min-height: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#compte-tangentes { flex: 1; min-width: 0; min-height: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header { padding-top: 12px; }
+h1 { font-size: 1.4rem; }
+#saisie #exemples { grid-template-columns: 1fr; }
+.etude .panneau h3 { margin-bottom: 6px; }
+.etude .panneau .aide { margin-top: 4px; }
+@media (max-width: 1100px) {
+  main.etude { grid-template-columns: 1fr; grid-template-areas: "saisie" "lecteur"; }
+  #lecteur, #lecteur canvas { width: 100%; }
+}
+#etat-calcul:empty { display: none; }
+.commandes .saut { flex-basis: 100%; height: 0; margin: -4px 0; }   /* le numéro et la position passent à la ligne, sous le curseur */

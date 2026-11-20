@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lacets : banc d'essai</title>
+<link rel="icon" href="../../web/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../web/ardoise.css">
+<link rel="stylesheet" href="etude.css">
+</head>
+<body>
+<header>
+  <h1>Lacets conformes : banc d'essai</h1>
+  <p class="sous-titre">Document de travail (non publié) : le film des lacets image par image, avec les lignes de construction et les tangentes des arcs.</p>
+</header>
+
+<main class="etude">
+  <aside id="saisie">
+    <label for="mot">Mot de tresse</label>
+    <input id="mot" type="text" spellcheck="false" autocomplete="off" placeholder="1 -2 3 -1 2     ou     σ1 σ2^-1 σ3">
+    <p id="erreur" class="erreur" hidden></p>
+    <p class="aide" id="limites"></p>
+    <p class="aide" id="aide-clavier">Clavier : ← et → (une image), Maj + ← et Maj + → (une lettre), Début et Fin, espace (lecture).
+       Une lettre dure <span id="par-lettre">48</span> images ; l'image clé est la première de chaque lettre. Les tangentes sont dessinées aux points où un lacet
+       coupe une ligne de construction visible (opacité ≥ 15 %), sur la direction du segment de la ligne brisée du lacet.</p>
+    <div id="exemples" aria-label="Tresses d'exemple"></div>
+  </aside>
+
+  <section class="panneau" id="lecteur">
+    <h3>Lacets conformes <span id="mot-titre"></span></h3>
+    <canvas id="toile" width="1600" height="1600"></canvas>
+    <div id="etat-calcul" class="etat"><span>…</span></div>
+    <div id="commandes" class="etat commandes" hidden>
+      <button type="button" id="joue" title="lecture / pause (espace)"></button>
+      <button type="button" id="debut" title="première image (Début)"></button>
+      <button type="button" id="lettre-moins" title="une lettre en arrière (Maj + ←)"></button>
+      <button type="button" id="moins" title="une image en arrière (←)"></button>
+      <button type="button" id="plus" title="une image en avant (→)"></button>
+      <button type="button" id="lettre-plus" title="une lettre en avant (Maj + →)"></button>
+      <button type="button" id="fin" title="dernière image (Fin)"></button>
+      <input type="range" id="curseur" min="0" max="0" step="1" value="0" aria-label="position dans le film">
+      <span class="saut"></span>
+      <label>image <input type="number" id="numero" min="1" value="1"></label>
+      <span id="position"></span>
+    </div>
+    <div class="etat options">
+      <label><input type="checkbox" id="c-construction" checked> lignes de construction</label>
+      <label><input type="checkbox" id="c-tangentes" checked> tangentes aux arcs</label>
+      <label><input type="checkbox" id="c-points" checked> points de rencontre</label>
+      <label>images par seconde
+        <select id="vitesse"><option>2</option><option>5</option><option>12</option><option selected>25</option></select></label>
+      <span id="compte-tangentes"></span>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Calcul : <code>web/ardoise_lib.js</code> (le même que la page publique) dans <code>web/travail.js</code> ; page servie depuis la racine du dépôt :
+     <code>python3 -m http.server</code>, puis <code>/etude/lacets/</code>.</p>
+</footer>
+
+<script src="etude.js"></script>
+</body>
+</html>

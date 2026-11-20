@@ -59,6 +59,8 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   `web/ardoise_lib.js`, **suivi par git** : le hook `.githooks/pre-push` (à activer par `git config core.hooksPath .githooks`)
   le reconstruit avant chaque push et refuse de pousser s'il a changé (le commiter, puis repousser). Un push qui touche `web/`
   met à jour GitHub Pages.
+- `etude/lacets/` : **banc d'essai** (document de travail, non déployé) du film des lacets : une page, un film en 1600 × 1600, lecteur pas à pas, lignes de construction et tangentes
+  des arcs (`etude/lacets/README.md`). Il réutilise `web/travail.js` et `web/ardoise_lib.js` sans les modifier.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README et un `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés)
