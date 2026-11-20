@@ -3,7 +3,8 @@
 Idée : comme le lecteur des films (`lecteur` dans `python/Interface.py`) est le nôtre, on peut offrir pour chaque film une
 case « lignes de construction ». Elle montre, sous le sujet, ce qui sert à le fabriquer (l'axe et la ligne brisée,
 la triangulation…). Ce serait un deuxième jeu d'images, calculé en même temps que le film, et le lecteur passerait de l'un
-à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. Rien n'est implémenté.
+à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. **Fait (2026-11-20) : la case du film de la triangulation
+de la page web** (voir « Ce qui est fait » à la fin) ; le reste n'est pas implémenté.
 La dernière section, « Sur la page web », transpose l'étude à la page, où le principe est différent (et bien moins cher).
 
 ## Ce qui existe déjà, film par film
@@ -178,3 +179,23 @@ Le coût du notebook vient de ce qu'il envoie des PNG. Un lecteur qui redessiner
 d'`ipycanvas` (déjà dans `environment.yml`), rendrait la construction presque gratuite, comme sur la page. Ce serait un autre
 chantier (réécrire dans le notebook le dessin que fait `dessineImage`), à comparer avec la recommandation de la section
 précédente (deux jeux d'images complets).
+
+## Ce qui est fait (2026-11-20) : la case du film de la triangulation, sur la page
+
+- `ocaml/web/ardoise_web.ml` : `image` a un champ facultatif `construction` ; le film de la triangulation y met les arêtes du
+  maillage (`aretes_a_plat`, segments à plat dans l'ordre rangé des arêtes, 60 segments pour `[1, -2, 1, -2, 3]`). Rien n'est
+  recalculé : les positions sont déjà dans le maillage.
+- `web/ardoise.js` : `dessineImage` trace `image.construction` avant les lacets (gris `#999`, 2,2 px) quand le lecteur le demande ;
+  `Lecteur` a une case « lignes de construction » (seulement pour la triangulation), dont l'état est conservé quand le mot
+  change et que `?construction` coche au départ ; `etendue` ignore la construction. `web/ardoise.css` : le style de la case, qui
+  passe à la ligne sur écran étroit. L'infobulle de la vue le dit.
+- `web/ardoise_lib.js` reconstruit. `dune test` : 83 tests passent.
+- **Vérifié dans Edge** (sans fenêtre, sur une page de test qui charge le vrai `ardoise_lib.js` et le vrai `ardoise.js`, sans Web Worker) :
+  la case apparaît à côté du curseur ; décochée, l'image est celle d'avant ; cochée par un vrai clic, les arêtes passent sous les lacets,
+  sur `[1, -2, 1, -2, 3]` et sur un mot chargé à 9 lettres ; les images passent par la même conversion en `Float32Array` que celle de
+  `travail.js` ; la mise en page à 390 px de large tient sur une ligne. **Pas vérifié** : le chemin réel par le Web Worker (les canvas
+  de la vraie page étaient encore vides quand la capture a été prise : Edge sans fenêtre n'attend pas les workers) ; la lecture
+  animée avec la case cochée.
+- **Pas fait** : les lacets (il faut porter `aretes` et les opacités du raccord en OCaml), les rubans, le diagramme de courbes,
+  le notebook.
+

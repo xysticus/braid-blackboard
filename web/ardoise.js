@@ -372,7 +372,25 @@ function vueDe(canvas, images, mode) {
   return { s, tx: canvas.width / 2 - s * (e.x0 + e.x1) / 2, ty: canvas.height / 2 - s * (e.y0 + e.y1) / 2 };
 }
 
-function dessineImage(canvas, image, mode, vue = null) {
+// Les films qui ont des lignes de construction facultatives (image.construction : des segments à plat, x0, y0, x1, y1, …) :
+// la case « lignes de construction » du lecteur les trace en gris sous les lacets. Elles ne comptent pas dans `etendue`
+// (le zoom ne dépend que des lacets, des trous et du clou).
+const MODES_AVEC_CONSTRUCTION = new Set(['triangulation']);
+const GRIS_CONSTRUCTION = '#999';
+const TRAIT_CONSTRUCTION = 2.2;   // pour un canvas de 800 de large, comme les lacets
+
+function traceSegments(ctx, s, couleur, largeur) {
+  ctx.strokeStyle = couleur;
+  ctx.lineWidth = largeur;
+  ctx.beginPath();
+  for (let k = 0; k + 3 < s.length; k += 4) {
+    ctx.moveTo(s[k], s[k + 1]);
+    ctx.lineTo(s[k + 2], s[k + 3]);
+  }
+  ctx.stroke();
+}
+
+function dessineImage(canvas, image, mode, vue = null, construction = false) {
   if (mode === 'escargot') { dessineEscargot(canvas, image); return; }
   if (mode === 'bouquet') { dessineBouquet(canvas, image); return; }
   const ctx = canvas.getContext('2d');
@@ -382,6 +400,7 @@ function dessineImage(canvas, image, mode, vue = null) {
   if (vue) ctx.setTransform(vue.s, 0, 0, vue.s, vue.tx, vue.ty);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  if (construction && image.construction) traceSegments(ctx, image.construction, GRIS_CONSTRUCTION, TRAIT_CONSTRUCTION);
   image.lacets.forEach((p, i) => {
     if (mode === 'conforme' || mode === 'triangulation') {
       ctx.strokeStyle = PALETTE[i % PALETTE.length];
@@ -433,6 +452,7 @@ class Lecteur {
     this.lecture = false;
     this.t = 0;
     this.derniere = 0;
+    this.construction = new URLSearchParams(location.search).has('construction');   // la case ; ?construction : cochée au départ (captures)
     this.efface();
   }
 
@@ -490,7 +510,7 @@ class Lecteur {
   recoitFixe(image) {
     this.fixe = image;
     this.vue = vueDe(this.canvas, [image], this.mode);
-    dessineImage(this.canvas, image, this.mode, this.vue);
+    dessineImage(this.canvas, image, this.mode, this.vue, this.construction);
   }
 
   recoitImage(image, k, total) {
@@ -522,9 +542,14 @@ class Lecteur {
     const duree = this.duree();
     this.etat.innerHTML = `<button type="button" title="lecture / pause">⏸</button>` +
       `<input type="range" min="0" max="${duree - 1}" step="1" value="0" aria-label="position dans le film">` +
+      (MODES_AVEC_CONSTRUCTION.has(this.mode)
+        ? `<label title="trace en gris le maillage sur lequel les brins sont posés"><input type="checkbox" class="construction"${this.construction ? ' checked' : ''}> lignes de construction</label>`
+        : '') +
       (message ? `<span class="ko" title="${message}">⚠</span>` : '<span class="ok">film</span>');
     this.bouton = this.etat.querySelector('button');
-    this.curseur = this.etat.querySelector('input');
+    this.curseur = this.etat.querySelector('input[type=range]');
+    const case_ = this.etat.querySelector('input.construction');
+    if (case_) case_.onchange = () => { this.construction = case_.checked; this.montre(); };
     this.bouton.onclick = () => (this.lecture ? this.arrete() : this.joue());
     this.bouton.title = 'lecture / pause (relance le film s\'il est fini)';
     this.curseur.oninput = () => { this.arrete(); this.t = Number(this.curseur.value); this.montre(); };
@@ -535,7 +560,7 @@ class Lecteur {
   montre() {
     const n = this.images.length;
     const k = this.t < this.pauseDebut ? 0 : Math.min(n - 1, Math.floor(this.t - this.pauseDebut));
-    dessineImage(this.canvas, this.images[k], this.mode, this.vue);
+    dessineImage(this.canvas, this.images[k], this.mode, this.vue, this.construction);
     if (this.curseur) this.curseur.value = String(Math.floor(this.t));
   }
 
@@ -574,7 +599,7 @@ const SCHEMAS = {
   fn: ['Action sur le groupe libre', 'Les lacets x₁ et x₂ avant et après σ₁ : x₁ ↦ x₁x₂x₁⁻¹ et x₂ ↦ x₁.'],
   diagramme: ['Diagramme de courbes', 'Un point fixe à gauche ; les arcs sont les segments de l\'axe, que le demi-tour de deux trous emporte.'],
   lacets: ['Lacets conformes', 'Des demi-cercles du demi-plan et leurs images par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R.'],
-  triangulation: ['Triangulation mobile', 'Un maillage et des points sur ses arêtes ; quand les trous tournent, les brins suivent et se tendent.'],
+  triangulation: ['Triangulation mobile', 'Un maillage et des points sur ses arêtes ; quand les trous tournent, les brins suivent et se tendent. La case « lignes de construction » trace le maillage en gris.'],
   rubans: ['Rubans', 'Un ruban par trou voyageur, du trou fixe (la queue) au trou voyageur ; après le demi-tour, les rubans s\'enroulent.'],
 };
 

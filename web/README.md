@@ -48,6 +48,10 @@ opam de `ocaml/` (`opam install js_of_ocaml js_of_ocaml-compiler`, déclarés da
 
 Le film de la triangulation utilise le maillage grossier des films d'arcs (`Film.cree ~grossier:true`) : les arêtes partent
 en étoile de chaque trou, les brins s'enroulent autour du trou contourné et partent du clou en éventail.
+Son lecteur a une case **« lignes de construction »** : elle trace ce maillage en gris (`#999`, 2,2 px) sous les lacets. Les
+arêtes viennent du calcul (`image.construction` : des segments à plat, `aretes_a_plat` dans `ocaml/web/ardoise_web.ml`) et sont
+tracées par `traceSegments` (`web/ardoise.js`) ; elles ne comptent pas dans le zoom arrière. La case garde son état quand le mot
+change. Étude : `etude_lignes_de_construction.md`.
 
 ## Les fichiers
 
@@ -60,7 +64,8 @@ en étoile de chaque trou, les brins s'enroulent autour du trou contourné et pa
 Les méandres qui sortent du cadre (une tresse chargée, à la triangulation) sont recadrés : zoom arrière seulement, une même
 vue pour tout le film (`vueDe` dans `ardoise.js`), calculée sur toutes ses images dès que le film est fini.
 
-`index.html?fin` : pas de lecture automatique, les films s'arrêtent sur leur dernière image (pour les captures d'écran).
+`index.html?fin` : pas de lecture automatique, les films s'arrêtent sur leur dernière image (pour les captures d'écran) ;
+`?construction` : la case « lignes de construction » est cochée au départ.
 
 Limites affichées sous le champ (« Limites de la page » et « Ce mot : N brins, M lettres », avec avertissement) ; un mot qui dépasse la page
 (8 brins, 40 lettres) donne une erreur et grise les résultats, qui restent ceux du dernier mot valide ; un mot qui dépasse les vues « lacets » et

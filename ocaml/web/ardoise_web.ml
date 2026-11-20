@@ -8,7 +8,8 @@
    tresse), ou "escargot" ou "bouquet" (films sans tresse : le mot est ignoré, les images ont d'autres champs, voir
    image_escargot et image_bouquet).
    Une image : { lacets : [[x0, y0, x1, y1, …], …], trous : [x, y, …], fixes : [x, y, …], clou : [x, y],
-   ecart : nombre } dans un cadre de 800 × 800. [rendu] est appelé avec (image, numéro, total) pour chaque image du
+   ecart : nombre } dans un cadre de 800 × 800 ; le film de la triangulation ajoute construction : [x0, y0, x1, y1, …], les
+   arêtes du maillage, à tracer en gris sous les lacets si la page le demande (case « lignes de construction »). [rendu] est appelé avec (image, numéro, total) pour chaque image du
    film. Les échecs (tresse vide, limites, exceptions du calcul) reviennent en texte, jamais en exception JS : le
    Web Worker les affiche. *)
 
@@ -50,15 +51,29 @@ let plat points =
   Array.iteri (fun k p -> a.(2 * k) <- p.x; a.((2 * k) + 1) <- p.y) points;
   Js.array a
 
-let image ?(decalage = { x = 0.; y = 0. }) ?(fixes = [||]) ?(ecart = 6.) ?(brin = 3.5) lacets trous clou =
+let image ?(decalage = { x = 0.; y = 0. }) ?(fixes = [||]) ?(ecart = 6.) ?(brin = 3.5) ?construction lacets trous clou =
   let d = Array.map (fun p -> p +: decalage) in
   Js.Unsafe.obj
-    [| ("lacets", Js.Unsafe.inject (Js.array (Array.of_list (List.map (fun l -> plat (d l)) lacets))));
-       ("trous", Js.Unsafe.inject (plat (d trous)));
-       ("fixes", Js.Unsafe.inject (plat (d fixes)));
-       ("clou", Js.Unsafe.inject (plat (d [| clou |])));
-       ("ecart", Js.Unsafe.inject (Js.number_of_float ecart));
-       ("brin", Js.Unsafe.inject (Js.number_of_float brin)) |]
+    (Array.append
+       [| ("lacets", Js.Unsafe.inject (Js.array (Array.of_list (List.map (fun l -> plat (d l)) lacets))));
+          ("trous", Js.Unsafe.inject (plat (d trous)));
+          ("fixes", Js.Unsafe.inject (plat (d fixes)));
+          ("clou", Js.Unsafe.inject (plat (d [| clou |])));
+          ("ecart", Js.Unsafe.inject (Js.number_of_float ecart));
+          ("brin", Js.Unsafe.inject (Js.number_of_float brin)) |]
+       (match construction with None -> [||] | Some c -> [| ("construction", Js.Unsafe.inject c) |]))
+
+(* Les arêtes d'un maillage, en segments à plat (x0, y0, x1, y1, …), dans l'ordre rangé des arêtes. *)
+let aretes_a_plat (m : Triangulation.Maillage.t) =
+  let pos = m.Triangulation.Maillage.pos in
+  let segments =
+    Triangulation.Aretes.fold
+      (fun (arete : Triangulation.Arete.t) _ acc ->
+        let u, v = (arete :> int * int) in
+        pos.(v).y :: pos.(v).x :: pos.(u).y :: pos.(u).x :: acc)
+      (Triangulation.Maillage.aretes m) []
+  in
+  Js.array (Array.of_list (List.rev segments))
 
 (* --- mots de F_n --- *)
 
@@ -93,7 +108,7 @@ let image_arcs rubans (film : Arcs.t) =
 let image_triangulation (film : Film.t) ecart =
   let brin = Float.min (3. *. film.largeur /. 400.) (Float.max 1. (0.7 *. ecart)) in
   let pos = film.maillage.Triangulation.Maillage.pos in
-  image ~brin (Film.polylignes film) (Film.positions_des_trous film) pos.(film.clou)
+  image ~brin ~construction:(aretes_a_plat film.maillage) (Film.polylignes film) (Film.positions_des_trous film) pos.(film.clou)
 
 (* Joue le film en appelant [rendu film ecart numéro] à chaque image (le départ : numéro 0). *)
 let joue_triangulation tresse ~sous_pas ~rendu =
