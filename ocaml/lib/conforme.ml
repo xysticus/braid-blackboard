@@ -466,3 +466,19 @@ let ecran_de l ~reduction (z : Complex.t) s = { x = z.re; y = l.y_axe -. (z.im *
 
 (* Positions à l'écran des trous au temps s. *)
 let trous_ecran l ~reduction s = Array.init l.n (fun p -> ecran_de l ~reduction (trou l p s) s)
+
+(* Les lignes de construction à l'écran au temps s (Lettre.aretes du Python) : les morceaux de l'axe hors du bloc (de
+   gauche à droite, du bord gauche au premier trou du bloc et du dernier au bord droit : les extrémités à ±10 000 sortent
+   du cadre), puis, dans l'ordre, L–A, A–B, B–R, L–B et A–R (L, A, B, R : les trous i-2, i-1, i, i+1, les deux
+   extrêmes pouvant être des points virtuels au bord de l'image). *)
+let aretes l ~reduction s =
+  let i = l.i and n = l.n in
+  let t p = ecran_de l ~reduction (trou l p s) s in
+  let lg = t (i - 2) and a = t (i - 1) and b = t i and r = t (i + 1) in
+  let gauche =
+    ({ x = -1e4; y = l.y_axe } :: List.init (max 0 (i - 1)) t) @ if i - 2 < 0 then [ lg ] else []
+  and droite =
+    List.init (max 0 (n - i - 1)) (fun k -> t (i + 1 + k)) @ (if i + 1 >= n then [ r ] else []) @ [ { x = 1e4; y = l.y_axe } ]
+  in
+  let paires = function [] -> [] | tete :: queue -> List.combine (List.filteri (fun k _ -> k < List.length queue) (tete :: queue)) queue in
+  (paires gauche @ paires droite, [| (lg, a); (a, b); (b, r); (lg, b); (a, r) |])

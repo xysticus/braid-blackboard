@@ -6,7 +6,8 @@ Schwarz–Christoffel, 7b : la lettre).
 - "raccords" : deux raccords par triangulation (lettres 1 et 5 de la tresse de référence, film 800 × 800 marges 60),
   leurs entrées et leurs sorties.
 - "lettres" : pour chaque lettre des deux tresses d'essai, à quatre instants, la ligne brisée, les pieds, l'aplatissement,
-  un résumé du dessin de l'état (nombre de points, somme, un point sur 25, dernier point) et les trous à l'écran.
+  un résumé du dessin de l'état (nombre de points, somme, un point sur 25, dernier point), les trous à l'écran et les
+  arêtes de construction (`Lettre.aretes` : l'axe et L–A, A–B, B–R, L–B, A–R).
 Lancer depuis la racine du dépôt : python ocaml/test/genere_reference_conforme.py'''
 import json
 import os
@@ -70,7 +71,10 @@ for tr in ([4, 3, -1, -1, 2, -4, 1], [1, -2, 1, -2, 1, -2, 3, -1, 2]):
             reference['lettres'].append({
                 'tresse': tr, 'k': k, 's': s, 'e': e, 'ligne': [c(z) for z in V], 'pieds': pieds,
                 'aplati': lettre.aplati(s), 'dessin': [resume(l) for l in lettre.dessin(e, s)],
-                'trous': lettre.trous_ecran(s).tolist()})
+                'trous': lettre.trous_ecran(s).tolist(),
+                # les lignes de construction : morceaux de l'axe, puis L–A, A–B, B–R, L–B, A–R (Lettre.aretes)
+                'aretes': (lambda axe, cinq: {'axe': [[p.tolist(), q.tolist()] for p, q in axe],
+                                              'cinq': [[p.tolist(), q.tolist()] for p, q in cinq]})(*lettre.aretes(s))})
 
 # 7c : le raccord par triangulation, capturé pendant le film de la tresse de référence (deux lettres) : ses entrées
 # (dessins de départ et d'arrivée complets, temps, réductions) et ses sorties (lignes de chaque image de la fenêtre)

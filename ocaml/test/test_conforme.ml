@@ -99,7 +99,19 @@ let test_lettre j () =
       let somme = Array.fold_left (fun (a : Geometrie.point) (b : Geometrie.point) -> { Geometrie.x = a.x +. b.x; y = a.y +. b.y }) { x = 0.; y = 0. } p in
       proches_p (nom ^ " : somme des points") 1e-5 (point_de (J.member "somme" r)) somme)
     attendu dessin;
-  List.iteri (fun i q -> proches_p (nom ^ " : trou") 1e-9 (point_de q) (Conforme.trous_ecran l ~reduction:1. s).(i)) (J.to_list (J.member "trous" j))
+  List.iteri (fun i q -> proches_p (nom ^ " : trou") 1e-9 (point_de q) (Conforme.trous_ecran l ~reduction:1. s).(i)) (J.to_list (J.member "trous" j));
+  (* les lignes de construction : morceaux de l'axe, puis L–A, A–B, B–R, L–B, A–R *)
+  let axe, cinq = Conforme.aretes l ~reduction:1. s in
+  let attendu = J.member "aretes" j in
+  let paire nom (a, b) r = match J.to_list r with
+    | [ p; q ] -> proches_p (nom ^ " : début") 1e-9 (point_de p) a; proches_p (nom ^ " : fin") 1e-9 (point_de q) b
+    | _ -> failwith "arête" in
+  let attendu_axe = J.to_list (J.member "axe" attendu) in
+  Alcotest.(check int) (nom ^ " : morceaux d'axe") (List.length attendu_axe) (List.length axe);
+  List.iter2 (paire (nom ^ " : axe")) axe attendu_axe;
+  let attendu_cinq = J.to_list (J.member "cinq" attendu) in
+  Alcotest.(check int) (nom ^ " : segments du bloc") (List.length attendu_cinq) (Array.length cinq);
+  List.iteri (fun k r -> paire (Printf.sprintf "%s : segment %d" nom k) cinq.(k) r) attendu_cinq
 
 (* 7c : le raccord par triangulation, reconstruit à partir des entrées capturées dans le film Python *)
 

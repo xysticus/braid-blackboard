@@ -1,15 +1,34 @@
 (* La boucle du film conforme (film_conforme de python/Conforme.py, sans le dessin ni le MP4, qui sont dans
    dessin/dessin.ml) et la vérification nb_croisements : étape 7d du plan OCaml. Le raccord est toujours celui par
-   triangulation (le défaut du Python ; le mélange n'est pas traduit), sans tracé des arêtes de construction. *)
+   triangulation (le défaut du Python ; le mélange n'est pas traduit). Chaque image porte ses lignes de construction
+   (l'axe et la ligne brisée L–A–B–R, avec leurs fondus pendant le raccord) ; le dessin Cairo ne les trace pas, la page web
+   le fait si on le lui demande. *)
 
 open Geometrie
 
-type image = { lignes : point array list; trous : point array; clou : point }
+type image = {
+  lignes : point array list;
+  trous : point array;
+  clou : point;
+  construction : (point * point * float) list;
+      (** Les lignes de construction : des segments avec leur opacité (> 0), l'axe et A–B toujours à 1. *)
+}
 (* Une image du film, dans le cadre intérieur (avant le décalage de la marge). *)
 
 type anomalie = { lettre : int; image : int; detail : string }
 
 let lisse u = u *. u *. (3. -. (2. *. u))
+
+(* Les lignes de construction d'une image au temps s (le [dessin_axe] du Python) : les morceaux de l'axe et A–B, puis
+   L–A et B–R qui s'estompent (opacité 1 − poids) pendant que L–B et A–R apparaissent (opacité poids), poids étant la part
+   du raccord : 0 sur la ligne brisée L–A–B–R de l'état k, 1 sur L–B–A–R de l'état k+1. Les segments invisibles sont omis. *)
+let construction l ~reduction s ~poids =
+  let axe, cinq = Conforme.aretes l ~reduction s in
+  let avec alpha (p, q) = (p, q, alpha) in
+  List.map (avec 1.) axe
+  @ List.filter
+      (fun (_, _, alpha) -> alpha > 0.)
+      [ avec 1. cinq.(1); avec (1. -. poids) cinq.(0); avec (1. -. poids) cinq.(2); avec poids cinq.(3); avec poids cinq.(4) ]
 
 (* Nombre de croisements entre lacets distincts, hors du voisinage du clou (où ils se rejoignent). Comme le Python :
    segments groupés par paquets de 64 avec leur rectangle englobant, on ne compare que les paquets qui se chevauchent. *)
@@ -80,7 +99,7 @@ let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
   let k = n_lettres - 1 in
   let l = Conforme.lettre ~hauteur:(hauteur -. (2. *. marge)) ~largeur:(largeur -. (2. *. marge)) (etat k) (etat (k + 1)) (List.nth tresse k) in
   let lignes, reduction = dessin_reduit l 1 1. in
-  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou }
+  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1. }
 
 (* Le film : pour chaque lettre, l'état k dessiné sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la
    verticale par la triangulation pendant la fenêtre (part du mouvement). [rendu] est appelé avec chaque image dans
@@ -99,7 +118,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~m
   let premiere = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat 0) (etat 1) (List.hd tresse) in
   rendu
     { lignes = Conforme.dessin premiere ~reduction:1. 0 0.; trous = Conforme.trous_ecran premiere ~reduction:1. 0.;
-      clou = premiere.clou };
+      clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0. };
   List.iteri
     (fun k sigma ->
       let l = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat k) (etat (k + 1)) sigma in
@@ -152,7 +171,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ~hauteur ~largeur ~m
           let nb = nb_croisements lignes l.clou in
           if nb > 0 then anomalies := { lettre = k; image = n; detail = Printf.sprintf "%d croisements" nb } :: !anomalies
         end;
-        rendu { lignes; trous; clou = l.clou }
+        rendu { lignes; trous; clou = l.clou; construction = construction l ~reduction s ~poids }
       done)
     tresse;
   List.rev !anomalies

@@ -29,6 +29,9 @@ plusieurs arêtes étaient à retourner au même pas.
 `RaccordTriangule` ; `lib/film_conforme.ml` : la boucle et `nb_croisements` ; `Dessin.film_conforme`),
 `bin/conforme.ml` → `imgs/conforme/film_*_ocaml.mp4`, identiques octet pour octet au Python (41 s au lieu de 1 min 35),
 seulement avec le raccord par triangulation (le défaut).
+Lignes de construction (2026-11-20, pour la page web) : `Conforme.aretes` (l'axe et L–A, A–B, B–R, L–B, A–R, comparée au Python
+par `dune test`) et `Film_conforme.construction` (chaque image porte ses segments avec leur opacité, fondus du raccord compris) ;
+le dessin Cairo et les MP4 ne les tracent pas.
 Étape 8 faite : le premier bouquet (`lib/bouquet.ml` : la classe `Pousse` de `python/Bouquet.py`, `test/test_bouquet.ml`,
 concordant à 1e-6 près ; 0,8 s au lieu de 30 s). L'escargot et le bouquet sont dans la page web (section « Un peu de
 poésie »), dessinés en canvas par `web/ardoise.js` (le dessin Cairo n'est pas traduit pour le bouquet).

@@ -372,22 +372,38 @@ function vueDe(canvas, images, mode) {
   return { s, tx: canvas.width / 2 - s * (e.x0 + e.x1) / 2, ty: canvas.height / 2 - s * (e.y0 + e.y1) / 2 };
 }
 
-// Les films qui ont des lignes de construction facultatives (image.construction : des segments à plat, x0, y0, x1, y1, …) :
-// la case « lignes de construction » du lecteur les trace en gris sous les lacets. Elles ne comptent pas dans `etendue`
-// (le zoom ne dépend que des lacets, des trous et du clou).
-const MODES_AVEC_CONSTRUCTION = new Set(['triangulation']);
+// Les films qui ont des lignes de construction facultatives (image.construction : des segments à plat, x0, y0, x1, y1, …,
+// et, quand ils s'estompent, image.opacites : un nombre par segment) : la case « lignes de construction » du lecteur les
+// trace en gris sous les lacets. Elles ne comptent pas dans `etendue` (le zoom ne dépend que des lacets, des trous et du clou).
+// Pour chaque film, l'infobulle de la case dit ce que ce sont.
+const MODES_AVEC_CONSTRUCTION = new Map([
+  ['triangulation', 'trace en gris le maillage sur lequel les brins sont posés'],
+  ['conforme', 'trace en gris l\'axe et la ligne brisée L–A–B–R sur laquelle le dessin est fait (elle se plie pendant le demi-tour)'],
+]);
 const GRIS_CONSTRUCTION = '#999';
 const TRAIT_CONSTRUCTION = 2.2;   // pour un canvas de 800 de large, comme les lacets
 
-function traceSegments(ctx, s, couleur, largeur) {
+function traceSegments(ctx, s, couleur, largeur, opacites = null) {
   ctx.strokeStyle = couleur;
   ctx.lineWidth = largeur;
-  ctx.beginPath();
-  for (let k = 0; k + 3 < s.length; k += 4) {
-    ctx.moveTo(s[k], s[k + 1]);
-    ctx.lineTo(s[k + 2], s[k + 3]);
+  if (!opacites) {
+    ctx.beginPath();
+    for (let k = 0; k + 3 < s.length; k += 4) {
+      ctx.moveTo(s[k], s[k + 1]);
+      ctx.lineTo(s[k + 2], s[k + 3]);
+    }
+    ctx.stroke();
+    return;
   }
-  ctx.stroke();
+  const alpha = ctx.globalAlpha;
+  for (let j = 0; 4 * j + 3 < s.length; j++) {   // un segment à la fois : chacun a sa propre opacité
+    ctx.globalAlpha = alpha * opacites[j];
+    ctx.beginPath();
+    ctx.moveTo(s[4 * j], s[4 * j + 1]);
+    ctx.lineTo(s[4 * j + 2], s[4 * j + 3]);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = alpha;
 }
 
 function dessineImage(canvas, image, mode, vue = null, construction = false) {
@@ -400,7 +416,7 @@ function dessineImage(canvas, image, mode, vue = null, construction = false) {
   if (vue) ctx.setTransform(vue.s, 0, 0, vue.s, vue.tx, vue.ty);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  if (construction && image.construction) traceSegments(ctx, image.construction, GRIS_CONSTRUCTION, TRAIT_CONSTRUCTION);
+  if (construction && image.construction) traceSegments(ctx, image.construction, GRIS_CONSTRUCTION, TRAIT_CONSTRUCTION, image.opacites);
   image.lacets.forEach((p, i) => {
     if (mode === 'conforme' || mode === 'triangulation') {
       ctx.strokeStyle = PALETTE[i % PALETTE.length];
@@ -543,7 +559,7 @@ class Lecteur {
     this.etat.innerHTML = `<button type="button" title="lecture / pause">⏸</button>` +
       `<input type="range" min="0" max="${duree - 1}" step="1" value="0" aria-label="position dans le film">` +
       (MODES_AVEC_CONSTRUCTION.has(this.mode)
-        ? `<label title="trace en gris le maillage sur lequel les brins sont posés"><input type="checkbox" class="construction"${this.construction ? ' checked' : ''}> lignes de construction</label>`
+        ? `<label title="${MODES_AVEC_CONSTRUCTION.get(this.mode)}"><input type="checkbox" class="construction"${this.construction ? ' checked' : ''}> lignes de construction</label>`
         : '') +
       (message ? `<span class="ko" title="${message}">⚠</span>` : '<span class="ok">film</span>');
     this.bouton = this.etat.querySelector('button');
@@ -598,7 +614,7 @@ const SCHEMAS = {
   tresse: ['Diagramme de tresse', 'Un croisement σᵢ et son inverse σᵢ⁻¹, puis l\'exemple σ₁σ₂⁻¹ lu de haut en bas.'],
   fn: ['Action sur le groupe libre', 'Les lacets x₁ et x₂ avant et après σ₁ : x₁ ↦ x₁x₂x₁⁻¹ et x₂ ↦ x₁.'],
   diagramme: ['Diagramme de courbes', 'Un point fixe à gauche ; les arcs sont les segments de l\'axe, que le demi-tour de deux trous emporte.'],
-  lacets: ['Lacets conformes', 'Des demi-cercles du demi-plan et leurs images par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R.'],
+  lacets: ['Lacets conformes', 'Des demi-cercles du demi-plan et leurs images par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R. La case « lignes de construction » trace l\'axe et cette ligne brisée.'],
   triangulation: ['Triangulation mobile', 'Un maillage et des points sur ses arêtes ; quand les trous tournent, les brins suivent et se tendent. La case « lignes de construction » trace le maillage en gris.'],
   rubans: ['Rubans', 'Un ruban par trou voyageur, du trou fixe (la queue) au trou voyageur ; après le demi-tour, les rubans s\'enroulent.'],
 };

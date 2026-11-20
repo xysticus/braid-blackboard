@@ -3,8 +3,8 @@
 Idée : comme le lecteur des films (`lecteur` dans `python/Interface.py`) est le nôtre, on peut offrir pour chaque film une
 case « lignes de construction ». Elle montre, sous le sujet, ce qui sert à le fabriquer (l'axe et la ligne brisée,
 la triangulation…). Ce serait un deuxième jeu d'images, calculé en même temps que le film, et le lecteur passerait de l'un
-à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. **Fait (2026-11-20) : la case du film de la triangulation
-de la page web** (voir « Ce qui est fait » à la fin) ; le reste n'est pas implémenté.
+à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. **Fait (2026-11-20) : la case des films de la triangulation et
+des lacets de la page web** (voir « Ce qui est fait » à la fin) ; le reste n'est pas implémenté.
 La dernière section, « Sur la page web », transpose l'étude à la page, où le principe est différent (et bien moins cher).
 
 ## Ce qui existe déjà, film par film
@@ -196,6 +196,21 @@ précédente (deux jeux d'images complets).
   `travail.js` ; la mise en page à 390 px de large tient sur une ligne. **Pas vérifié** : le chemin réel par le Web Worker (les canvas
   de la vraie page étaient encore vides quand la capture a été prise : Edge sans fenêtre n'attend pas les workers) ; la lecture
   animée avec la case cochée.
-- **Pas fait** : les lacets (il faut porter `aretes` et les opacités du raccord en OCaml), les rubans, le diagramme de courbes,
-  le notebook.
+- **Pas fait** : les rubans, le diagramme de courbes, le notebook.
+
+### Les lacets, le même jour
+
+- `ocaml/lib/conforme.ml` : `Conforme.aretes` porte `Lettre.aretes` du Python (les morceaux de l'axe hors du bloc, puis L–A, A–B, B–R, L–B,
+  A–R) ; `ocaml/lib/film_conforme.ml` : chaque `image` a un champ `construction`, des segments avec leur opacité (`construction` :
+  l'axe et A–B à 1, L–A et B–R à 1 − poids, L–B et A–R à poids, poids étant la part du raccord ; les segments invisibles sont omis).
+  Les films MP4 d'OCaml ne les tracent pas : leur dessin est inchangé.
+- **Test** : `ocaml/test/genere_reference_conforme.py` écrit aussi les arêtes de `Lettre.aretes` (64 lettres, 4 instants chacune) et
+  `test_conforme.ml` les compare à 1e-9 ; un changement de l'ordre des cinq segments fait échouer `lettre 0` (vérifié). `dune test` :
+  83 tests passent.
+- `ocaml/web/ardoise_web.ml` : `image` a aussi un champ facultatif `opacites` (un nombre par segment) ; `web/ardoise.js` :
+  `traceSegments` trace un segment à la fois quand il y a des opacités ; la case a une infobulle par film (le maillage pour la
+  triangulation ; l'axe et la ligne brisée L–A–B–R pour les lacets).
+- **Vérifié dans Edge** (même page de test que pour la triangulation, sur `[1, -2, 1, -2, 3]`) : avant le raccord, la ligne brisée L–A–B–R
+  passe par les trous ; au milieu du raccord, le losange L–A–B–R avec ses segments à demi estompés ; à la fin, l'axe droit. Pas vérifié :
+  le chemin réel par le Web Worker et la lecture animée (à essayer sur la vraie page).
 

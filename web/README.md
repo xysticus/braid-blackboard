@@ -51,7 +51,9 @@ en étoile de chaque trou, les brins s'enroulent autour du trou contourné et pa
 Son lecteur a une case **« lignes de construction »** : elle trace ce maillage en gris (`#999`, 2,2 px) sous les lacets. Les
 arêtes viennent du calcul (`image.construction` : des segments à plat, `aretes_a_plat` dans `ocaml/web/ardoise_web.ml`) et sont
 tracées par `traceSegments` (`web/ardoise.js`) ; elles ne comptent pas dans le zoom arrière. La case garde son état quand le mot
-change. Étude : `etude_lignes_de_construction.md`.
+change. Le film des **lacets** (conforme) a la même case : elle trace l'axe et la ligne brisée L–A–B–R, avec les fondus du raccord
+(`image.opacites`, un nombre par segment ; `Conforme.aretes` et `Film_conforme.construction` en OCaml). Étude :
+`etude_lignes_de_construction.md`.
 
 ## Les fichiers
 

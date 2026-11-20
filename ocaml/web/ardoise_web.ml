@@ -8,8 +8,10 @@
    tresse), ou "escargot" ou "bouquet" (films sans tresse : le mot est ignoré, les images ont d'autres champs, voir
    image_escargot et image_bouquet).
    Une image : { lacets : [[x0, y0, x1, y1, …], …], trous : [x, y, …], fixes : [x, y, …], clou : [x, y],
-   ecart : nombre } dans un cadre de 800 × 800 ; le film de la triangulation ajoute construction : [x0, y0, x1, y1, …], les
-   arêtes du maillage, à tracer en gris sous les lacets si la page le demande (case « lignes de construction »). [rendu] est appelé avec (image, numéro, total) pour chaque image du
+   ecart : nombre } dans un cadre de 800 × 800 ; les films de la triangulation et des lacets (conforme) ajoutent
+   construction : [x0, y0, x1, y1, …], les lignes de construction (les arêtes du maillage ; l'axe et la ligne brisée L–A–B–R),
+   à tracer en gris sous les lacets si la page le demande (case « lignes de construction »). Les lacets ajoutent aussi
+   opacites : [a0, a1, …], l'opacité de chaque segment (ils s'estompent pendant le raccord). [rendu] est appelé avec (image, numéro, total) pour chaque image du
    film. Les échecs (tresse vide, limites, exceptions du calcul) reviennent en texte, jamais en exception JS : le
    Web Worker les affiche. *)
 
@@ -51,7 +53,7 @@ let plat points =
   Array.iteri (fun k p -> a.(2 * k) <- p.x; a.((2 * k) + 1) <- p.y) points;
   Js.array a
 
-let image ?(decalage = { x = 0.; y = 0. }) ?(fixes = [||]) ?(ecart = 6.) ?(brin = 3.5) ?construction lacets trous clou =
+let image ?(decalage = { x = 0.; y = 0. }) ?(fixes = [||]) ?(ecart = 6.) ?(brin = 3.5) ?construction ?opacites lacets trous clou =
   let d = Array.map (fun p -> p +: decalage) in
   Js.Unsafe.obj
     (Array.append
@@ -61,7 +63,9 @@ let image ?(decalage = { x = 0.; y = 0. }) ?(fixes = [||]) ?(ecart = 6.) ?(brin 
           ("clou", Js.Unsafe.inject (plat (d [| clou |])));
           ("ecart", Js.Unsafe.inject (Js.number_of_float ecart));
           ("brin", Js.Unsafe.inject (Js.number_of_float brin)) |]
-       (match construction with None -> [||] | Some c -> [| ("construction", Js.Unsafe.inject c) |]))
+       (Array.append
+          (match construction with None -> [||] | Some c -> [| ("construction", Js.Unsafe.inject c) |])
+          (match opacites with None -> [||] | Some o -> [| ("opacites", Js.Unsafe.inject o) |])))
 
 (* Les arêtes d'un maillage, en segments à plat (x0, y0, x1, y1, …), dans l'ordre rangé des arêtes. *)
 let aretes_a_plat (m : Triangulation.Maillage.t) =
@@ -89,7 +93,21 @@ let analyse mot =
 
 (* --- conforme --- *)
 
-let image_conforme decalage (im : Film_conforme.image) = image ~decalage im.lignes im.trous im.clou
+(* Les lignes de construction du film conforme : segments à plat (décalés de la marge) et leur opacité. *)
+let construction_conforme decalage (segments : (point * point * float) list) =
+  let n = List.length segments in
+  let c = Array.make (4 * n) 0. and o = Array.make n 0. in
+  List.iteri
+    (fun k (p, q, alpha) ->
+      let p = p +: decalage and q = q +: decalage in
+      c.(4 * k) <- p.x; c.((4 * k) + 1) <- p.y; c.((4 * k) + 2) <- q.x; c.((4 * k) + 3) <- q.y;
+      o.(k) <- alpha)
+    segments;
+  (Js.array c, Js.array o)
+
+let image_conforme decalage (im : Film_conforme.image) =
+  let construction, opacites = construction_conforme decalage im.construction in
+  image ~decalage ~construction ~opacites im.lignes im.trous im.clou
 
 let methode_arcs = function
   | "rubans" -> ((fun t -> Arcs.cree ~ecart_fixes:30. t), true)
