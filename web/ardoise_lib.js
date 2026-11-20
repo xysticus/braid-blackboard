@@ -2649,8 +2649,8 @@ c=i[1],i=i[2],k=c[3],e=c[2],c=l(c[1],a),e=l(e,a),j=4*d|0,f=c[1];p(h,j)[j+1]=f;f=
 j4=[0,co];function
 gQ(a){return a!=="diagramme"?a!=="rubans"?f("mode inconnu : "+a):[0,function(a){return jT(0,0,0,j4,0,a)},1]:[0,function(a){return jU(0,0,0,a)},0]}var
 am=-100.,j5=[q,am,am];function
-gR(d,c){var
-b=c[10][1],a=bm(function(a,b){return d?jV(0,c,a):gC(c,a)},c[15]),e=d?0:[0,gO(c[10])],f=j(function(a){return p(b,a)[a+1]},c[11]),g=[0,c[16]];return en(0,[0,j(function(a){return p(b,a)[a+1]},c[12])],g,0,e,0,a,f,j5)}function
+gR(g,c){var
+b=c[10][1],a=bm(function(a,b){return g?jV(0,c,a):gC(c,a)},c[15]),d=gO(c[10]),e=j(function(a){return p(b,a)[a+1]},c[11]),f=[0,c[16]];return en(0,[0,j(function(a){return p(b,a)[a+1]},c[12])],f,0,[0,d],0,a,e,j5)}function
 gS(c,b){b=n(1.,.7*b);b=o(3.*c[2]/bA,b);var
 a=c[9],a=p(c[7][1],a)[a+1],e=j(function(a){return p(c[7][1],a)[a+1]},c[8]),d=A(R(c[15]),function(a){if(gp(c))var
 b=0;else{b=c[6];b=p(c[4],b)[b+1][2];b=[0,[0,c[14],b]]}a=aQ(c[15],a);return c6(0,0,b,c[7],a)});return en(0,0,0,[0,b],[0,gO(c[7])],0,d,e,a)}var

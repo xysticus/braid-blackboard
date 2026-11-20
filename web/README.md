@@ -53,8 +53,8 @@ arêtes viennent du calcul (`image.construction` : des segments à plat, `aretes
 tracées par `traceSegments` (`web/ardoise.js`) ; elles ne comptent pas dans le zoom arrière. La case garde son état quand le mot
 change. Le film des **lacets** (conforme) a la même case : elle trace l'axe et la ligne brisée L–A–B–R, avec les fondus du raccord
 (un « ? » à côté de la case, qui s'ouvre au survol, au clavier ou à l'appui, dit ce que sont ces lignes ; pendant le raccord, le dessin n'est plus fait sur cette ligne mais sur une triangulation mobile : les deux lignes de départ et
-d'arrivée sont les références entre lesquelles on raccorde ; `image.opacites`, un nombre par segment ; `Conforme.aretes` et `Film_conforme.construction` en OCaml). Le film du **diagramme de courbes** a aussi la case : elle trace les arêtes du maillage
-sous les arcs, et elles bougent avec les trous. Le zoom (`etendue`) compte les trous fixes des films d'arcs et ignore leur « clou »
+d'arrivée sont les références entre lesquelles on raccorde ; `image.opacites`, un nombre par segment ; `Conforme.aretes` et `Film_conforme.construction` en OCaml). Les films du **diagramme de courbes** et des **rubans** ont aussi la case : elle trace les arêtes du maillage
+sur lequel les arcs sont posés (au centre des rubans), et elles bougent avec les trous. Le zoom (`etendue`) compte les trous fixes des films d'arcs et ignore leur « clou »
 factice hors du cadre, qui les faisait reculer à tort (diagramme et rubans). Étude : `etude_lignes_de_construction.md`.
 
 ## Les fichiers

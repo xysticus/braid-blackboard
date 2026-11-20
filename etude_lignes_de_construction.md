@@ -3,8 +3,8 @@
 Idée : comme le lecteur des films (`lecteur` dans `python/Interface.py`) est le nôtre, on peut offrir pour chaque film une
 case « lignes de construction ». Elle montre, sous le sujet, ce qui sert à le fabriquer (l'axe et la ligne brisée,
 la triangulation…). Ce serait un deuxième jeu d'images, calculé en même temps que le film, et le lecteur passerait de l'un
-à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. **Fait (2026-11-20) : la case des films de la triangulation, des lacets
-et du diagramme de courbes de la page web** (voir « Ce qui est fait » à la fin) ; le reste n'est pas implémenté.
+à l'autre. Cette page dit ce qui existe, ce que cela coûte (mesuré) et ce qu'on propose. **Fait (2026-11-20) : la case des quatre films de la page web** (triangulation, lacets,
+diagramme de courbes, rubans) (voir « Ce qui est fait » à la fin) ; le reste n'est pas implémenté.
 La dernière section, « Sur la page web », transpose l'étude à la page, où le principe est différent (et bien moins cher).
 
 ## Ce qui existe déjà, film par film
@@ -196,7 +196,7 @@ précédente (deux jeux d'images complets).
   `travail.js` ; la mise en page à 390 px de large tient sur une ligne. **Pas vérifié** : le chemin réel par le Web Worker (les canvas
   de la vraie page étaient encore vides quand la capture a été prise : Edge sans fenêtre n'attend pas les workers) ; la lecture
   animée avec la case cochée.
-- **Pas fait** : les rubans, le notebook.
+- **Pas fait** : le notebook.
 
 ### Les lacets, le même jour
 
@@ -232,4 +232,11 @@ précédente (deux jeux d'images complets).
   l'origine de la page), et avec les arêtes elle laissait voir le bord du maillage (le rectangle bombé à 40 px hors de l'image).
   Corrigé : pour les films d'arcs, `etendue` compte les trous fixes et non le clou. Le diagramme et les rubans remplissent leur cadre.
 - Vérifié dans Edge (page de test) : la case sur le diagramme (image finale et image 30), et les rubans sans case, recentrés.
+
+### Les rubans, le même jour
+
+- Presque gratuit : `image_arcs` sert aux rubans comme au diagramme de courbes et avait déjà le maillage ; la condition qui excluait les rubans
+  est supprimée, et la phrase de la bulle dit que ce sont les arcs, **au centre des rubans**, qui sont posés sur le maillage et tendus (le
+  bord du ruban est dessiné autour de l'arc : exact). Environ 5 % de données en plus par image. Style identique aux autres films ; les
+  éventails de la rangée de trous fixes, en bas, dominent un peu des rubans fins, mais la case est facultative.
 

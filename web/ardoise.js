@@ -383,6 +383,7 @@ function vueDe(canvas, images, mode) {
 const MODES_AVEC_CONSTRUCTION = new Map([
   ['triangulation', 'Le maillage (une triangulation) sur lequel les brins sont posés : il se déplace avec les trous, et les brins le suivent et se tendent.'],
   ['diagramme', 'Le maillage (une triangulation) sur lequel les arcs sont posés et tendus : il se déplace avec les trous.'],
+  ['rubans', 'Le maillage (une triangulation) sur lequel les arcs, au centre des rubans, sont posés et tendus : il se déplace avec les trous.'],
   ['conforme', 'L\'axe et la ligne brisée L–A–B–R sur lesquels le dessin est construit. Pendant le demi-tour, la ligne de départ et celle d\'arrivée s\'estompent l\'une dans l\'autre, et le dessin passe alors par une triangulation mobile.'],
 ]);
 const GRIS_CONSTRUCTION = '#999';
