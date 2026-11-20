@@ -417,18 +417,11 @@ def nb_croisements(lignes, clou, rayon=12):
     return total
 
 
-def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.5,
-                  verifie=False, raccord='triangulation', construction=False, **options):
-    """Film (GIF animé, ou MP4 si fichier finit par .mp4, écrit par ffmpeg à 25 images/s) : pour chaque lettre,
-    l'état k sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la verticale pendant la fenêtre (part du
-    mouvement). marge : le dessin est fait dans le cadre intérieur, à cette distance des quatre bords (en cours de
-    demi-tour, des arcs peuvent déborder du cadre intérieur sur les côtés). options : celles de peint, dont
-    largeur_brin en pixels (indépendant de la taille de l'image). verifie : relit les mots et compte les croisements
-    entre lacets sur chaque image ; renvoie la liste des anomalies. raccord : 'triangulation' (par défaut) ou 'melange' (les deux dessins mélangés
-    morceau par morceau, `raccorde`, sans garantie) ; 'triangulation' (les deux dessins transportés sur une triangulation mobile,
-    puis tendus en cordes dont les pieds glissent : `Raccord.RaccordTriangule`). construction : trace aussi en gris
-    l'axe et les segments de la ligne brisée (par défaut, seulement les lacets et les trous). Pas de pause entre les
-    lettres, seulement sur la première et la dernière image."""
+def dessins_conforme(tresse, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.5,
+                     verifie=False, raccord='triangulation'):
+    """Calcule les images du film de `film_conforme` sans les dessiner ni les écrire : renvoie (dessins, durees,
+    anomalies). Un dessin est (lignes, trous, clou, axe), à peindre avec `surface_conforme` ; durees : la durée de
+    chaque image en millisecondes (pause comprise). Mêmes paramètres que `film_conforme`."""
     nb_trous = max(map(operator.abs, tresse), default=5) + 1
     h_int, l_int = hauteur - 2 * marge, largeur - 2 * marge
     cle = etat_de_tresse([], nb_trous)
@@ -511,24 +504,46 @@ def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400
             durees.append(duree)
         cle = suivante
     durees[-1] = 3 * pause # pas de pause entre les lettres : seulement sur la première et la dernière image
+    return dessins, durees, anomalies
 
+
+def surface_conforme(dessin, hauteur=400, largeur=400, marge=0, construction=False, **options):
+    """Surface Cairo d'un dessin de `dessins_conforme` (le dessin est fait dans le cadre intérieur, décalé de la
+    marge). options : celles de `peint`."""
+    m, t, c, a = dessin
     decalage = np.array((marge, marge))
-    def surface(m, t, c, a):
-        axe = [(x[0] + decalage, x[1]) if isinstance(x, tuple) else x + decalage for x in a]
-        return peint([l + decalage for l in m], t + decalage, c + decalage, hauteur, largeur,
-                     axe=axe if construction else None, **options)
+    axe = [(x[0] + decalage, x[1]) if isinstance(x, tuple) else x + decalage for x in a]
+    return peint([l + decalage for l in m], t + decalage, c + decalage, hauteur, largeur,
+                 axe=axe if construction else None, **options)
+
+
+def film_conforme(tresse, fichier, duree=40, pause=500, hauteur=400, largeur=400, marge=0, images=48, fenetre=0.5,
+                  verifie=False, raccord='triangulation', construction=False, **options):
+    """Film (GIF animé, ou MP4 si fichier finit par .mp4, écrit par ffmpeg à 25 images/s) : pour chaque lettre,
+    l'état k sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la verticale pendant la fenêtre (part du
+    mouvement). marge : le dessin est fait dans le cadre intérieur, à cette distance des quatre bords (en cours de
+    demi-tour, des arcs peuvent déborder du cadre intérieur sur les côtés). options : celles de peint, dont
+    largeur_brin en pixels (indépendant de la taille de l'image). verifie : relit les mots et compte les croisements
+    entre lacets sur chaque image ; renvoie la liste des anomalies. raccord : 'triangulation' (par défaut) ou 'melange' (les deux dessins mélangés
+    morceau par morceau, `raccorde`, sans garantie) ; 'triangulation' (les deux dessins transportés sur une triangulation mobile,
+    puis tendus en cordes dont les pieds glissent : `Raccord.RaccordTriangule`). construction : trace aussi en gris
+    l'axe et les segments de la ligne brisée (par défaut, seulement les lacets et les trous). Pas de pause entre les
+    lettres, seulement sur la première et la dernière image."""
+    dessins, durees, anomalies = dessins_conforme(tresse, duree, pause, hauteur, largeur, marge, images, fenetre,
+                                                  verifie, raccord)
+    surface = lambda d: surface_conforme(d, hauteur, largeur, marge, construction, **options)
     if fichier.endswith('.mp4'):
         # écrit au fil du rendu : à grande taille, toutes les images d'un GIF ne tiendraient pas en mémoire
         ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgra',
                                    '-s', f'{largeur}x{hauteur}', '-r', '25', '-i', '-', *ENCODEUR, fichier],
                                   stdin=subprocess.PIPE)
         for d, ms in zip(dessins, durees):
-            donnees = bytes(surface(*d).get_data())
+            donnees = bytes(surface(d).get_data())
             for _ in range(max(1, round(ms / 40))): ffmpeg.stdin.write(donnees)
         ffmpeg.stdin.close()
         ffmpeg.wait()
     else:
-        images_pil = [en_image_pil(surface(*d)) for d in dessins]
+        images_pil = [en_image_pil(surface(d)) for d in dessins]
         images_pil[0].save(fichier, save_all=True, append_images=images_pil[1:], duration=durees, loop=0)
     return anomalies
 
