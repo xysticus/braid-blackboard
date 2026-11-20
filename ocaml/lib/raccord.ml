@@ -297,6 +297,12 @@ let tangente courbe au_debut =
   in
   cherche (n - 2)
 
+(* Les arêtes du maillage à l'image f de la fenêtre, comme couples de points (pour les montrer). *)
+let aretes_du_maillage r f =
+  let triangles, pos = r.etats.(r.image_de.(f)) in
+  let m = Maillage.cree pos triangles in
+  Aretes.fold (fun arete _ acc -> let u, v = (arete : Arete.t :> sommet * sommet) in (pos.(u), pos.(v)) :: acc) (Maillage.aretes m) []
+
 let melange q a b = ((1. -. q) *: a) +: (q *: b)
 
 (* Les arêtes « fantômes » au poids donné : les arêtes entre trous qui portent la plus claire des deux lignes de construction, la ligne

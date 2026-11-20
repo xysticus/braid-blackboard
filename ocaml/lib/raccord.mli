@@ -75,6 +75,9 @@ val raccord :
 val reduction : raccord -> float -> float
 (** La réduction (aplatissement supplémentaire) au temps s : interpolée entre [r_a] et [r_b]. *)
 
+val aretes_du_maillage : raccord -> int -> (point * point) list
+(** Les arêtes du maillage de l'image f de la fenêtre, comme couples de positions. *)
+
 val lignes : ?sans_fantomes:bool -> ?libre:bool -> raccord -> int -> float -> point array list * (int * string) list
 (** [lignes r f poids] : les lacets de l'image f de la fenêtre au poids donné (0 : départ, 1 : arrivée), et les
     anomalies (lacet, message) : traversées différentes entre les deux dessins. [sans_fantomes] (faux par défaut) : les

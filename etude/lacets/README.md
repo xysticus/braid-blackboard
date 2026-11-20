@@ -17,4 +17,6 @@ python3 -m http.server          # à la racine du dépôt
 
 Clavier : ← et → (une image), Maj + ← et Maj + → (une lettre), Début, Fin, espace.
 
+Case « maillage » : les arêtes de la triangulation du raccord (trous, clou, bord convexe hors de l'image), pendant le raccord seulement ; hors du raccord le dessin est conforme et il n'y a pas de maillage.
+
 Case « arcs libres » : recalcule le film avec le mode `conforme_libre` (`Raccord.lignes ~sans_fantomes:true`) : pendant le raccord, les cordes ne passent plus par les pieds posés sur les arêtes de la plus claire des deux lignes de construction ; l'arc est induit par ses extrémités et ses tangentes ; un pied sur la ligne foncée impose sa position et sa tangente perpendiculaire à la ligne, sauf sur A–B, où seule la position est imposée (une tangente imposée y faisait des S quand la courbe arrive en oblique ; ne plus imposer non plus la position ajoutait des images douteuses). Sur la tresse chargée, le film sans la case reste préférable. Sans la case : le film de la page publique.

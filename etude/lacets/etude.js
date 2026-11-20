@@ -78,7 +78,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, maillage: false, reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -170,6 +170,14 @@ function dessine(k) {
   ctx.setTransform(ECHELLE * v.s, 0, 0, ECHELLE * v.s, ECHELLE * v.tx, ECHELLE * v.ty);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  if (etat.maillage && image.maillage && image.maillage.length) {   // les arêtes de la triangulation du raccord (seulement pendant le raccord), sous tout le reste
+    ctx.strokeStyle = '#6fa8dc';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    const m = image.maillage;
+    for (let j = 0; j + 3 < m.length; j += 4) { ctx.moveTo(m[j], m[j + 1]); ctx.lineTo(m[j + 2], m[j + 3]); }
+    ctx.stroke();
+  }
   if (etat.construction && image.construction) segments(ctx, image.construction, image.opacites);
   image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3.5; trace(ctx, p); });
   disques(ctx, image.trous, 4, '#000');
@@ -262,6 +270,7 @@ function brancheCommandes() {
   $('c-construction').onchange = (e) => { etat.construction = e.target.checked; redessine(); };
   $('c-tangentes').onchange = (e) => { etat.tangentes = e.target.checked; redessine(); };
   $('c-points').onchange = (e) => { etat.points = e.target.checked; redessine(); };
+  $('c-maillage').onchange = (e) => { etat.maillage = e.target.checked; redessine(); };
   $('c-libre').onchange = (e) => { etat.libre = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // recalcule le film, et revient à la même image
   $('c-fantomes').onchange = (e) => { etat.fantomes = e.target.checked; redessine(); };
   $('vitesse').onchange = (e) => { etat.ips = Number(e.target.value); };
@@ -350,6 +359,7 @@ window.addEventListener('DOMContentLoaded', () => {
     b.onclick = () => { champ.value = e.mot.join(' '); miseAJour(champ.value); };
     $('exemples').appendChild(b);
   });
+  if (new URLSearchParams(location.search).has('maillage')) { etat.maillage = true; $('c-maillage').checked = true; }   // ?maillage : arêtes du maillage au départ (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
   brancheCommandes();
   let minuterie = null;

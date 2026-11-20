@@ -108,6 +108,9 @@ let construction_conforme decalage (segments : (point * point * float) list) =
 let image_conforme decalage (im : Film_conforme.image) =
   let construction, opacites = construction_conforme decalage im.construction in
   let r = image ~decalage ~construction ~opacites im.lignes im.trous im.clou in
+  let a = Array.make (4 * List.length im.maillage) 0. in
+  List.iteri (fun k (p, q) -> let p = p +: decalage and q = q +: decalage in a.(4 * k) <- p.x; a.((4 * k) + 1) <- p.y; a.((4 * k) + 2) <- q.x; a.((4 * k) + 3) <- q.y) im.maillage;
+  Js.Unsafe.set r "maillage" (Js.array a);   (* les arêtes du maillage du raccord, à plat, pour le banc d'essai *)
   Js.Unsafe.set r "ab" im.ab;   (* l'indice du segment A–B dans construction : le banc d'essai etude/lacets n'y trace pas de tangente *)
   r
 
