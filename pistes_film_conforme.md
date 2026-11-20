@@ -1,6 +1,6 @@
 # Film conforme : ce qui est garanti, et les pistes pour le reste
 
-`python/Conforme.py`, `film_conforme`. Voir aussi le point 13 de `CLAUDE.md`.
+`python/Conforme.py`, `film_conforme`. Voir aussi le point 13 de `docs/algorithmes_python.md`.
 
 ## Où en est-on
 

@@ -21,7 +21,7 @@ distribuer l'ensemble sous d'autres conditions. Leurs textes sont dans les proje
 Voir [LICENSE-CC-BY-4.0.md](LICENSE-CC-BY-4.0.md). © 2020-2026 xysticus.
 
 Elle couvre les textes (`README.md`, `etude_page_web.md`, `plan_ocaml.md`, `pistes_film_conforme.md`, les `README.md` des sous-répertoires de `imgs/`,
-`CLAUDE.md`), les schémas (`imgs/schemas/*.svg`, `web/schemas/*.svg`, `web/favicon.svg`), les images et aperçus de `imgs/`, et les films produits par les programmes.
+`conventions_de_signe.md`, `etude_lignes_de_construction.md`, `CLAUDE.md`, `docs/*.md`), les schémas (`imgs/schemas/*.svg`, `web/schemas/*.svg`, `web/favicon.svg`), les images et aperçus de `imgs/`, et les films produits par les programmes.
 
 Pour citer : « Ardoise à tresse (braid-blackboard), xysticus, https://github.com/xysticus/braid-blackboard, licence CC BY 4.0 (contenus) / MIT (code) ».
 
