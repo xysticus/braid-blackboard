@@ -227,6 +227,7 @@ type raccord = {
   arrivee : point array list array;  (** le dessin d'arrivée ramené à chaque instant *)
   reduction : float -> float;
   tournants : sommet list;  (** les deux trous qui tournent (sommets du maillage) *)
+  i_satellites : sommet list;  (** les sommets ajoutés autour des deux trous qui tournent (aucun par défaut) *)
   voisins : sommet option * sommet option;  (** les trous L et R, voisins des deux qui tournent (aucun au bord de l'image) *)
   phases : float * float * float * float;
 }
@@ -236,7 +237,7 @@ type raccord = {
    images de la fenêtre, croissants, strictement entre s_a et s_b ; tournants : les deux trous physiques qui
    tournent. Le maillage (bord convexe, trous, clou) suit les trous de sous-pas en sous-pas en retournant ses arêtes ;
    le dessin de départ est transporté vers l'avant, celui d'arrivée vers l'arrière (RaccordTriangule du Python). *)
-let raccord ?(sous_pas = 8) ?(phases = (0., 0.35, 0.65, 1.)) ~positions ~clou ~largeur ~hauteur ~s_a ~r_a ~depart ~s_b ~r_b
+let raccord ?(sous_pas = 8) ?(phases = (0., 0.35, 0.65, 1.)) ?(satellites = 0) ~positions ~clou ~largeur ~hauteur ~s_a ~r_a ~depart ~s_b ~r_b
     ~arrivee ~temps ~tournants () =
   let reduction s = r_a +. ((r_b -. r_a) *. (s -. s_a) /. (s_b -. s_a)) in
   let reperes = Array.concat [ [| s_a |]; temps; [| s_b |] ] in
@@ -248,14 +249,41 @@ let raccord ?(sous_pas = 8) ?(phases = (0., 0.35, 0.65, 1.)) ~positions ~clou ~l
     if j < Array.length temps then image_de := (List.length !instants - 1) :: !image_de
   done;
   let instants = Array.of_list (List.rev !instants) and image_de = Array.of_list (List.rev !image_de) in
-  let m, i_trous, i_clou = maillage_du_raccord (Array.to_list (positions s_a r_a)) (Some clou) largeur hauteur in
+  let physiques = positions s_a r_a in
+  let nb_trous = Array.length physiques in
+  (* Essai : [satellites] sommets supplémentaires sur un cercle autour de chacun des deux trous qui tournent, qui les suivent
+     (même décalage tout au long de la fenêtre) ; le rayon est 30 % de la plus petite distance de ces trous à un autre trou
+     pendant la fenêtre. Le maillage a ainsi beaucoup d'arêtes courtes autour d'eux, et un lacet qui s'enroule y fait un
+     polygone à beaucoup de côtés. *)
+  let decalages =
+    if satellites <= 0 then []
+    else
+      let dmin = ref Float.infinity in
+      Array.iter
+        (fun s ->
+          let p = positions s (reduction s) in
+          List.iter (fun t -> Array.iteri (fun u q -> if u <> t then dmin := Float.min !dmin (norme (q -: p.(t)))) p) tournants)
+        instants;
+      let rayon = 0.3 *. !dmin in
+      List.concat_map
+        (fun t ->
+          List.init satellites (fun k ->
+              let angle = (2. *. Float.pi *. (float_of_int k +. 0.5)) /. float_of_int satellites in
+              (t, { x = rayon *. cos angle; y = rayon *. sin angle })))
+        tournants
+  in
+  let aux_depart = List.map (fun (t, d) -> physiques.(t) +: d) decalages in
+  let m, tous, i_clou = maillage_du_raccord (Array.to_list physiques @ aux_depart) (Some clou) largeur hauteur in
+  let i_trous = List.filteri (fun q _ -> q < nb_trous) tous and i_satellites = List.filteri (fun q _ -> q >= nb_trous) tous in
   let i_clou = Option.get i_clou in
   let etats = Array.make (Array.length instants) (Maillage.triangles m, m.pos) in
   let m = ref m in
   for j = 1 to Array.length instants - 1 do
     let s = instants.(j) in
     let nouvelles = Array.copy !m.Maillage.pos in
-    List.iteri (fun p v -> nouvelles.(v) <- (positions s (reduction s)).(p)) i_trous;
+    let p = positions s (reduction s) in
+    List.iteri (fun q v -> nouvelles.(v) <- p.(q)) i_trous;
+    List.iteri (fun q v -> let t, d = List.nth decalages q in nouvelles.(v) <- p.(t) +: d) i_satellites;
     let deplace = Maillage.deplace !m nouvelles in
     if not (Maillage.valide deplace) then failwith "triangle retourné pendant le raccord : augmenter sous_pas";
     let apres, _ = Maillage.delaunay deplace [] in
@@ -273,7 +301,7 @@ let raccord ?(sous_pas = 8) ?(phases = (0., 0.35, 0.65, 1.)) ~positions ~clou ~l
     arr.(j - 1) <- transporte arr.(j) triangles (snd etats.(j)) avant
   done;
   { image_de; etats; i_trous; i_clou; depart = dep; arrivee = arr; reduction;
-    tournants = List.map (List.nth i_trous) tournants;
+    tournants = List.map (List.nth i_trous) tournants; i_satellites;
     voisins =
       (match tournants with
        | [ a; b ] ->
@@ -449,7 +477,7 @@ let lignes ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) r 
                  let triangle = List.sort_uniq compare (sommets.(k) @ sommets.(k + 1)) in
                  let dedans bornes x = bornes.(k) < x.position && x.position < bornes.(k + 1) in
                  let bigone = List.exists (dedans bd_) bd || List.exists (dedans ba_) ba in
-                 if bigone || List.exists (fun t -> List.mem t triangle) r.tournants then Hashtbl.replace en_cordes triangle ();
+                 if bigone || List.exists (fun t -> List.mem t triangle) (r.tournants @ r.i_satellites) then Hashtbl.replace en_cordes triangle ();
                  ( triangle,
                    reechantillonne (morceau d bd_.(k) bd_.(k + 1)) 60,
                    reechantillonne (morceau a ba_.(k) ba_.(k + 1)) 60,

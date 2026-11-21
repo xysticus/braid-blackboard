@@ -78,7 +78,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, sansMaillage: false, maillage: false, reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, sansMaillage: false, satellites: false, maillage: false, reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -272,6 +272,7 @@ function brancheCommandes() {
   $('c-points').onchange = (e) => { etat.points = e.target.checked; redessine(); };
   $('c-maillage').onchange = (e) => { etat.maillage = e.target.checked; redessine(); };
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
+  $('c-satellites').onchange = (e) => { etat.satellites = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : 8 sommets de plus autour de chacun des deux trous qui tournent
   $('c-libre').onchange = (e) => { etat.libre = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // recalcule le film, et revient à la même image
   $('c-fantomes').onchange = (e) => { etat.fantomes = e.target.checked; redessine(); };
   $('vitesse').onchange = (e) => { etat.ips = Number(e.target.value); };
@@ -331,7 +332,7 @@ function lance(mot) {
       etat.reprise = null;
     }
   };
-  w.postMessage({ mode: etat.sansMaillage ? 'conforme_sans_maillage' : etat.libre ? 'conforme_libre' : 'conforme', mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
+  w.postMessage({ mode: etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : 'conforme', mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
 let motCourant = null;
@@ -362,6 +363,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   if (new URLSearchParams(location.search).has('maillage')) { etat.maillage = true; $('c-maillage').checked = true; }   // ?maillage : arêtes du maillage au départ (captures)
   if (new URLSearchParams(location.search).has('sansmaillage')) { etat.sansMaillage = true; $('c-sans-maillage').checked = true; }   // ?sansmaillage (captures)
+  if (new URLSearchParams(location.search).has('satellites')) { etat.satellites = true; $('c-satellites').checked = true; }   // ?satellites (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
   brancheCommandes();
   let minuterie = null;

@@ -54,6 +54,7 @@ type raccord
 val raccord :
   ?sous_pas:int ->
   ?phases:float * float * float * float ->
+  ?satellites:int ->
   positions:(float -> float -> point array) ->
   clou:point ->
   largeur:float ->
