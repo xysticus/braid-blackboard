@@ -78,7 +78,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, precalcule: null, detendu: false, reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, precalcule: null, detendu: true, reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -245,6 +245,15 @@ function dessinePlanW(canvas, plan, actif, noms) {
 }
 
 // La chronologie d'une lettre : de quand à quand chaque dessin est projeté.
+// L'intensité de la détente au pas n d'une lettre (1 … 48), comme Film_conforme.film ~detente et web/travail.js : 4 poids (1 − poids).
+function forceDetente(n) {
+  if (n <= 0) return 0;
+  const lisse = (u) => u * u * (3 - 2 * u);
+  const s = lisse(n / IMAGES_PAR_LETTRE);
+  const poids = lisse(Math.min(1, Math.max(0, (s - 0.25) / 0.5)));
+  return poids > 0 && poids < 1 ? 4 * poids * (1 - poids) : 0;
+}
+
 function dessineChrono(canvas, e, pas) {
   const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height, N = IMAGES_PAR_LETTRE;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -257,7 +266,13 @@ function dessineChrono(canvas, e, pas) {
   ctx.globalAlpha = 0.45; ctx.fillStyle = g; ctx.fillRect(x(e.na), y0, x(e.nb) - x(e.na), h); ctx.globalAlpha = 1;
   ctx.font = '600 13px system-ui, sans-serif'; ctx.fillStyle = '#222';
   ctx.fillText('DÉPART (conforme)', x(0), y0 - 8);
-  ctx.textAlign = 'center'; ctx.fillText('RACCORD (maillage)', (x(e.na) + x(e.nb)) / 2, y0 - 8);
+  ctx.textAlign = 'center'; ctx.fillText(etat.detendu ? 'RACCORD (maillage + détente)' : 'RACCORD (maillage)', (x(e.na) + x(e.nb)) / 2, y0 - 8);
+  if (etat.detendu) {   // l'intensité de la détente, de 0 (bas de la bande) à 1 (haut)
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1.6; ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    for (let n = e.na; n <= e.nb; n++) { const X = x(n), Y = y0 + h - forceDetente(n) * (h - 3); n === e.na ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
   ctx.textAlign = 'right'; ctx.fillText('ARRIVÉE (conforme)', x(N), y0 - 8); ctx.textAlign = 'left';
   ctx.font = '12px system-ui, sans-serif'; ctx.fillStyle = '#444';
   [[0, 0], [e.na, e.sa], [e.nb, e.sb], [N, 1]].forEach(([n, s], j) => {
@@ -315,6 +330,12 @@ function metsAJourProjection(k) {
     relais.push(`relais : cette image clé (image ${k + 1}) est aussi le départ de la lettre ${j + 2} (${nomLettre(etat.mot[j + 1])}) : le même dessin y est reprojeté, mais sur la ligne brisée L–A–B–R de cette lettre, jusqu'à l'image ${k + 1 + e.na} environ.`);
   if (m === 1 && j > 0)
     relais.push(`relais : l'image ${k} (clé de la lettre ${j}, ${nomLettre(etat.mot[j - 1])}) avait projeté ce même état comme arrivée ; il est ici reprojeté comme départ de la lettre ${j + 1} (${nomLettre(etat.mot[j])}).`);
+  if (image.etude && etat.detendu) {
+    const f = forceDetente(m);
+    relais.unshift(f > 0
+      ? `DÉTENTE (film de la page) : intensité ${f.toFixed(3)} = 4 poids (1 − poids), maximale au milieu du raccord : chaque brin est rééchantillonné (pas 4 px), puis 400 itérations de tension (chaque point vers le milieu de ses voisins) et de répulsion (brins à moins de 6 px, éteinte près du clou ; trous à moins de 12 px), pas borné à 0,3 px.`
+      : 'DÉTENTE : aucune à cette image (hors du raccord, l\'intensité est nulle) : le dessin est celui de la projection.');
+  }
   journal.textContent = (image.etude ? image.etude.journal.concat(relais).join('\n') :
     `image 0 : l'image clé de départ (avant la première lettre) : l'état 0 est projeté sur la ligne brisée L–A–B–R, comme pendant toute la phase 1.\n` +
     `chronologie de la lettre 1 : départ projeté aux images 0 à ${e.na} (s de 0 à ${e.sa.toFixed(4)}) ; raccord aux images ${e.na + 1} à ${e.nb - 1} ; arrivée projetée aux images ${e.nb} à ${IMAGES_PAR_LETTRE} (s de ${e.sb.toFixed(4)} à 1).`);
@@ -590,8 +611,8 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('satellites')) { etat.satellites = true; $('c-satellites').checked = true; }   // ?satellites (captures)
   if (new URLSearchParams(location.search).has('sansprojection')) { etat.etude = false; $('c-etude').checked = false; }   // ?sansprojection (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
-  PRECALCULES.forEach((sorte) => { if (new URLSearchParams(location.search).has(sorte)) { etat.precalcule = sorte; $('c-' + sorte).checked = true; } });   // ?regions, ?detendu : un film précalculé au départ (captures)
-  if (new URLSearchParams(location.search).has('detendu')) { etat.detendu = true; $('c-detendu').checked = true; }   // ?detendu (captures)
+  PRECALCULES.forEach((sorte) => { if (new URLSearchParams(location.search).has(sorte)) { etat.precalcule = sorte; $('c-' + sorte).checked = true; } });   // ?regions : un film précalculé au départ (captures)
+  if (new URLSearchParams(location.search).has('nondetendu')) { etat.detendu = false; $('c-detendu').checked = false; }   // ?nondetendu : le film à maillage seul (captures)
   brancheCommandes();
   let minuterie = null;
   champ.addEventListener('input', () => { clearTimeout(minuterie); minuterie = setTimeout(() => miseAJour(champ.value), 400); });
