@@ -17,6 +17,9 @@ sont inchangés, et le film reste continu (un nombre fixe d'itérations d'une tr
 Depuis la racine du dépôt :
   python etude/lacets/essai_lissage.py "1 -2 1 -2 1 -2" 264      comparaison à l'image 264 (imgs/essai_lissage_*.png)
   python etude/lacets/essai_lissage.py film "1 -2 1 -2 1 -2"     le film (imgs/essai_lissage_film_*.mp4), vérifié
+
+La détente est portée en OCaml (ocaml/lib/detente.ml, mêmes résultats à 1e-6 près, test/test_detente.ml) : la page la
+calcule elle-même (mode « conforme_detendu », case « détendu » du banc).
 """
 import math
 import os
@@ -240,8 +243,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'film':
         mot = [int(x) for x in sys.argv[2].split()]
         fichier = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3].endswith('.mp4') else 'imgs/essai_lissage_film_' + '_'.join(map(str, mot)) + '.mp4'
-        anomalies = film(mot, fichier, construction='construction' in sys.argv,
-                         json_banc=os.path.join(os.path.dirname(__file__), 'detendu', '_'.join(map(str, mot)) + '.json'))
+        anomalies = film(mot, fichier, construction='construction' in sys.argv)
         print(fichier, ':', len(anomalies), 'anomalies', anomalies[:30])
         sys.exit()
     mot = [int(x) for x in (sys.argv[1] if len(sys.argv) > 1 else '1 -2 1 -2 1 -2').split()]

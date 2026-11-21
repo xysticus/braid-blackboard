@@ -48,5 +48,6 @@ point va vers le milieu de ses voisins) arrondit les coins et efface les zigzags
 entre brins et trous (12 px) garde les écarts et empêche les croisements ; elle s'éteint près du clou. L'intensité vaut
 4 poids (1 − poids) : nulle aux bords de la fenêtre (images clés intactes, film continu), maximale au milieu.
 `python etude/lacets/essai_lissage.py "1 -2 1 -2 1 -2" 264` compare une image ; `python etude/lacets/essai_lissage.py film
-"1 -2 1 -2 1 -2"` écrit le film vérifié (`imgs/essai_lissage_film_*.mp4`) et ses images pour la page (`detendu/<mot>.json`,
-case « détendu (précalculé) »). Réglages en arguments : `PAS=4 ITERATIONS=400 ECART=6 RAYON_TROU=12 …`.
+"1 -2 1 -2 1 -2"` écrit le film vérifié (`imgs/essai_lissage_film_*.mp4`). Réglages en arguments : `PAS=4 ITERATIONS=400
+ECART=6 RAYON_TROU=12 …`. La détente est portée en OCaml (`ocaml/lib/detente.ml`, les mêmes points à 1e-6 près) : la case
+« détendu » du banc la fait calculer par la page (mode `conforme_detendu`), pour n'importe quel mot.

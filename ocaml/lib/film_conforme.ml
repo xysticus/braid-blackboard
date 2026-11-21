@@ -173,10 +173,11 @@ let journal_de_l_image ~(l : Conforme.lettre) ~k ~n ~images ~n_lettres ~s ~poids
 (* Le film : pour chaque lettre, l'état k dessiné sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la
    verticale par la triangulation pendant la fenêtre (part du mouvement). [rendu] est appelé avec chaque image dans
    l'ordre (la première est l'image clé de départ). Le cadre intérieur fait (hauteur − 2 marge) × (largeur − 2 marge).
-   verifie : relit les mots et compte les croisements sur chaque image. Rend les anomalies. L'ordre des calculs est
+   verifie : relit les mots et compte les croisements sur chaque image. detente : détend le dessin pendant le raccord
+   (Detente, avec 4 poids (1 − poids)). Rend les anomalies. L'ordre des calculs est
    celui du Python, y compris celui des appels qui remplissent le cache des cartes : les derniers chiffres en
    dépendent. *)
-let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ?(satellites = 0) ?(etude = false) ~hauteur ~largeur ~marge ~rendu tresse =
+let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ?(satellites = 0) ?(etude = false) ?(detente = false) ~hauteur ~largeur ~marge ~rendu tresse =
   let entiers = List.map Tresses.entier_de_lettre tresse in
   let nb_trous = (match entiers with [] -> 5 | _ -> List.fold_left (fun a x -> max a (abs x)) 0 entiers) + 1 in
   let h_int = hauteur -. (2. *. marge) and l_int = largeur -. (2. *. marge) in
@@ -233,6 +234,8 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
             (lignes, reduction)
         in
         let trous = Conforme.trous_ecran l ~reduction s in
+        (* la détente du raccord (Detente) : nulle aux bords de la fenêtre, maximale au milieu *)
+        let lignes = if detente && 0. < poids && poids < 1. then Detente.detend lignes trous l.clou (4. *. poids *. (1. -. poids)) else lignes in
         if verifie then begin
           let en_ordre = List.sort compare (Array.to_list trous) in
           if Float.abs (trous.(l.i - 1).x -. trous.(l.i).x) > 1e-6 then begin

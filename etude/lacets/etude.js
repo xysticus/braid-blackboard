@@ -78,7 +78,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, precalcule: null, reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, precalcule: null, detendu: false, reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -447,6 +447,7 @@ function brancheCommandes() {
   $('c-etude').onchange = (e) => { etat.etude = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // le journal et les plans w : recalcule le film
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
   $('c-satellites').onchange = (e) => { etat.satellites = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : 8 sommets de plus autour de chacun des deux trous qui tournent
+  $('c-detendu').onchange = (e) => { etat.detendu = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // la détente du raccord (Detente), calculée par la page
   $('c-libre').onchange = (e) => { etat.libre = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // recalcule le film, et revient à la même image
   PRECALCULES.forEach((sorte) => {   // les films précalculés : une seule case à la fois
     $('c-' + sorte).onchange = (e) => {
@@ -476,9 +477,9 @@ function efface() {
   ctx.fillRect(0, 0, toile.width, toile.height);
 }
 
-// Les films précalculés en Python, un fichier JSON par mot : regions/ (essai_regions.py exporte : le raccord par régions) et
-// detendu/ (essai_lissage.py film : le film conforme détendu pendant le raccord). Ils remplacent le calcul du film.
-const PRECALCULES = ['regions', 'detendu'];
+// Les films précalculés en Python, un fichier JSON par mot : regions/ (essai_regions.py exporte : le raccord par régions).
+// Ils remplacent le calcul du film.
+const PRECALCULES = ['regions'];
 const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 
 function verifiePrecalcules(mot) {
@@ -554,7 +555,7 @@ function calcule(mot) {
       termine(d.message);
     }
   };
-  w.postMessage({ mode: (etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : 'conforme') + (etat.etude ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
+  w.postMessage({ mode: (etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
 let motCourant = null;
@@ -590,6 +591,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('sansprojection')) { etat.etude = false; $('c-etude').checked = false; }   // ?sansprojection (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
   PRECALCULES.forEach((sorte) => { if (new URLSearchParams(location.search).has(sorte)) { etat.precalcule = sorte; $('c-' + sorte).checked = true; } });   // ?regions, ?detendu : un film précalculé au départ (captures)
+  if (new URLSearchParams(location.search).has('detendu')) { etat.detendu = true; $('c-detendu').checked = true; }   // ?detendu (captures)
   brancheCommandes();
   let minuterie = null;
   champ.addEventListener('input', () => { clearTimeout(minuterie); minuterie = setTimeout(() => miseAJour(champ.value), 400); });
