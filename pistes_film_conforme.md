@@ -425,5 +425,19 @@ des régions.
 - **Étude de la projection sur la chargée** : la lettre 7 (σ₃, avec 4 trous) a son segment B–R écrasé (antécédents à 17 d'écart au lieu
   de 100 à 200), R étant le point virtuel du bord ; c'est aussi là que les croisements du film par régions sont les plus nombreux.
 
-Décision de l'utilisateur : la version actuelle (raccord par triangulation mobile, mode « conforme » de la page publique, sans
-aucune case du banc cochée) convient ; elle reste la version de base.
+Décision de l'utilisateur, ce jour-là : la version à maillage convient et reste la version de base (remplacée ensuite par le
+film détendu, section suivante).
+
+### La solution retenue : détendre le dessin du raccord (2026-11-21, tag v1.2)
+
+Au lieu de changer la construction (cartes, maillage, régions), on garde le film à maillage, topologiquement juste et sans
+croisement, et on le **détend** pendant la fenêtre du raccord (`etude/lacets/essai_lissage.py`, puis `ocaml/lib/detente.ml`) :
+chaque brin est rééchantillonné (pas de 4 px) ; 400 itérations de tension (chaque point va vers le milieu de ses voisins : flot
+de courbure discret, qui arrondit les coins et efface les zigzags) et de répulsion (entre brins plus proches que 6 px, éteinte
+près du clou ; entre un brin et un trou plus proche que 12 px), avec un pas borné à 0,3 px (aucun brin ne peut sauter par-dessus
+un autre ni par-dessus un trou). L'intensité vaut 4 poids (1 − poids) : nulle aux bords de la fenêtre (images clés intactes, film
+continu), maximale au milieu.
+
+Résultat : 0 anomalie (mots relus, croisements) sur (σ₁σ₂⁻¹)³ et sur la tresse chargée ; les coins carrés autour des trous qui
+tournent et les zigzags disparaissent (image 264 de (σ₁σ₂⁻¹)³) ; les brins se serrent un peu plus près des trous. Jugé « parfait »
+par l'utilisateur, c'est le film des lacets de la page publique.

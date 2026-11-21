@@ -32,6 +32,12 @@ seulement avec le raccord par triangulation (le défaut).
 Lignes de construction (2026-11-20, pour la page web) : `Conforme.aretes` (l'axe et L–A, A–B, B–R, L–B, A–R, comparée au Python
 par `dune test`) et `Film_conforme.construction` (chaque image porte ses segments avec leur opacité, fondus du raccord compris) ;
 le dessin Cairo et les MP4 ne les tracent pas.
+Détente du raccord (2026-11-21) : `lib/detente.ml`, traduction de `detend` de `etude/lacets/essai_lissage.py` (rééchantillonnage,
+tension, répulsion entre brins et trous, pas borné, voisins par une grille au lieu de paquets de distances : même ensemble de paires).
+`Film_conforme.film ~detente` l'applique pendant le raccord avec l'intensité 4 poids (1 − poids) ; `~premiere ~lettres` ne calcule
+qu'une partie du film (chaque lettre ne dépend que de son état de départ : la page en répartit les lettres sur plusieurs workers).
+`test/test_detente.ml` : mêmes points que le Python à 1e-6 près sur deux images (`reference_detente.json`, écrit par
+`genere_reference_detente.py`), et le film détendu de (σ₁σ₂⁻¹)³ sans anomalie. Le film non détendu et ses 83 tests sont inchangés.
 Étape 8 faite : le premier bouquet (`lib/bouquet.ml` : la classe `Pousse` de `python/Bouquet.py`, `test/test_bouquet.ml`,
 concordant à 1e-6 près ; 0,8 s au lieu de 30 s). L'escargot et le bouquet sont dans la page web (section « Un peu de
 poésie »), dessinés en canvas par `web/ardoise.js` (le dessin Cairo n'est pas traduit pour le bouquet).

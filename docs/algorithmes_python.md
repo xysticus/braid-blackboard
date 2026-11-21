@@ -297,6 +297,10 @@ de l'image k : le dessin du préfixe suivant est bien l'image du dessin courant 
 L'ancienne idée d'insertion point par point (`decale`, `dedans_extrm`) est décrite dans `git show f2fdb1c` et
 `git show 4b2d4f4` ; le code a été retiré.
 
+13 bis. **Détente du raccord** (`etude/lacets/essai_lissage.py`, traduit en OCaml dans `ocaml/lib/detente.ml`, 2026-11-21) : le film
+   du point 13 est détendu pendant la fenêtre du raccord par un court flot de courbure contraint (tension, répulsion entre brins et
+   trous, pas borné), d'intensité 4 poids (1 − poids). Détail : `pistes_film_conforme.md`. C'est le film des lacets de la page.
+
 ## Les scripts de `python/` et `imgs/` : descriptions d'origine
 
 Les descriptions détaillées que la carte des fichiers de `CLAUDE.md` résume (reprises telles quelles ; « plus bas »

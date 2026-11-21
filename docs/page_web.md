@@ -15,3 +15,11 @@ pousser s'il a changé (le commiter, puis repousser). `git publie` (alias local 
 `web/deploie.sh` : seul un push met à jour GitHub Pages ; le serveur personnel n'est mis à jour que par `deploie.sh`.
 Sous JavaScript, pas de récursion non terminale sur de longues listes (`List.concat`, `List.fold_right`) : la pile est
 petite.
+
+**Le film des lacets, détendu et réparti (2026-11-21, tag v1.2).** La vue « lacets » demande au worker le mode de calcul
+`conforme_detendu` (`MODE_DE_CALCUL` dans `web/ardoise.js`) : le film conforme détendu pendant le raccord (`ocaml/lib/detente.ml`).
+`web/travail.js` répartit ce film (et le mode `conforme` du banc d'essai) sur des workers auxiliaires, autant que de cœurs (8 au
+plus) : les lettres leur sont données une à une (`ardoise.film_lettres`), calculées sans détente, et chaque image du raccord revient
+en double précision pour être détendue à son tour par un auxiliaire (`ardoise.detend`) ; le worker principal calcule l'image clé de
+départ et rend les images dans l'ordre. Mêmes images qu'en un seul worker ; sur 12 cœurs, (σ₁σ₂⁻¹)³ en moins de 24 s et la tresse
+chargée en moins de 70 s (au lieu de 80 s et 4 min 45 en un seul worker).

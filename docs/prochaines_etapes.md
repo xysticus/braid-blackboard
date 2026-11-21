@@ -19,3 +19,5 @@ et entraîne les lacets.
    simultané le remplace.
 5. **Ménage.** Fait (code mort retiré : `decale`, `dedans_extrm`, `geometrie_auto_de_tresse`, ancienne torsion par
    ellipses). Reste éventuellement : passer les `assert` en tests pytest.
+6. ~~**Film des lacets sans défauts au raccord.**~~ Fait (2026-11-21, tag v1.2) : le film conforme détendu pendant le raccord
+   (`ocaml/lib/detente.ml`, `pistes_film_conforme.md`), réparti par lettres sur plusieurs workers dans la page.

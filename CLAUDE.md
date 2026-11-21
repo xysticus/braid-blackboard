@@ -44,7 +44,9 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   en arcs : points 1 à 10 de `docs/algorithmes_python.md`). `from tresses import *` ; lancé (`__main__`), il écrit ses images et ses films.
 - `python/Triangulation.py` : **le film actuel** (triangulation mobile, point 11 de `docs/algorithmes_python.md`), `film_triangule`.
 - `python/Conforme.py` : film par représentation conforme (point 13 de `docs/algorithmes_python.md`), `film_conforme` ;
-  `python/Raccord.py` : son raccord par triangulation mobile.
+  `python/Raccord.py` : son raccord par triangulation mobile. Le film des lacets de la page est ce film **détendu pendant le
+  raccord** (flot de courbure contraint : prototype `etude/lacets/essai_lissage.py`, version de la page `ocaml/lib/detente.ml`,
+  mode `conforme_detendu`, tag v1.2).
 - `python/Arcs.py` : essai sans clou, des arcs entre trous fixes et trous voyageurs (piste 1 ter de
   `pistes_film_conforme.md`), `film_arcs` ; `DiagrammeCourbes` : le diagramme de courbes ; `hyperbolique=True`
   (`python/Geodesiques.py`), `fixes='gauche'`, `ecart_fixes`.
@@ -60,7 +62,8 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   le reconstruit avant chaque push et refuse de pousser s'il a changé (le commiter, puis repousser). Un push qui touche `web/`
   met à jour GitHub Pages.
 - `etude/lacets/` : **banc d'essai** (document de travail, non déployé) du film des lacets : une page, un film en 1600 × 1600, lecteur pas à pas, lignes de construction et tangentes
-  des arcs (`etude/lacets/README.md`). Il réutilise `web/travail.js` et `web/ardoise_lib.js` sans les modifier.
+  des arcs (`etude/lacets/README.md`). Il réutilise `web/travail.js` et `web/ardoise_lib.js` sans les modifier. Essais en
+  Python : `essai_lissage.py` (la détente, retenue), `essai_regions.py` (raccord par régions, écarté).
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README et un `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés)
