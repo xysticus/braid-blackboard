@@ -270,6 +270,36 @@ function dessineChrono(canvas, e, pas) {
   ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(x(pas), y0 - 4); ctx.lineTo(x(pas) - 5, y0 - 12); ctx.lineTo(x(pas) + 5, y0 - 12); ctx.fill();
 }
 
+// La projection tout au long du mot : une bande par lettre (départ orange, raccord dégradé, arrivée violette), le curseur à l'image courante.
+// Une image clé (la dernière de la lettre j) est l'arrivée de la lettre j et le départ de la lettre j+1 : la bande orange suivante
+// recommence donc sur le même dessin, reprojeté sur la ligne brisée de la lettre suivante.
+function dessineChronoMot(canvas, k) {
+  const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height, N = IMAGES_PAR_LETTRE, L = etat.mot.length;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const x = (n) => 14 + (W - 28) * n / (L * N);
+  const y0 = 30, h = 24;
+  ctx.font = '600 12px system-ui, sans-serif'; ctx.textAlign = 'center';
+  for (let j = 0; j < L; j++) {
+    const im = etat.images[j * N + 1], e = im && im.etude;
+    if (!e) continue;
+    const a = x(j * N), na = x(j * N + e.na), nb = x(j * N + e.nb), b = x((j + 1) * N);
+    ctx.fillStyle = COULEUR_DEPART; ctx.fillRect(a, y0, na - a, h);
+    ctx.fillStyle = COULEUR_ARRIVEE; ctx.fillRect(nb, y0, b - nb, h);
+    const g = ctx.createLinearGradient(na, 0, nb, 0); g.addColorStop(0, COULEUR_DEPART); g.addColorStop(1, COULEUR_ARRIVEE);
+    ctx.globalAlpha = 0.45; ctx.fillStyle = g; ctx.fillRect(na, y0, nb - na, h); ctx.globalAlpha = 1;
+    ctx.fillStyle = (k >= 1 && Math.floor((k - 1) / N) === j) ? '#000' : '#555';
+    ctx.fillText(`${j + 1} · ${nomLettre(etat.mot[j])}`, (a + b) / 2, y0 - 8);
+    ctx.fillStyle = '#fff'; ctx.fillRect(b - 1, y0 - 2, 2, h + 4);   // la frontière entre deux lettres
+    ctx.fillStyle = '#444'; ctx.font = '11px system-ui, sans-serif';
+    ctx.fillText(`${j * N + 1}–${(j + 1) * N + 1}`, (a + b) / 2, y0 + h + 14);
+    ctx.font = '600 12px system-ui, sans-serif';
+  }
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x(k), y0 - 4); ctx.lineTo(x(k), y0 + h + 4); ctx.stroke();
+}
+
 function metsAJourProjection(k) {
   const bloc = $('projection'), journal = $('journal');
   if (!etat.etude || !etat.images[k]) { bloc.hidden = true; journal.hidden = true; return; }
@@ -279,9 +309,17 @@ function metsAJourProjection(k) {
   if (!e) { bloc.hidden = true; journal.hidden = true; return; }
   bloc.hidden = false; journal.hidden = false;
   const pas = k === 0 ? 0 : ((k - 1) % IMAGES_PAR_LETTRE) + 1;
-  journal.textContent = image.etude ? image.etude.journal.join('\n') :
+  const j = k === 0 ? 0 : Math.floor((k - 1) / IMAGES_PAR_LETTRE), m = k === 0 ? 0 : ((k - 1) % IMAGES_PAR_LETTRE) + 1;
+  const relais = [];
+  if (m === IMAGES_PAR_LETTRE && j + 1 < etat.mot.length)
+    relais.push(`relais : cette image clé (image ${k + 1}) est aussi le départ de la lettre ${j + 2} (${nomLettre(etat.mot[j + 1])}) : le même dessin y est reprojeté, mais sur la ligne brisée L–A–B–R de cette lettre, jusqu'à l'image ${k + 1 + e.na} environ.`);
+  if (m === 1 && j > 0)
+    relais.push(`relais : l'image ${k} (clé de la lettre ${j}, ${nomLettre(etat.mot[j - 1])}) avait projeté ce même état comme arrivée ; il est ici reprojeté comme départ de la lettre ${j + 1} (${nomLettre(etat.mot[j])}).`);
+  journal.textContent = (image.etude ? image.etude.journal.concat(relais).join('\n') :
     `image 0 : l'image clé de départ (avant la première lettre) : l'état 0 est projeté sur la ligne brisée L–A–B–R, comme pendant toute la phase 1.\n` +
-    `chronologie de la lettre 1 : départ projeté aux images 0 à ${e.na} (s de 0 à ${e.sa.toFixed(4)}) ; raccord aux images ${e.na + 1} à ${e.nb - 1} ; arrivée projetée aux images ${e.nb} à ${IMAGES_PAR_LETTRE} (s de ${e.sb.toFixed(4)} à 1).`;
+    `chronologie de la lettre 1 : départ projeté aux images 0 à ${e.na} (s de 0 à ${e.sa.toFixed(4)}) ; raccord aux images ${e.na + 1} à ${e.nb - 1} ; arrivée projetée aux images ${e.nb} à ${IMAGES_PAR_LETTRE} (s de ${e.sb.toFixed(4)} à 1).`);
+  $('chrono-mot').hidden = etat.mot.length < 2;
+  if (etat.mot.length > 1) dessineChronoMot($('chrono-mot'), k);
   dessineChrono($('chrono'), e, pas);
   const ph = k === 0 ? 0 : e.phase;
   const noms = ['L', 'A', 'B', 'R'];
