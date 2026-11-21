@@ -384,7 +384,7 @@ const MODES_AVEC_CONSTRUCTION = new Map([
   ['triangulation', 'Le maillage (une triangulation) sur lequel les brins sont posés : il se déplace avec les trous, et les brins le suivent et se tendent.'],
   ['diagramme', 'Le maillage (une triangulation) sur lequel les arcs sont posés et tendus : il se déplace avec les trous.'],
   ['rubans', 'Le maillage (une triangulation) sur lequel les arcs, au centre des rubans, sont posés et tendus : il se déplace avec les trous.'],
-  ['conforme', 'L\'axe et la ligne brisée L–A–B–R sur lesquels le dessin est construit. Pendant le demi-tour, la ligne de départ et celle d\'arrivée s\'estompent l\'une dans l\'autre, et le dessin passe alors par une triangulation mobile.'],
+  ['conforme', 'L\'axe et la ligne brisée L–A–B–R sur lesquels le dessin est construit. Pendant le demi-tour, la ligne de départ et celle d\'arrivée s\'estompent l\'une dans l\'autre, et le dessin passe alors par une triangulation mobile, puis se détend : les brins s\'arrondissent et s\'espacent.'],
 ]);
 const GRIS_CONSTRUCTION = '#999';
 const TRAIT_CONSTRUCTION = 2.2;   // pour un canvas de 800 de large, comme les lacets
@@ -702,6 +702,10 @@ function arreteTravailleurs() {
   travailleurs = [];
 }
 
+// Le mode de calcul d'une vue, quand il diffère de son nom : les lacets sont le film conforme détendu pendant le raccord
+// (Detente ; travail.js en répartit la détente sur plusieurs workers).
+const MODE_DE_CALCUL = { conforme: 'conforme_detendu' };
+
 // Un Web Worker pour un mode et un lecteur ; rend le worker (ou null si le navigateur refuse, par exemple en file://).
 function demarreTravailleur(mode, mot, lecteur) {
   let w;
@@ -718,7 +722,7 @@ function demarreTravailleur(mode, mot, lecteur) {
     else if (d.type === 'image') lecteur.recoitImage(d.image, d.k, d.total);
     else if (d.type === 'fini') lecteur.fini(d.message, d.erreur);
   };
-  w.postMessage({ mode, mot });
+  w.postMessage({ mode: MODE_DE_CALCUL[mode] || mode, mot });
   return w;
 }
 
