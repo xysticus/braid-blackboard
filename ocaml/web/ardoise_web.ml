@@ -350,9 +350,28 @@ let film mode mot rendu =
       with e -> Js.string (message e))
   | _ -> film_tresse mode mot rendu
 
+(* La détente d'une image du film conforme (Detente), pour les workers auxiliaires de travail.js : lacets (tableaux plats
+   x, y), trous (plat), clou (plat), force ∈ [0, 1]. La détente ne dépend que des positions relatives : les coordonnées de
+   la page (décalées de la marge) conviennent. Rend { lacets, croisements } (nombre de croisements entre lacets, comme la
+   vérification du film). *)
+let detend (lacets : float Js.js_array Js.t Js.js_array Js.t) (trous : float Js.js_array Js.t) (clou : float Js.js_array Js.t) (force : float) =
+  try
+    let points (a : float Js.js_array Js.t) =
+      let v = Js.to_array a in
+      Array.init (Array.length v / 2) (fun k -> { x = v.(2 * k); y = v.((2 * k) + 1) })
+    in
+    let lignes = List.map points (Array.to_list (Js.to_array lacets)) in
+    let clou = (points clou).(0) in
+    let sortie = Detente.detend lignes (points trous) clou force in
+    Js.Unsafe.obj
+      [| ("lacets", Js.Unsafe.inject (Js.array (Array.of_list (List.map plat sortie))));
+         ("croisements", Js.Unsafe.inject (Film_conforme.nb_croisements sortie clou)) |]
+  with e -> Js.Unsafe.obj [| ("erreur", Js.Unsafe.inject (Js.string (message e))) |]
+
 let () =
   Js.Unsafe.set Js.Unsafe.global (Js.string "ardoise")
     (Js.Unsafe.obj
        [| ("analyse", Js.Unsafe.inject (Js.wrap_callback analyse));
           ("statique", Js.Unsafe.inject (Js.wrap_callback statique));
-          ("film", Js.Unsafe.inject (Js.wrap_callback film)) |])
+          ("film", Js.Unsafe.inject (Js.wrap_callback film));
+          ("detend", Js.Unsafe.inject (Js.wrap_callback detend)) |])
