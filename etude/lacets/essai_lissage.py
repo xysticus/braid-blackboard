@@ -131,6 +131,11 @@ def detend(lignes, trous, clou, force, iterations=None):
     return [X[bouts[k]:bouts[k + 1]] for k in range(len(tailles))]
 
 
+def _detend_travail(args):
+    lignes, trous, clou, f = args
+    return detend(lignes, trous, clou, f)
+
+
 def force_de_l_image(n, images=48, fenetre=0.5):
     """L'intensité à l'image n d'une lettre (1 … images) : 4 poids (1 − poids), le poids étant celui du raccord."""
     s = lisse(n / images)
@@ -143,17 +148,25 @@ def dessins_detendus(tresse, hauteur=800, largeur=800, marge=60, seulement=None,
     partir de 1) à calculer. Rend (dessins, durées, anomalies)."""
     dessins, durees, _ = dessins_conforme(tresse, hauteur=hauteur, largeur=largeur, marge=marge)
     nb = max(map(abs, tresse)) + 1
+    # les images à détendre : indépendantes, calculées en parallèle sur tous les cœurs
+    travaux = []
+    for k, (lignes, trous, clou, axe) in enumerate(dessins):
+        if seulement is not None and k + 1 not in seulement: continue
+        f = 0.0 if k == 0 else force_de_l_image((k - 1) % 48 + 1)
+        if f > 0: travaux.append((k, lignes, trous, clou, f))
+    detendues = {}
+    if travaux:
+        import multiprocessing
+        with multiprocessing.get_context('fork').Pool(min(len(travaux), os.cpu_count() or 1)) as pool:
+            for k, lignes in zip([t[0] for t in travaux], pool.imap(_detend_travail, [t[1:] for t in travaux], chunksize=1)):
+                detendues[k] = lignes
     res, anomalies = [], []
     for k, (lignes, trous, clou, axe) in enumerate(dessins):
         numero = k + 1
         if seulement is not None and numero not in seulement: continue
-        if k == 0: f = 0.0
-        else:
-            lettre, n = (k - 1) // 48, (k - 1) % 48 + 1
-            f = force_de_l_image(n)
-        nouvelles = detend(lignes, trous, clou, f) if f > 0 else lignes
+        nouvelles = detendues.get(k, lignes)
         if verifie and k > 0:
-            lettre, n = (k - 1) // 48, (k - 1) % 48 + 1
+            lettre = (k - 1) // 48
             mots = [calcule_autofn_de_tresse(tresse[:lettre + j], nb) for j in (0, 1)]
             en_ordre = sorted(np.asarray(trous).tolist())
             i = abs(tresse[lettre])
