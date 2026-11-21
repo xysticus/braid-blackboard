@@ -39,3 +39,14 @@ Dans la page du banc, la case « régions (précalculé) » joue ces images à l
 `python etude/lacets/essai_regions.py exporte "1 -2 1 -2" etude/lacets/regions/1_-2_1_-2.json` (une minute pour 4 lettres, quatre
 pour la tresse chargée, dont le fichier fait 11 Mo : il est ignoré par git). Ces films n'ont pas de journal ni de plans w : le
 panneau « La projection » est masqué.
+
+## Essai : le film détendu pendant le raccord (Python)
+
+`essai_lissage.py` (depuis la racine du dépôt) : on garde le film conforme actuel, topologiquement juste, et on le détend
+pendant la fenêtre du raccord par un court flot de courbure contraint. Chaque brin est rééchantillonné ; la tension (chaque
+point va vers le milieu de ses voisins) arrondit les coins et efface les zigzags ; une répulsion entre brins (écart 6 px) et
+entre brins et trous (12 px) garde les écarts et empêche les croisements ; elle s'éteint près du clou. L'intensité vaut
+4 poids (1 − poids) : nulle aux bords de la fenêtre (images clés intactes, film continu), maximale au milieu.
+`python etude/lacets/essai_lissage.py "1 -2 1 -2 1 -2" 264` compare une image ; `python etude/lacets/essai_lissage.py film
+"1 -2 1 -2 1 -2"` écrit le film vérifié (`imgs/essai_lissage_film_*.mp4`) et ses images pour la page (`detendu/<mot>.json`,
+case « détendu (précalculé) »). Réglages en arguments : `PAS=4 ITERATIONS=400 ECART=6 RAYON_TROU=12 …`.

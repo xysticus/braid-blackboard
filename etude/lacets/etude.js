@@ -78,7 +78,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, regions: false, regionsDispo: false, reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, precalcule: null, reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -448,7 +448,12 @@ function brancheCommandes() {
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
   $('c-satellites').onchange = (e) => { etat.satellites = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : 8 sommets de plus autour de chacun des deux trous qui tournent
   $('c-libre').onchange = (e) => { etat.libre = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // recalcule le film, et revient à la même image
-  $('c-regions').onchange = (e) => { etat.regions = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // les images précalculées du raccord par régions
+  PRECALCULES.forEach((sorte) => {   // les films précalculés : une seule case à la fois
+    $('c-' + sorte).onchange = (e) => {
+      PRECALCULES.forEach((autre) => { if (autre !== sorte) $('c-' + autre).checked = false; });
+      etat.precalcule = e.target.checked ? sorte : null; etat.reprise = etat.k; lance(etat.mot);
+    };
+  });
   $('c-fantomes').onchange = (e) => { etat.fantomes = e.target.checked; redessine(); };
   $('vitesse').onchange = (e) => { etat.ips = Number(e.target.value); };
   document.addEventListener('keydown', (e) => {
@@ -471,14 +476,18 @@ function efface() {
   ctx.fillRect(0, 0, toile.width, toile.height);
 }
 
-// Les images du raccord par régions (essai_regions.py exporte) : un fichier JSON par mot, dans regions/. Il remplace le calcul du film.
-const fichierRegions = (mot) => 'regions/' + mot.join('_') + '.json';
+// Les films précalculés en Python, un fichier JSON par mot : regions/ (essai_regions.py exporte : le raccord par régions) et
+// detendu/ (essai_lissage.py film : le film conforme détendu pendant le raccord). Ils remplacent le calcul du film.
+const PRECALCULES = ['regions', 'detendu'];
+const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 
-function verifieRegions(mot) {
-  etat.regionsDispo = false; $('c-regions').disabled = true;
-  fetch(fichierRegions(mot), { method: 'HEAD' }).then((r) => {
-    if (r.ok && etat.mot.join(' ') === mot.join(' ')) { etat.regionsDispo = true; $('c-regions').disabled = false; }
-  }).catch(() => {});
+function verifiePrecalcules(mot) {
+  PRECALCULES.forEach((sorte) => {
+    $('c-' + sorte).disabled = true;
+    fetch(fichierPrecalcule(mot, sorte), { method: 'HEAD' }).then((r) => {
+      if (r.ok && etat.mot.join(' ') === mot.join(' ')) $('c-' + sorte).disabled = false;
+    }).catch(() => {});
+  });
 }
 
 function termine(message) {
@@ -493,15 +502,16 @@ function termine(message) {
   etat.reprise = null;
 }
 
-function chargeRegions(mot) {
-  return fetch(fichierRegions(mot)).then((r) => { if (!r.ok) throw new Error('absent'); return r.json(); }).then((d) => {
+function chargePrecalcule(mot, sorte) {
+  return fetch(fichierPrecalcule(mot, sorte)).then((r) => { if (!r.ok) throw new Error('absent'); return r.json(); }).then((d) => {
     if (etat.mot.join(' ') !== mot.join(' ')) return true;   // le mot a changé entre-temps
     etat.images = d.images.map((im) => ({
       lacets: im.lacets.map((l) => Float32Array.from(l)), trous: Float32Array.from(im.trous), fixes: new Float32Array(0), clou: Float32Array.from(im.clou),
       ecart: 6, brin: 3.5, construction: Float32Array.from(im.construction), opacites: Float32Array.from(im.opacites), ab: im.ab, maillage: new Float32Array(0),
     }));
     const n = d.anomalies.length;
-    termine(`raccord par régions (précalculé, fenêtre ${d.fenetre}, rampe ${d.rampe})` + (n ? ` : ${n} image(s) avec des croisements (voir essai_regions.py)` : ' : aucune anomalie'));
+    const nom = sorte === 'regions' ? `raccord par régions (précalculé, fenêtre ${d.fenetre}, rampe ${d.rampe})` : 'film détendu pendant le raccord (précalculé)';
+    termine(nom + (n ? ` : ${n} image(s) avec des anomalies (voir essai_${sorte === 'regions' ? 'regions' : 'lissage'}.py)` : ' : aucune anomalie'));
     return true;
   }).catch(() => false);
 }
@@ -513,9 +523,10 @@ function lance(mot) {
   efface();
   $('commandes').hidden = true;
   $('mot-titre').textContent = mot.map(nomLettre).join(' ');
-  if (etat.regions) {
+  if (etat.precalcule) {
+    const sorte = etat.precalcule;
     $('etat-calcul').innerHTML = '<span>chargement des images précalculées…</span>';
-    chargeRegions(mot).then((ok) => { if (!ok) { etat.regions = false; $('c-regions').checked = false; calcule(mot); } });
+    chargePrecalcule(mot, sorte).then((ok) => { if (!ok) { etat.precalcule = null; $('c-' + sorte).checked = false; calcule(mot); } });
     return;
   }
   calcule(mot);
@@ -558,7 +569,7 @@ function miseAJour(texte) {
   document.querySelectorAll('.exemple').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mot === cle)));
   if (cle === motCourant) return;
   motCourant = cle;
-  verifieRegions(r.mot);
+  verifiePrecalcules(r.mot);
   try { history.replaceState(null, '', '#' + encodeURIComponent(cle)); } catch (e) { /* file:// */ }
   lance(r.mot);
 }
@@ -578,7 +589,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('satellites')) { etat.satellites = true; $('c-satellites').checked = true; }   // ?satellites (captures)
   if (new URLSearchParams(location.search).has('sansprojection')) { etat.etude = false; $('c-etude').checked = false; }   // ?sansprojection (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
-  if (new URLSearchParams(location.search).has('regions')) { etat.regions = true; $('c-regions').checked = true; }
+  PRECALCULES.forEach((sorte) => { if (new URLSearchParams(location.search).has(sorte)) { etat.precalcule = sorte; $('c-' + sorte).checked = true; } });   // ?regions, ?detendu : un film précalculé au départ (captures)
   brancheCommandes();
   let minuterie = null;
   champ.addEventListener('input', () => { clearTimeout(minuterie); minuterie = setTimeout(() => miseAJour(champ.value), 400); });
