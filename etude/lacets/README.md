@@ -24,3 +24,12 @@ Case « arcs libres » : recalcule le film avec le mode `conforme_libre` (`Racco
 Case « sans maillage » (essai) : mode `conforme_sans_maillage` (`Raccord.lignes ~sans_maillage:true`) : pendant le raccord, les pieds posés sur les arêtes du maillage qui ne portent pas une ligne de construction sont retirés ; les repères restants (départ, arrivée, pieds sur A–B et sur la ligne foncée) sont reliés par des paires d'arcs, sans que rien ne les retienne : des arcs immenses sont possibles. Pour voir ce que la triangulation impose aux lacets.
 
 Case « satellites » (essai) : mode `conforme_satellites` (`Raccord.raccord ~satellites:8`) : 8 sommets de plus, sur un cercle de rayon 30 % de la plus petite distance entre trous, autour de chacun des deux trous qui tournent ; ils les suivent. Le maillage a beaucoup d'arêtes courtes autour d'eux (case « maillage » pour les voir). Les mots relus et les croisements sont vérifiés comme pour les autres modes.
+
+## Essai : le raccord par régions, sans maillage (Python)
+
+`essai_regions.py` (depuis la racine du dépôt) : à la verticale, le plan est coupé en quatre régions (le haut, le bas avec le
+clou, les deux triangles L–Bas–T et R–T–Bas) et chaque morceau de lacet y est l'image d'un demi-cercle par la représentation
+conforme de la région. `python etude/lacets/essai_regions.py "1 -2 1 -2" 2` écrit la comparaison avec le maillage à l'image du
+milieu de la lettre 2 ; `python etude/lacets/essai_regions.py film "1 -2 1 -2" sortie.mp4 [fenetre=0.5] [rampe=0.25] [construction]`
+écrit le film du raccord par régions (images dans `imgs/`, ignoré par git). Sur la tresse chargée, 5 images sur 432 ont des
+croisements, toutes dans les rampes de mélange aux deux bouts de la fenêtre.
