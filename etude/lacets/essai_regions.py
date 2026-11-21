@@ -132,6 +132,7 @@ class Triangle:
         return z
 
 
+APLATI = 1.0   # hauteur des arcs du demi-plan w, en part de celle du demi-cercle (1 : demi-cercle)
 FINESSE = 0.05   # distance du premier point du demi-cercle, en part de la distance du pied au sommet le plus proche
 POINTS = 240
 
@@ -156,7 +157,8 @@ def demi_cercle_fin(w0, w1, sommets=(), derivee=None, n=None):
     u = np.concatenate(([0.0], h0 / 1, 1 - h1[::-1][1:], [1.0]))
     u = np.unique(u)
     phi0 = math.pi if w0 < w1 else 0.0
-    return m + rho * np.exp(1j * (phi0 + (math.pi - 2 * phi0) * u))
+    z = np.exp(1j * (phi0 + (math.pi - 2 * phi0) * u))
+    return m + rho * (z.real + 1j * APLATI * z.imag)   # APLATI < 1 : demi-ellipse plus basse, toujours perpendiculaire à l'axe en ses bouts
 
 
 # ---------------------------------------------------------------- les régions
@@ -216,6 +218,66 @@ def mele(fa, fb, w):
 
 
 MORCEAUX = []   # pour le diagnostic : les morceaux de chaque lacet (région, pieds, nombre de points)
+
+
+def en_w(L, s, fractions_des_lacets):
+    """Les pieds d'un dessin à l'instant s, en antécédents w : pour les arêtes du bas (axe, L–Bas, Bas–R) dans la carte du
+    bas, pour L–T et T–R dans celle du haut ; la diagonale T–Bas, qui n'a que des triangles, garde sa fraction. Rend, pour
+    chaque lacet, une liste de (arête, 'w' ou 'u', valeur)."""
+    sortes, (L_, A_, B_, R_), a_en_haut = sortes_d_aretes(L, s)
+    T, Bas = (A_, B_) if a_en_haut else (B_, A_)
+    carte_h, carte_b = Carte(np.array([L_, T, R_])), Carte(np.array([L_, Bas, R_]).conj())
+    res = []
+    for suite in fractions_des_lacets:
+        r = []
+        for a, u in suite:
+            sorte, _, E0, E1 = sortes[a]
+            x = E0[0] + u * (E1[0] - E0[0])
+            wb, wh = carte_b.w, carte_h.w
+            # relatif aux sommets de l'arête, pour que le pied reste entre eux : l'écart au sommet sur une demi-droite,
+            # la position entre les deux antécédents sur un segment
+            if sorte == 'G': r.append((a, 'w', wb[0] - carte_b.antecedent_bord(0, L_.real - x)))
+            elif sorte == 'D': r.append((a, 'w', carte_b.antecedent_bord(3, x - R_.real) - wb[2]))
+            elif sorte == 'LB': r.append((a, 'w', (carte_b.antecedent_bord(1, u * abs(Bas - L_)) - wb[0]) / (wb[1] - wb[0])))
+            elif sorte == 'BR': r.append((a, 'w', (carte_b.antecedent_bord(2, u * abs(R_ - Bas)) - wb[1]) / (wb[2] - wb[1])))
+            elif sorte == 'LT': r.append((a, 'w', (carte_h.antecedent_bord(1, u * abs(T - L_)) - wh[0]) / (wh[1] - wh[0])))
+            elif sorte == 'TR': r.append((a, 'w', (carte_h.antecedent_bord(2, u * abs(R_ - T)) - wh[1]) / (wh[2] - wh[1])))
+            else: r.append((a, 'u', u))
+        res.append(r)
+    return res
+
+
+def mele_w(L, s, wa, wb, poids):
+    """Les pieds de l'instant s : (1 − poids) wa + poids wb en antécédents w (ou en fraction pour T–Bas), puis remis en
+    fractions de leur arête avec les cartes de l'instant s. Rend, par lacet, la liste de (arête, fraction) ou None."""
+    sortes, (L_, A_, B_, R_), a_en_haut = sortes_d_aretes(L, s)
+    T, Bas = (A_, B_) if a_en_haut else (B_, A_)
+    carte_h, carte_b = Carte(np.array([L_, T, R_])), Carte(np.array([L_, Bas, R_]).conj())
+    res = []
+    for pa, pb in zip(wa, wb):
+        if [a for a, _, _ in pa] != [a for a, _, _ in pb]:
+            res.append(None)
+            continue
+        r = []
+        for (a, mode, va), (_, _, vb) in zip(pa, pb):
+            v = (1 - poids) * va + poids * vb
+            sorte, _, E0, E1 = sortes[a]
+            if mode == 'u': r.append((a, v))
+            elif sorte in ('G', 'D'):
+                x = carte_b.bord(carte_b.w[0] - v if sorte == 'G' else carte_b.w[2] + v).real
+                r.append((a, (x - E0[0]) / (E1[0] - E0[0])))
+            elif sorte in ('LB', 'BR'):
+                P0, P1 = (L_, Bas) if sorte == 'LB' else (Bas, R_)
+                i0 = 0 if sorte == 'LB' else 1
+                p = carte_b.bord(carte_b.w[i0] + v * (carte_b.w[i0 + 1] - carte_b.w[i0])).conjugate()
+                r.append((a, float(((p - P0) * (P1 - P0).conjugate()).real / abs(P1 - P0) ** 2)))
+            else:
+                P0, P1 = (L_, T) if sorte == 'LT' else (T, R_)
+                i0 = 0 if sorte == 'LT' else 1
+                p = carte_h.bord(carte_h.w[i0] + v * (carte_h.w[i0 + 1] - carte_h.w[i0]))
+                r.append((a, float(((p - P0) * (P1 - P0).conjugate()).real / abs(P1 - P0) ** 2)))
+        res.append(r)
+    return res
 
 
 def par_regions(L, s, pieds_des_lacets, repli):
@@ -333,12 +395,16 @@ def par_regions(L, s, pieds_des_lacets, repli):
 
 # ---------------------------------------------------------------- le film
 
-def dessins_regions(tresse, images=48, fenetre=0.7, rampe=0.25, hauteur=800, largeur=800, marge=60, duree=40, pause=500):
+def dessins_regions(tresse, images=48, fenetre=0.7, rampe=0.25, hauteur=800, largeur=800, marge=60, duree=40, pause=500,
+                    seulement=None, espacement='fraction'):
     """Comme `dessins_conforme`, mais le raccord se fait par régions, sans maillage : hors de la fenêtre (poids 0 ou 1),
     le dessin conforme de l'état k (sur L–A–B–R) ou de l'état k+1 (sur L–B–A–R) ; dedans, le dessin par régions, dont les
     pieds passent des fractions du premier dessin à celles du second. Aux deux bouts de la fenêtre, une rampe (une part
     `rampe` du poids) mélange morceau par morceau (`raccorde`) le dessin conforme et celui des régions, qui ont alors
-    les mêmes pieds. Rend (dessins, durées, anomalies) comme `dessins_conforme`."""
+    les mêmes pieds. Rend (dessins, durées, anomalies) comme `dessins_conforme`. seulement : un ensemble de (lettre, image) :
+    on ne calcule que celles-là (diagnostic ; les dessins rendus sont alors dans l'ordre de `sorted(seulement)`).
+    espacement : 'fraction' (les pieds glissent en fraction de leur arête) ou 'w' (ils glissent en antécédents, là où la carte
+    espace régulièrement les arcs)."""
     nb = max(map(abs, tresse)) + 1
     h_int, l_int = hauteur - 2 * marge, largeur - 2 * marge
     cle = etat_de_tresse([], nb)
@@ -350,6 +416,9 @@ def dessins_regions(tresse, images=48, fenetre=0.7, rampe=0.25, hauteur=800, lar
     for k, sigma in enumerate(tresse):
         suivante = etat_de_tresse(tresse[:k + 1], nb)
         lettre = Lettre(cle, suivante, sigma, h_int, l_int)
+        if seulement is not None and not any(kk == k for kk, _ in seulement):
+            cle = etat_de_tresse(tresse[:k + 1], nb)
+            continue
         mots = [calcule_autofn_de_tresse(tresse[:k + j], nb) for j in (0, 1)]
         temps = [lisse(n / images) for n in range(images + 1)]
         poids_de = [lisse(min(1, max(0, (t - (0.5 - fenetre / 2)) / fenetre))) for t in temps]
@@ -361,7 +430,10 @@ def dessins_regions(tresse, images=48, fenetre=0.7, rampe=0.25, hauteur=800, lar
         n_a, n_b = dans[0] - 1, dans[-1] + 1
         frac_a = fractions(lettre, temps[n_a], lettre.dessin(0, temps[n_a]))
         frac_b = fractions(lettre, temps[n_b], lettre.dessin(1, temps[n_b]))
+        if espacement == 'w':
+            w_a, w_b = en_w(lettre, temps[n_a], frac_a), en_w(lettre, temps[n_b], frac_b)
         for n in range(1, images + 1):
+            if seulement is not None and (k, n) not in seulement: continue
             s, poids = temps[n], poids_de[n]
             g = lisse(min(1, poids / rampe, (1 - poids) / rampe)) if 0 < poids < 1 else 0.0
 
@@ -370,7 +442,8 @@ def dessins_regions(tresse, images=48, fenetre=0.7, rampe=0.25, hauteur=800, lar
                 if poids == 0: return lettre.dessin(0, s), axe, (LA, AB, BR, LB, AR)
                 if poids == 1: return lettre.dessin(1, s), axe, (LA, AB, BR, LB, AR)
                 autre = lettre.dessin(0, s) if poids < 0.5 else lettre.dessin(1, s)   # le seul qui soit correct à cet instant
-                reg, erreurs = par_regions(lettre, s, mele(frac_a, frac_b, poids), autre)
+                pieds = mele(frac_a, frac_b, poids) if espacement == 'fraction' else mele_w(lettre, s, w_a, w_b, poids)
+                reg, erreurs = par_regions(lettre, s, pieds, autre)
                 for l, e in erreurs: anomalies.append((k, n, l, e))
                 if g >= 1: return reg, axe, (LA, AB, BR, LB, AR)
                 res = []
@@ -416,6 +489,55 @@ def film_regions(tresse, fichier, hauteur=800, largeur=800, marge=60, constructi
     return anomalies
 
 
+def simplifie(points, eps):
+    """Douglas–Peucker (pile explicite) : les points d'une polyligne à moins de eps pixels de la corde qui les résume."""
+    n = len(points)
+    garde = np.zeros(n, bool)
+    garde[0] = garde[-1] = True
+    pile = [(0, n - 1)]
+    while pile:
+        a, b = pile.pop()
+        if b <= a + 1: continue
+        d = points[b] - points[a]
+        norme = math.hypot(*d)
+        seg = points[a + 1:b]
+        if norme == 0: dist = np.hypot(*(seg - points[a]).T)
+        else: dist = np.abs(d[0] * (seg[:, 1] - points[a][1]) - d[1] * (seg[:, 0] - points[a][0])) / norme
+        j = int(np.argmax(dist))
+        if dist[j] > eps:
+            garde[a + 1 + j] = True
+            pile += [(a, a + 1 + j), (a + 1 + j, b)]
+    return points[garde]
+
+
+def exporte(mot, fichier, fenetre=0.5, rampe=0.25, marge=60, tolerance=0.15):
+    """Écrit les images du film par régions en JSON, au format des images de la page du banc d'essai (coordonnées de
+    l'image de 800 × 800, marge comprise) : lacets (suites x, y, simplifiées à `tolerance` pixel près), trous, clou,
+    construction (segments à plat), opacites, ab (l'indice du segment A–B). Rend les anomalies."""
+    import json
+    dessins, _, anomalies = dessins_regions(mot, fenetre=fenetre, rampe=rampe, marge=marge)
+    plat = lambda pts: [round(float(v), 1) for v in (np.asarray(pts) + marge).ravel()]
+    images = []
+    for k, (lignes, trous, clou, axe) in enumerate(dessins):
+        segments = []
+        if k == 0:   # la première image : axe, puis L–A, A–B, B–R ; on range comme les autres (axe, A–B, L–A, B–R)
+            na = len(axe) - 3
+            axe = axe[:na] + [axe[na + 1], axe[na], axe[na + 2]]
+        else:
+            na = len(axe) - 5
+        construction, opacites = [], []
+        for x in axe:
+            seg, alpha = (x if isinstance(x, tuple) else (x, 1.0))
+            if alpha <= 0: continue
+            construction += plat(seg); opacites.append(round(float(alpha), 3))
+        images.append({'lacets': [plat(simplifie(l, tolerance)) for l in lignes], 'trous': plat(trous), 'clou': plat([clou]),
+                       'construction': construction, 'opacites': opacites, 'ab': na})
+    with open(fichier, 'w') as f:
+        json.dump({'mot': mot, 'fenetre': fenetre, 'rampe': rampe, 'anomalies': [list(map(str, a)) for a in anomalies],
+                   'images': images}, f, separators=(',', ':'))
+    return anomalies
+
+
 # ---------------------------------------------------------------- les images
 
 def main(mot, k, hauteur=800, largeur=800, marge=60):
@@ -443,6 +565,12 @@ def main(mot, k, hauteur=800, largeur=800, marge=60):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == 'exporte':   # python etude/lacets/essai_regions.py exporte "1 -2 1 -2" etude/lacets/regions/1_-2_1_-2.json
+        mot = [int(x) for x in sys.argv[2].split()]
+        os.makedirs(os.path.dirname(sys.argv[3]) or '.', exist_ok=True)
+        anomalies = exporte(mot, sys.argv[3])
+        print(sys.argv[3], ':', len(anomalies), 'anomalies', anomalies[:30], os.path.getsize(sys.argv[3]) // 1024, 'Ko')
+        sys.exit()
     if len(sys.argv) > 1 and sys.argv[1] == 'film':   # python etude/lacets/essai_regions.py film "1 -2 1 -2" [sortie.mp4] [construction]
         mot = [int(x) for x in sys.argv[2].split()]
         fichier = sys.argv[3] if len(sys.argv) > 3 else 'imgs/essai_regions_film_' + '_'.join(map(str, mot)) + '.mp4'

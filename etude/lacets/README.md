@@ -33,3 +33,9 @@ conforme de la région. `python etude/lacets/essai_regions.py "1 -2 1 -2" 2` éc
 milieu de la lettre 2 ; `python etude/lacets/essai_regions.py film "1 -2 1 -2" sortie.mp4 [fenetre=0.5] [rampe=0.25] [construction]`
 écrit le film du raccord par régions (images dans `imgs/`, ignoré par git). Sur la tresse chargée, 5 images sur 432 ont des
 croisements, toutes dans les rampes de mélange aux deux bouts de la fenêtre.
+
+Dans la page du banc, la case « régions (précalculé) » joue ces images à la place du calcul OCaml, pour les mots dont le fichier
+`regions/<mot>.json` existe (les lettres séparées par `_` : `1_-2_1_-2.json`). Elle est grisée sinon. Pour en fabriquer un :
+`python etude/lacets/essai_regions.py exporte "1 -2 1 -2" etude/lacets/regions/1_-2_1_-2.json` (une minute pour 4 lettres, quatre
+pour la tresse chargée, dont le fichier fait 11 Mo : il est ignoré par git). Ces films n'ont pas de journal ni de plans w : le
+panneau « La projection » est masqué.
