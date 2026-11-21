@@ -172,7 +172,7 @@ let statique_tresse mode mot =
         verifie_limites ~conforme:true tresse;
         let _, _, (film, ecart) = prepare_triangulation tresse in
         image_triangulation film ecart
-    | "conforme" | "conforme_libre" ->
+    | "conforme" | "conforme_libre" | "conforme_sans_maillage" ->
         verifie_limites tresse;
         image_conforme { x = marge; y = marge } (Film_conforme.image_finale ~hauteur:cote ~largeur:cote ~marge tresse)
     | m ->
@@ -192,14 +192,14 @@ let film_tresse mode mot rendu =
         let sous_pas, total, _ = prepare_triangulation tresse in
         joue_triangulation tresse ~sous_pas ~rendu:(fun f e k -> appelle (image_triangulation f e) k (total + 1));
         Js.string ""
-    | ("conforme" | "conforme_libre") as mode ->
+    | ("conforme" | "conforme_libre" | "conforme_sans_maillage") as mode ->
         (* conforme_libre : les arcs ne passent plus par les points « fantômes » (les pieds sur la plus claire des deux lignes de
            construction pendant le raccord) ; sert au banc d'essai etude/lacets, pas à la page publique *)
         verifie_limites ~conforme:true tresse;
         let total = 1 + (nombre_images_conforme * List.length tresse) in
         let k = ref 0 in
         let anomalies =
-          Film_conforme.film ~verifie:true ~sans_fantomes:(mode = "conforme_libre") ~libre:(mode = "conforme_libre") ~hauteur:cote ~largeur:cote ~marge
+          Film_conforme.film ~verifie:true ~sans_fantomes:(mode = "conforme_libre") ~libre:(mode = "conforme_libre") ~sans_maillage:(mode = "conforme_sans_maillage") ~hauteur:cote ~largeur:cote ~marge
             ~rendu:(fun im -> appelle (image_conforme { x = marge; y = marge } im) !k total; incr k)
             tresse
         in

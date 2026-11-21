@@ -78,10 +78,12 @@ val reduction : raccord -> float -> float
 val aretes_du_maillage : raccord -> int -> (point * point) list
 (** Les arêtes du maillage de l'image f de la fenêtre, comme couples de positions. *)
 
-val lignes : ?sans_fantomes:bool -> ?libre:bool -> raccord -> int -> float -> point array list * (int * string) list
+val lignes : ?sans_fantomes:bool -> ?libre:bool -> ?sans_maillage:bool -> raccord -> int -> float -> point array list * (int * string) list
 (** [lignes r f poids] : les lacets de l'image f de la fenêtre au poids donné (0 : départ, 1 : arrivée), et les
     anomalies (lacet, message) : traversées différentes entre les deux dessins. [sans_fantomes] (faux par défaut) : les
     cordes ne passent plus par les pieds posés sur les arêtes entre trous de la plus claire des deux lignes de construction
     (celle dont l'opacité est <= 1/2) : ces « points fantômes » n'imposent ni leur tangente ni leur position. [libre] (faux par
     défaut, implique [sans_fantomes]) : les cordes ne sont plus une ligne brisée aux coudes arrondis mais des paires d'arcs entre
-    pieds, un pied sur la ligne la plus foncée imposant sa position et sa tangente (perpendiculaire à la ligne) ; voir [forme_libre]. *)
+    pieds, un pied sur la ligne la plus foncée imposant sa position et sa tangente (perpendiculaire à la ligne) ; voir [forme_libre].
+    [sans_maillage] (faux par défaut, implique [libre]) : essai pour voir ce que fait le maillage : les pieds posés sur les arêtes du
+    maillage qui ne portent pas une ligne de construction sont retirés, et les repères restants sont reliés par des paires d'arcs. *)

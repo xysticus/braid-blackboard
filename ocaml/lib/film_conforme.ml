@@ -113,7 +113,7 @@ let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
    verifie : relit les mots et compte les croisements sur chaque image. Rend les anomalies. L'ordre des calculs est
    celui du Python, y compris celui des appels qui remplissent le cache des cartes : les derniers chiffres en
    dépendent. *)
-let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ~hauteur ~largeur ~marge ~rendu tresse =
+let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ~hauteur ~largeur ~marge ~rendu tresse =
   let entiers = List.map Tresses.entier_de_lettre tresse in
   let nb_trous = (match entiers with [] -> 5 | _ -> List.fold_left (fun a x -> max a (abs x)) 0 entiers) + 1 in
   let h_int = hauteur -. (2. *. marge) and l_int = largeur -. (2. *. marge) in
@@ -158,7 +158,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
                   r
             in
             let f = List.length (List.filter (fun m -> m < n) dans_fenetre) in
-            let lignes, erreurs = Raccord.lignes ~sans_fantomes ~libre r f poids in
+            let lignes, erreurs = Raccord.lignes ~sans_fantomes ~libre ~sans_maillage r f poids in
             List.iter (fun (lacet, e) -> anomalies := { lettre = k; image = n; detail = Printf.sprintf "lacet %d : %s" lacet e } :: !anomalies) erreurs;
             maillage := Raccord.aretes_du_maillage r f;
             (lignes, Raccord.reduction r s)

@@ -366,16 +366,49 @@ let forme_libre ~sombre ~pos ~trous ?avant ?apres pieds aretes =
     in
     Array.concat (List.hd morceaux :: List.map (fun m -> Array.sub m 1 (Array.length m - 1)) (List.tl morceaux))
 
-(* Fusionne les morceaux consécutifs d'une suite en cordes qui se rejoignent sur une arête fantôme : le pied y est supprimé, la corde
+(* Essai « sans maillage » : les seuls repères d'une suite sont son départ, son arrivée et les pieds sur les lignes de construction
+   (les pieds posés sur les autres arêtes du maillage ont été retirés par [sans_pieds_si]). Entre deux repères consécutifs, une paire
+   d'arcs (deux_arcs) : un pied sur une ligne sombre impose sa tangente (la perpendiculaire à la ligne, dans le sens de la marche), un pied
+   sur A–B seulement son passage (la tangente est la corde de ses voisins). Rien ne retient plus les arcs : ils peuvent être immenses. *)
+let forme_arcs ~sombre ~pos ?avant ?apres pieds aretes =
+  let n = Array.length pieds in
+  if n < 2 then pieds
+  else
+    let unitaire d = let l = norme d in if l < 1e-12 then None else Some ((1. /. l) *: d) in
+    let aretes = Array.of_list aretes in
+    let tangente i =
+      if i = 0 then (match avant with Some d -> Some d | None -> unitaire (pieds.(1) -: pieds.(0)))
+      else if i = n - 1 then (match apres with Some d -> Some d | None -> unitaire (pieds.(n - 1) -: pieds.(n - 2)))
+      else
+        match unitaire (pieds.(i + 1) -: pieds.(i - 1)) with
+        | None -> None
+        | Some corde ->
+            if i - 1 < Array.length aretes && sombre aretes.(i - 1) then
+              let u, v = (aretes.(i - 1) : Arete.t :> sommet * sommet) in
+              let s = pos.(v) -: pos.(u) in
+              match unitaire { x = -.s.y; y = s.x } with
+              | Some nrm -> Some (if scalaire nrm corde >= 0. then nrm else oppose nrm)
+              | None -> Some corde
+            else Some corde
+    in
+    let morceaux =
+      List.init (n - 1) (fun i ->
+          match (tangente i, tangente (i + 1)) with
+          | Some t0, Some t1 -> Tresses.deux_arcs pieds.(i) t0 pieds.(i + 1) t1
+          | _ -> [| pieds.(i); pieds.(i + 1) |])
+    in
+    Array.concat (List.hd morceaux :: List.map (fun m -> Array.sub m 1 (Array.length m - 1)) (List.tl morceaux))
+
+(* Fusionne les morceaux consécutifs d'une suite en cordes qui se rejoignent sur une arête [retire] : le pied y est supprimé, la corde
    ne passe plus par ce point. Chaque morceau : (triangle, départ, arrivée, arête de sortie). *)
-let sans_pieds_fantomes fantomes suite =
+let sans_pieds_si retire suite =
   let joint p q = Array.append p (Array.sub q 1 (Array.length q - 1)) in
   Array.of_list
     (List.rev
        (Array.fold_left
           (fun acc ((_, pd, pa, a) as x) ->
             match acc with
-            | (t, pd0, pa0, Some e) :: reste when List.mem e fantomes -> (t, joint pd0 pd, joint pa0 pa, a) :: reste
+            | (t, pd0, pa0, Some e) :: reste when retire e -> (t, joint pd0 pd, joint pa0 pa, a) :: reste
             | _ -> x :: acc)
           [] suite))
 
@@ -385,8 +418,8 @@ let sans_pieds_fantomes fantomes suite =
    d'un triangle qui touche un des trous qui tournent, ou qui contient un bigone, passent par les cordes : tension
    (phases 0 → 1), glissement en cordes arrondies, courbure (phases 2 → 3) ; les autres passent directement du morceau de
    départ à celui d'arrivée pendant le glissement (le mélange de deux courbes d'un triangle reste dans ce triangle). *)
-let lignes ?(sans_fantomes = false) ?(libre = false) r f poids =
-  let sans_fantomes = sans_fantomes || libre in
+let lignes ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) r f poids =
+  let sans_fantomes = sans_fantomes || libre || sans_maillage in
   let j = r.image_de.(f) in
   let triangles, pos = r.etats.(j) in
   let maillage = Maillage.cree pos triangles in
@@ -450,7 +483,14 @@ let lignes ?(sans_fantomes = false) ?(libre = false) r f poids =
                     incr k
                   done;
                   let suite = Array.sub morceaux debut (!k - debut) in
-                  let suite = if sans_fantomes then sans_pieds_fantomes (aretes_fantomes r poids) suite else suite in
+                  let suite =
+                    if sans_maillage then (
+                      (* ne restent que les pieds sur les lignes de construction : A–B et la ligne foncée *)
+                      let gardees = (match r.tournants with [ a; b ] -> [ Arete.v a b ] | _ -> []) @ aretes_sombres r poids in
+                      sans_pieds_si (fun e -> not (List.mem e gardees)) suite)
+                    else if sans_fantomes then (let f = aretes_fantomes r poids in sans_pieds_si (fun e -> List.mem e f) suite)
+                    else suite
+                  in
                   let _, pd0, pa0, _ = suite.(0) in
                   let pieds =
                     Array.append [| melange glisse pd0.(0) pa0.(0) |]
@@ -459,7 +499,11 @@ let lignes ?(sans_fantomes = false) ?(libre = false) r f poids =
                   let avant = if debut > 0 then Option.bind courbes.(debut - 1) (fun c -> tangente c false) else None in
                   let apres = if !k < nb then Option.bind courbes.(!k) (fun c -> tangente c true) else None in
                   let cordes =
-                    if libre then
+                    if sans_maillage then
+                      let sombres = aretes_sombres r poids in
+                      let aretes = List.filter_map (fun (_, _, _, a) -> a) (Array.to_list (Array.sub suite 0 (Array.length suite - 1))) in
+                      forme_arcs ~sombre:(fun e -> List.mem e sombres) ~pos ?avant ?apres pieds aretes
+                    else if libre then
                       let sombres = aretes_sombres r poids in
                       let aretes = List.filter_map (fun (_, _, _, a) -> a) (Array.to_list (Array.sub suite 0 (Array.length suite - 1))) in
                       forme_libre ~sombre:(fun e -> List.mem e sombres) ~pos ~trous ?avant ?apres pieds aretes
