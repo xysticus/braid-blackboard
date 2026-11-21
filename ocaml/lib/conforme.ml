@@ -461,6 +461,34 @@ let dessin l ~reduction e s =
       Array.concat ((premier :: arcs) @ [ dernier ]))
     pieds (List.combine wh wb)
 
+(* Ce que la carte projette, pour l'étude : les antécédents réels des sommets de la ligne brisée, celui du clou (dans le demi-plan du
+   bas), et les arcs de chaque lacet comme demi-cercles du demi-plan w, entre les antécédents de leurs pieds (arcs du haut, puis du bas,
+   en alternance), avec la ligne brisée elle-même (position complexe de ses sommets, y vers le haut, avant aplatissement). Travaille
+   sur une copie du cache des cartes : n'influence pas le film. *)
+type plan = {
+  sommets : float array;  (** antécédents réels de L, A, B, R (dans l'ordre de la ligne brisée de l'état) *)
+  w_clou : Complex.t;  (** antécédent du clou dans le demi-plan du bas *)
+  arcs : (int * bool * float * float) list;  (** (lacet, arc du haut ?, w0, w1) *)
+  ligne : Complex.t array;  (** les sommets de la ligne brisée *)
+}
+
+let plan_w l ~reduction e s =
+  let l = { l with cache = Hashtbl.copy l.cache } in
+  let v, haut, bas = cartes l e s in
+  let pieds = List.map (fun lacet -> Array.map (fun x -> pied l e x s v) lacet) l.etats.(e).Tresses.lacets in
+  let antecedents carte = List.map (Array.map (fun p -> antecedent_bord carte p.morceau p.longueur)) pieds in
+  let wh = antecedents haut and wb = antecedents bas in
+  let zc = c l.clou.x ((l.clou.y -. l.y_axe) /. aplati l ~reduction s) in
+  let wc = antecedent bas zc in
+  let arcs =
+    List.concat
+      (List.mapi
+         (fun lacet (h_, b_) ->
+           List.init (Array.length h_ - 1) (fun j -> if j mod 2 = 0 then (lacet, true, h_.(j), h_.(j + 1)) else (lacet, false, b_.(j), b_.(j + 1))))
+         (List.combine wh wb))
+  in
+  { sommets = haut.w; w_clou = wc; arcs; ligne = v }
+
 (* Point à l'écran d'un point z (y vers le haut, avant aplatissement) au temps s. *)
 let ecran_de l ~reduction (z : Complex.t) s = { x = z.re; y = l.y_axe -. (z.im *. aplati l ~reduction s) }
 

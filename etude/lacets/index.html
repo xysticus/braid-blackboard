@@ -23,6 +23,14 @@
     <p class="aide" id="aide-clavier">Clavier : ← et → (une image), Maj + ← et Maj + → (une lettre), Début et Fin, espace (lecture).
        Une lettre dure <span id="par-lettre">48</span> images ; l'image clé est la première de chaque lettre. Les tangentes sont dessinées aux points où un lacet
        coupe une ligne de construction visible (toute ligne d'opacité > 0), sur la direction du segment de la ligne brisée du lacet. Pendant le raccord, la ligne la plus claire (celle qui s'efface ou qui n'est pas encore là : opacité ≤ 50 %) n'impose pas sa tangente, ni sa position (c'est l'arc, fixé par ses extrémités et ses tangentes, qui l'induit) : ses rencontres sont des points fantômes, de petits cercles gris clair, sans tangente.</p>
+    <section id="projection" hidden>
+      <h2>La projection</h2>
+      <canvas id="chrono" width="520" height="104" aria-label="de quand à quand chaque dessin est projeté"></canvas>
+      <div class="plans">
+        <figure><canvas id="plan-depart" width="520" height="340"></canvas><figcaption id="legende-depart"></figcaption></figure>
+        <figure><canvas id="plan-arrivee" width="520" height="340"></canvas><figcaption id="legende-arrivee"></figcaption></figure>
+      </div>
+    </section>
     <div id="exemples" aria-label="Tresses d'exemple"></div>
   </aside>
 
@@ -51,11 +59,13 @@
       <label title="les arêtes de la triangulation sur laquelle les lacets sont posés pendant le raccord (aucune hors du raccord : le dessin est alors conforme)"><input type="checkbox" id="c-maillage"> maillage</label>
       <label title="essai : les pieds posés sur les arêtes du maillage (hors lignes de construction) sont retirés ; les arcs ne sont plus retenus que par les lignes de construction (recalcule le film)"><input type="checkbox" id="c-sans-maillage"> sans maillage</label>
       <label title="essai : 8 sommets supplémentaires autour de chacun des deux trous qui tournent, pour que les lacets qui s'enroulent fassent des polygones à plus de côtés (recalcule le film)"><input type="checkbox" id="c-satellites"> satellites</label>
+      <label title="le journal sous le film, la chronologie et les plans w : ce qui est projeté, sur quoi, de quand à quand (recalcule le film)"><input type="checkbox" id="c-etude" checked> projection</label>
       <label title="les arcs ne passent plus par les points fantômes (recalcule le film)"><input type="checkbox" id="c-libre"> arcs libres</label>
       <label>ips
         <select id="vitesse"><option>2</option><option>5</option><option>12</option><option selected>25</option></select></label>
       <span id="compte-tangentes"></span>
     </div>
+    <pre id="journal" class="journal" hidden></pre>
   </section>
 </main>
 

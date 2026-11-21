@@ -6,6 +6,17 @@
 
 open Geometrie
 
+type etude = {
+  journal : string list;  (** le journal de l'image : ce qui est projeté, sur quoi, de quand à quand *)
+  phase : int;  (** 0 : projection du départ ; 1 : raccord ; 2 : projection de l'arrivée *)
+  n_a : int;  (** la dernière image du départ projeté (celle où il est figé) *)
+  n_b : int;  (** la première image de l'arrivée projetée (celle où elle est figée) *)
+  s_a : float;  (** le temps où le départ est figé *)
+  s_b : float;  (** le temps où l'arrivée est figée *)
+  plan_depart : Conforme.plan;  (** le départ au temps où il est projeté (figé à s_a pendant le raccord) *)
+  plan_arrivee : Conforme.plan;
+}
+
 type image = {
   lignes : point array list;
   trous : point array;
@@ -16,6 +27,7 @@ type image = {
   maillage : (point * point) list;
       (** Les arêtes de la triangulation sur laquelle les lacets sont posés pendant le raccord (vide hors du raccord, où le dessin est
           conforme) ; avec les arêtes qui vont au bord convexe, hors de l'image. *)
+  etude : etude option;  (** le journal et les plans w, seulement si [film ~etude:true] *)
 }
 (* Une image du film, dans le cadre intérieur (avant le décalage de la marge). *)
 
@@ -105,7 +117,58 @@ let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
   let k = n_lettres - 1 in
   let l = Conforme.lettre ~hauteur:(hauteur -. (2. *. marge)) ~largeur:(largeur -. (2. *. marge)) (etat k) (etat (k + 1)) (List.nth tresse k) in
   let lignes, reduction = dessin_reduit l 1 1. in
-  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1.; ab = indice_ab l ~reduction 1.; maillage = [] }
+  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1.; ab = indice_ab l ~reduction 1.; maillage = []; etude = None }
+
+
+(* Le journal d'une image du film, pour l'étude de la projection : ce qui est projeté, sur quoi, de quand à quand. *)
+let journal_de_l_image ~(l : Conforme.lettre) ~k ~n ~images ~n_lettres ~s ~poids ~n_a ~n_b ~s_a ~s_b ~r_d ~r_r ~phase
+    ~(plan_depart : Conforme.plan) ~(plan_arrivee : Conforme.plan) =
+  let z (p : Complex.t) = Printf.sprintf "(%.1f ; %.1f)" p.re p.im in
+  let ligne_de (pl : Conforme.plan) =
+    let noms = [| "L"; "A"; "B"; "R" |] in
+    String.concat "  " (Array.to_list (Array.mapi (fun j p -> noms.(j) ^ "=" ^ z p) pl.ligne))
+  in
+  let antecedents (pl : Conforme.plan) = String.concat " ; " (Array.to_list (Array.map (Printf.sprintf "%.3f") pl.sommets)) in
+  let compte (pl : Conforme.plan) = (List.length (List.filter (fun (_, h, _, _) -> h) pl.arcs), List.length (List.filter (fun (_, h, _, _) -> not h) pl.arcs)) in
+  let lisse_borne u = lisse (Float.min 1. (Float.max 0. u)) in
+  let tension = lisse_borne (poids /. 0.35) and glisse = lisse_borne ((poids -. 0.35) /. 0.3) and courbe = lisse_borne ((poids -. 0.65) /. 0.35) in
+  let nb_lacets = List.length l.Conforme.etats.(0).Tresses.lacets in
+  let sg = l.Conforme.sigma in
+  let nom_sigma = Printf.sprintf "σ%d%s" sg.Tresses.indice (match sg.Tresses.signe with Tresses.Plus -> "" | Tresses.Moins -> "⁻¹") in
+  let entete =
+    [ Printf.sprintf "image %d/%d de la lettre %d/%d (%s) · s = %.4f · poids du raccord = %.4f" n images (k + 1) n_lettres nom_sigma s poids;
+      Printf.sprintf "chronologie de la lettre : départ projeté aux images 0 à %d (s de 0 à %.4f) ; raccord aux images %d à %d ; arrivée projetée aux images %d à %d (s de %.4f à 1)."
+        n_a s_a (n_a + 1) (n_b - 1) n_b images s_b ]
+  in
+  let corps =
+    match phase with
+    | 0 ->
+        let h, b = compte plan_depart in
+        [ "PHASE 1/3 : projection conforme du DÉPART (poids 0).";
+          Printf.sprintf "  projeté : les %d lacets de l'état k (image clé k) : %d arc(s) du haut et %d arc(s) du bas, des demi-cercles du demi-plan w entre les antécédents de leurs pieds, plus deux descentes au clou par lacet." nb_lacets h b;
+          Printf.sprintf "  sur : la ligne brisée L–A–B–R de l'état k au temps s = %.4f (y vers le haut, avant aplatissement) :" s;
+          "    " ^ ligne_de plan_depart;
+          Printf.sprintf "  carte de Schwarz–Christoffel : antécédents des sommets w = [%s] ; antécédent du clou %.3f %+.3fi ; réduction %.3f." (antecedents plan_depart) plan_depart.w_clou.re plan_depart.w_clou.im r_d;
+          Printf.sprintf "  jusqu'à quand : jusqu'à s_a = %.4f (image %d) ; ensuite le départ reste figé et le maillage le transporte." s_a n_a ]
+    | 2 ->
+        let h, b = compte plan_arrivee in
+        [ "PHASE 3/3 : projection conforme de l'ARRIVÉE (poids 1).";
+          Printf.sprintf "  projeté : les %d lacets de l'état k+1 (image clé k+1) : %d arc(s) du haut et %d arc(s) du bas, des demi-cercles du demi-plan w entre les antécédents de leurs pieds, plus deux descentes au clou par lacet." nb_lacets h b;
+          Printf.sprintf "  sur : la ligne brisée L–B–A–R de l'état k+1 au temps s = %.4f (y vers le haut, avant aplatissement) :" s;
+          "    " ^ ligne_de plan_arrivee;
+          Printf.sprintf "  carte de Schwarz–Christoffel : antécédents des sommets w = [%s] ; antécédent du clou %.3f %+.3fi ; réduction %.3f." (antecedents plan_arrivee) plan_arrivee.w_clou.re plan_arrivee.w_clou.im r_r;
+          Printf.sprintf "  depuis quand : depuis s_b = %.4f (image %d) ; avant, l'arrivée était figée et ramenée en arrière par le maillage." s_b n_b ]
+    | _ ->
+        [ Printf.sprintf "PHASE 2/3 : RACCORD par triangulation mobile (images %d à %d, poids de 0 à 1)." (n_a + 1) (n_b - 1);
+          Printf.sprintf "  le DÉPART, figé à s_a = %.4f (image %d, réduction %.3f), est transporté en avant par le maillage :" s_a n_a r_d;
+          "    sur L–A–B–R : " ^ ligne_de plan_depart;
+          Printf.sprintf "  l'ARRIVÉE, figée à s_b = %.4f (image %d, réduction %.3f), est ramenée en arrière :" s_b n_b r_r;
+          "    sur L–B–A–R : " ^ ligne_de plan_arrivee;
+          Printf.sprintf "  poids = %.4f : tension %.3f, glissement des pieds %.3f, courbure %.3f (phases 0 – 0,35 – 0,65 – 1)." poids tension glisse courbe;
+          Printf.sprintf "  lignes de construction : L–A et B–R (départ) à l'opacité %.2f, L–B et A–R (arrivée) à l'opacité %.2f." (1. -. poids) poids;
+          "  aucune projection conforme n'est calculée pendant le raccord : les plans w ci-contre sont les dessins figés." ]
+  in
+  entete @ corps
 
 (* Le film : pour chaque lettre, l'état k dessiné sur L–A–B–R, puis l'état k+1 sur L–B–A–R, raccordés autour de la
    verticale par la triangulation pendant la fenêtre (part du mouvement). [rendu] est appelé avec chaque image dans
@@ -113,7 +176,7 @@ let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
    verifie : relit les mots et compte les croisements sur chaque image. Rend les anomalies. L'ordre des calculs est
    celui du Python, y compris celui des appels qui remplissent le cache des cartes : les derniers chiffres en
    dépendent. *)
-let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ?(satellites = 0) ~hauteur ~largeur ~marge ~rendu tresse =
+let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ?(satellites = 0) ?(etude = false) ~hauteur ~largeur ~marge ~rendu tresse =
   let entiers = List.map Tresses.entier_de_lettre tresse in
   let nb_trous = (match entiers with [] -> 5 | _ -> List.fold_left (fun a x -> max a (abs x)) 0 entiers) + 1 in
   let h_int = hauteur -. (2. *. marge) and l_int = largeur -. (2. *. marge) in
@@ -124,7 +187,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
   let premiere = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat 0) (etat 1) (List.hd tresse) in
   rendu
     { lignes = Conforme.dessin premiere ~reduction:1. 0 0.; trous = Conforme.trous_ecran premiere ~reduction:1. 0.;
-      clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0.; maillage = [] };
+      clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0.; maillage = []; etude = None };
   List.iteri
     (fun k sigma ->
       let l = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat k) (etat (k + 1)) sigma in
@@ -179,7 +242,26 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
           let nb = nb_croisements lignes l.clou in
           if nb > 0 then anomalies := { lettre = k; image = n; detail = Printf.sprintf "%d croisements" nb } :: !anomalies
         end;
-        rendu { lignes; trous; clou = l.clou; construction = construction l ~reduction s ~poids; ab = indice_ab l ~reduction s; maillage = !maillage }
+        let etude_de_l_image =
+          if not etude then None
+          else begin
+            (* l'étude : travaille sur une copie de la lettre (et de son cache), le film n'en est pas modifié *)
+            let le = { l with Conforme.cache = Hashtbl.copy l.Conforme.cache } in
+            let n_a = List.hd dans_fenetre - 1 and n_b = List.nth dans_fenetre (List.length dans_fenetre - 1) + 1 in
+            let s_a = temps.(n_a) and s_b = temps.(n_b) in
+            let s_d = if n <= n_a then s else s_a and s_r = if n >= n_b then s else s_b in
+            let r_d = snd (dessin_reduit le 0 s_d) and r_r = snd (dessin_reduit le 1 s_r) in
+            let plan_depart = Conforme.plan_w le ~reduction:r_d 0 s_d and plan_arrivee = Conforme.plan_w le ~reduction:r_r 1 s_r in
+            let phase = if n <= n_a then 0 else if n >= n_b then 2 else 1 in
+            let journal =
+              journal_de_l_image ~l ~k ~n ~images ~n_lettres:(List.length tresse) ~s ~poids ~n_a ~n_b ~s_a ~s_b ~r_d ~r_r ~phase ~plan_depart
+                ~plan_arrivee
+            in
+            Some { journal; phase; n_a; n_b; s_a; s_b; plan_depart; plan_arrivee }
+          end
+        in
+        rendu { lignes; trous; clou = l.clou; construction = construction l ~reduction s ~poids; ab = indice_ab l ~reduction s; maillage = !maillage;
+                etude = etude_de_l_image }
       done)
     tresse;
   List.rev !anomalies

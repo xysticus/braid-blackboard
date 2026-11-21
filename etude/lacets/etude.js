@@ -78,7 +78,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, sansMaillage: false, satellites: false, maillage: false, reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -149,15 +149,148 @@ function disques(ctx, xy, r, couleur) {
   for (let j = 0; j + 1 < xy.length; j += 2) { ctx.beginPath(); ctx.arc(xy[j], xy[j + 1], r, 0, 2 * Math.PI); ctx.fill(); }
 }
 
-function segments(ctx, s, opacites) {
+function segments(ctx, s, opacites, styles = null) {
   const alpha = ctx.globalAlpha;
-  ctx.strokeStyle = '#999';
-  ctx.lineWidth = 2.2;
   for (let j = 0; 4 * j + 3 < s.length; j++) {
+    ctx.strokeStyle = styles ? styles[j].couleur : '#999';
+    ctx.lineWidth = styles ? styles[j].largeur : 2.2;
     ctx.globalAlpha = alpha * (opacites ? opacites[j] : 1);
     ctx.beginPath(); ctx.moveTo(s[4 * j], s[4 * j + 1]); ctx.lineTo(s[4 * j + 2], s[4 * j + 3]); ctx.stroke();
   }
   ctx.globalAlpha = alpha;
+}
+
+// ---------------------------------------------------------------- l'étude de la projection
+
+const COULEUR_DEPART = '#e69f00', COULEUR_ARRIVEE = '#8e44ad', COULEUR_AB = '#4a4a4a';
+
+// Le style de chaque ligne de construction : les lignes sur lesquelles on projette en couleur (le départ en orange, l'arrivée en violet, A–B
+// en gris foncé), l'axe en gris. Après les morceaux de l'axe (indices < ab) viennent A–B, puis, selon la phase : départ L–A, B–R (phase 0),
+// arrivée L–B, A–R (phase 2), ou les deux (phase 1 : L–A, B–R, L–B, A–R).
+function stylesDeConstruction(image) {
+  const n = image.construction.length / 4;
+  const styles = [];
+  for (let j = 0; j < n; j++) {
+    let c = { couleur: '#999', largeur: 2.2 };
+    if (j === image.ab) c = { couleur: COULEUR_AB, largeur: 5 };
+    else if (j > image.ab) {
+      const r = j - image.ab - 1, ph = image.etude.phase;
+      const depart = ph === 0 || (ph === 1 && r < 2);
+      c = { couleur: depart ? COULEUR_DEPART : COULEUR_ARRIVEE, largeur: 5 };
+    }
+    styles.push(c);
+  }
+  return styles;
+}
+
+// Les étiquettes L, A, B, R : A et B sont les deux bouts de A–B ; L est le premier point du segment qui suit A–B, R le dernier point du second.
+function etiquettes(ctx, image) {
+  const c = image.construction, a = image.ab;
+  const pt = (seg, fin) => [c[4 * seg + (fin ? 2 : 0)], c[4 * seg + (fin ? 3 : 1)]];
+  const pose = (nom, p, couleur) => {
+    if (!p || !Number.isFinite(p[0])) return;
+    ctx.font = '700 17px system-ui, sans-serif';
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.strokeText(nom, p[0] + 9, p[1] - 9);
+    ctx.fillStyle = couleur; ctx.fillText(nom, p[0] + 9, p[1] - 9);
+  };
+  pose('A', pt(a, false), COULEUR_AB);
+  pose('B', pt(a, true), COULEUR_AB);
+  if (4 * (a + 1) + 3 < c.length) pose('L', pt(a + 1, false), '#333');
+  if (4 * (a + 2) + 3 < c.length) pose('R', pt(a + 2, true), '#333');
+}
+
+// Le plan w : les antécédents des sommets de la ligne brisée sur l'axe réel, les demi-cercles dont les arcs sont les images (en haut : arcs
+// du haut ; en bas : arcs du bas, en miroir), et l'antécédent du clou dans le demi-plan du bas.
+function dessinePlanW(canvas, plan, actif, noms) {
+  const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  if (!plan) return;
+  const arcs = [];
+  for (let j = 0; j + 3 < plan.arcs.length; j += 4) arcs.push({ lacet: plan.arcs[j], haut: plan.arcs[j + 1] === 1, w0: plan.arcs[j + 2], w1: plan.arcs[j + 3] });
+  const xs = [...plan.w, plan.clou[0]];
+  arcs.forEach((a) => xs.push(a.w0, a.w1));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let haut = 1, bas = plan.clou[1];
+  arcs.forEach((a) => { const r = Math.abs(a.w1 - a.w0) / 2; if (a.haut) haut = Math.max(haut, r); else bas = Math.max(bas, r); });
+  const marge = 22;
+  const S = Math.min((W - 2 * marge) / Math.max(1, x1 - x0), (H - 2 * marge) / (haut + bas));
+  const X = (w) => marge + (w - x0) * S + ((W - 2 * marge) - (x1 - x0) * S) / 2;
+  const Y0 = marge + haut * S + ((H - 2 * marge) - (haut + bas) * S) / 2;
+  ctx.globalAlpha = actif ? 1 : 0.5;
+  ctx.lineCap = 'round';
+  ctx.fillStyle = '#f4f6fa'; ctx.fillRect(0, Y0, W, H - Y0);   // le demi-plan du bas, très légèrement teinté
+  ctx.strokeStyle = '#777'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, Y0); ctx.lineTo(W, Y0); ctx.stroke();
+  arcs.forEach((a) => {
+    const m = (a.w0 + a.w1) / 2, r = Math.abs(a.w1 - a.w0) / 2;
+    ctx.strokeStyle = PALETTE[a.lacet % PALETTE.length];
+    ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.arc(X(m), Y0, r * S, a.haut ? Math.PI : 0, a.haut ? 2 * Math.PI : Math.PI); ctx.stroke();
+    ctx.fillStyle = ctx.strokeStyle;
+    [a.w0, a.w1].forEach((w) => { ctx.beginPath(); ctx.arc(X(w), Y0, 3.2, 0, 2 * Math.PI); ctx.fill(); });   // les pieds
+  });
+  ctx.font = '700 15px system-ui, sans-serif';
+  plan.w.forEach((w, j) => {
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(w), Y0 - 9); ctx.lineTo(X(w), Y0 + 9); ctx.stroke();
+    ctx.fillStyle = '#111'; ctx.fillText(noms[j] || '', X(w) - 5, Y0 - 13);
+  });
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(X(plan.clou[0]), Y0 + plan.clou[1] * S, 5, 0, 2 * Math.PI); ctx.fill();
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.fillText('clou', X(plan.clou[0]) + 8, Y0 + plan.clou[1] * S + 4);
+  ctx.fillStyle = '#888'; ctx.fillText('demi-plan du haut', 6, 14); ctx.fillText('demi-plan du bas', 6, H - 8);
+  ctx.globalAlpha = 1;
+}
+
+// La chronologie d'une lettre : de quand à quand chaque dessin est projeté.
+function dessineChrono(canvas, e, pas) {
+  const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height, N = IMAGES_PAR_LETTRE;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const x = (n) => 24 + (W - 48) * n / N;
+  const y0 = 34, h = 28;
+  ctx.fillStyle = COULEUR_DEPART; ctx.fillRect(x(0), y0, x(e.na) - x(0), h);
+  ctx.fillStyle = COULEUR_ARRIVEE; ctx.fillRect(x(e.nb), y0, x(N) - x(e.nb), h);
+  const g = ctx.createLinearGradient(x(e.na), 0, x(e.nb), 0); g.addColorStop(0, COULEUR_DEPART); g.addColorStop(1, COULEUR_ARRIVEE);
+  ctx.globalAlpha = 0.45; ctx.fillStyle = g; ctx.fillRect(x(e.na), y0, x(e.nb) - x(e.na), h); ctx.globalAlpha = 1;
+  ctx.font = '600 13px system-ui, sans-serif'; ctx.fillStyle = '#222';
+  ctx.fillText('DÉPART (conforme)', x(0), y0 - 8);
+  ctx.textAlign = 'center'; ctx.fillText('RACCORD (maillage)', (x(e.na) + x(e.nb)) / 2, y0 - 8);
+  ctx.textAlign = 'right'; ctx.fillText('ARRIVÉE (conforme)', x(N), y0 - 8); ctx.textAlign = 'left';
+  ctx.font = '12px system-ui, sans-serif'; ctx.fillStyle = '#444';
+  [[0, 0], [e.na, e.sa], [e.nb, e.sb], [N, 1]].forEach(([n, s], j) => {
+    ctx.textAlign = j === 0 ? 'left' : j === 3 ? 'right' : 'center';
+    ctx.fillText(`image ${n}`, x(n), y0 + h + 15); ctx.fillText(`s = ${s.toFixed(3)}`, x(n), y0 + h + 29);
+  });
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x(pas), y0 - 4); ctx.lineTo(x(pas), y0 + h + 4); ctx.stroke();
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(x(pas), y0 - 4); ctx.lineTo(x(pas) - 5, y0 - 12); ctx.lineTo(x(pas) + 5, y0 - 12); ctx.fill();
+}
+
+function metsAJourProjection(k) {
+  const bloc = $('projection'), journal = $('journal');
+  if (!etat.etude || !etat.images[k]) { bloc.hidden = true; journal.hidden = true; return; }
+  const image = etat.images[k];
+  // l'image 0 (l'image clé de départ) n'a pas de journal : on emprunte la chronologie et les plans à l'image suivante
+  const e = image.etude || (etat.images[1] && etat.images[1].etude);
+  if (!e) { bloc.hidden = true; journal.hidden = true; return; }
+  bloc.hidden = false; journal.hidden = false;
+  const pas = k === 0 ? 0 : ((k - 1) % IMAGES_PAR_LETTRE) + 1;
+  journal.textContent = image.etude ? image.etude.journal.join('\n') :
+    `image 0 : l'image clé de départ (avant la première lettre) : l'état 0 est projeté sur la ligne brisée L–A–B–R, comme pendant toute la phase 1.\n` +
+    `chronologie de la lettre 1 : départ projeté aux images 0 à ${e.na} (s de 0 à ${e.sa.toFixed(4)}) ; raccord aux images ${e.na + 1} à ${e.nb - 1} ; arrivée projetée aux images ${e.nb} à ${IMAGES_PAR_LETTRE} (s de ${e.sb.toFixed(4)} à 1).`;
+  dessineChrono($('chrono'), e, pas);
+  const ph = k === 0 ? 0 : e.phase;
+  const noms = ['L', 'A', 'B', 'R'];
+  dessinePlanW($('plan-depart'), e.depart, ph !== 2, noms);
+  dessinePlanW($('plan-arrivee'), e.arrivee, ph !== 0, ['L', 'B', 'A', 'R']);   // dans l'état k+1, les deux trous qui tournent sont échangés : L–B–A–R
+  $('plan-depart').style.borderColor = ph !== 2 ? COULEUR_DEPART : '';
+  $('plan-arrivee').style.borderColor = ph !== 0 ? COULEUR_ARRIVEE : '';
+  $('legende-depart').textContent = ph === 0 ? 'plan w du DÉPART (état k) : projeté sur L–A–B–R, en service' : ph === 1 ? 'plan w du DÉPART : figé à s_a, transporté par le maillage' : 'plan w du DÉPART : plus utilisé (figé à s_a)';
+  $('legende-arrivee').textContent = ph === 2 ? 'plan w de l\'ARRIVÉE (état k+1) : projeté sur L–B–A–R, en service' : ph === 1 ? 'plan w de l\'ARRIVÉE : figée à s_b, ramenée en arrière par le maillage' : 'plan w de l\'ARRIVÉE : pas encore utilisé (figé à s_b)';
 }
 
 function dessine(k) {
@@ -178,10 +311,11 @@ function dessine(k) {
     for (let j = 0; j + 3 < m.length; j += 4) { ctx.moveTo(m[j], m[j + 1]); ctx.lineTo(m[j + 2], m[j + 3]); }
     ctx.stroke();
   }
-  if (etat.construction && image.construction) segments(ctx, image.construction, image.opacites);
+  if (etat.construction && image.construction) segments(ctx, image.construction, image.opacites, etat.etude && image.etude ? stylesDeConstruction(image) : null);
   image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3.5; trace(ctx, p); });
   disques(ctx, image.trous, 4, '#000');
   disques(ctx, image.clou, 4, '#000');
+  if (etat.etude && image.etude && etat.construction) etiquettes(ctx, image);
   let n = 0, eph = 0;
   if (etat.tangentes || etat.points || etat.fantomes) {
     const rs = toutesRencontres(image);
@@ -221,6 +355,7 @@ function va(k) {
   k = Math.max(0, Math.min(etat.total - 1, Math.round(k)));
   etat.k = k;
   dessine(k);
+  metsAJourProjection(k);
   $('curseur').value = String(k);
   $('numero').value = String(k + 1);
   $('position').textContent = `image ${k + 1} / ${etat.total} · ${descriptionImage(k)}`;
@@ -271,6 +406,7 @@ function brancheCommandes() {
   $('c-tangentes').onchange = (e) => { etat.tangentes = e.target.checked; redessine(); };
   $('c-points').onchange = (e) => { etat.points = e.target.checked; redessine(); };
   $('c-maillage').onchange = (e) => { etat.maillage = e.target.checked; redessine(); };
+  $('c-etude').onchange = (e) => { etat.etude = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // le journal et les plans w : recalcule le film
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
   $('c-satellites').onchange = (e) => { etat.satellites = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : 8 sommets de plus autour de chacun des deux trous qui tournent
   $('c-libre').onchange = (e) => { etat.libre = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // recalcule le film, et revient à la même image
@@ -332,7 +468,7 @@ function lance(mot) {
       etat.reprise = null;
     }
   };
-  w.postMessage({ mode: etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : 'conforme', mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
+  w.postMessage({ mode: (etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : 'conforme') + (etat.etude ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
 let motCourant = null;
@@ -364,11 +500,12 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('maillage')) { etat.maillage = true; $('c-maillage').checked = true; }   // ?maillage : arêtes du maillage au départ (captures)
   if (new URLSearchParams(location.search).has('sansmaillage')) { etat.sansMaillage = true; $('c-sans-maillage').checked = true; }   // ?sansmaillage (captures)
   if (new URLSearchParams(location.search).has('satellites')) { etat.satellites = true; $('c-satellites').checked = true; }   // ?satellites (captures)
+  if (new URLSearchParams(location.search).has('sansprojection')) { etat.etude = false; $('c-etude').checked = false; }   // ?sansprojection (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
   brancheCommandes();
   let minuterie = null;
   champ.addEventListener('input', () => { clearTimeout(minuterie); minuterie = setTimeout(() => miseAJour(champ.value), 400); });
-  const depart = decodeURIComponent(location.hash.slice(1)) || EXEMPLES[7].mot.join(' ');
+  const depart = decodeURIComponent(location.hash.slice(1)) || EXEMPLES[0].mot.join(' ');
   champ.value = depart;
   miseAJour(depart);
 });

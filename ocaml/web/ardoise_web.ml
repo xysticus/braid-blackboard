@@ -111,6 +111,24 @@ let image_conforme decalage (im : Film_conforme.image) =
   let a = Array.make (4 * List.length im.maillage) 0. in
   List.iteri (fun k (p, q) -> let p = p +: decalage and q = q +: decalage in a.(4 * k) <- p.x; a.((4 * k) + 1) <- p.y; a.((4 * k) + 2) <- q.x; a.((4 * k) + 3) <- q.y) im.maillage;
   Js.Unsafe.set r "maillage" (Js.array a);   (* les arêtes du maillage du raccord, à plat, pour le banc d'essai *)
+  (match im.etude with
+   | None -> ()
+   | Some e ->
+       let plan (p : Conforme.plan) =
+         let plat_z = Array.concat (Array.to_list (Array.map (fun (z : Complex.t) -> [| z.re; z.im |]) p.ligne)) in
+         let arcs = Array.concat (List.map (fun (lacet, haut, w0, w1) -> [| float_of_int lacet; (if haut then 1. else 0.); w0; w1 |]) p.arcs) in
+         Js.Unsafe.obj
+           [| ("w", Js.Unsafe.inject (Js.array p.sommets)); ("clou", Js.Unsafe.inject (Js.array [| p.w_clou.re; p.w_clou.im |]));
+              ("arcs", Js.Unsafe.inject (Js.array arcs)); ("ligne", Js.Unsafe.inject (Js.array plat_z)) |]
+       in
+       let etude =
+         Js.Unsafe.obj
+           [| ("journal", Js.Unsafe.inject (Js.array (Array.of_list (List.map (fun t -> Js.Unsafe.inject (Js.string t)) e.journal))));
+              ("phase", Js.Unsafe.inject e.phase); ("na", Js.Unsafe.inject e.n_a); ("nb", Js.Unsafe.inject e.n_b);
+              ("sa", Js.Unsafe.inject e.s_a); ("sb", Js.Unsafe.inject e.s_b);
+              ("depart", Js.Unsafe.inject (plan e.plan_depart)); ("arrivee", Js.Unsafe.inject (plan e.plan_arrivee)) |]
+       in
+       Js.Unsafe.set r "etude" etude);   (* le journal et les plans w (mode +etude), pour le banc d'essai *)
   Js.Unsafe.set r "ab" im.ab;   (* l'indice du segment A–B dans construction : le banc d'essai etude/lacets n'y trace pas de tangente *)
   r
 
@@ -167,7 +185,9 @@ let nombre_images_conforme = 48
 let statique_tresse mode mot =
   try
     let tresse = tresse_de_js mot in
-    match Js.to_string mode with
+    let nom = Js.to_string mode in
+    let nom = if String.ends_with ~suffix:"+etude" nom then String.sub nom 0 (String.length nom - 6) else nom in
+    match nom with
     | "triangulation" ->
         verifie_limites ~conforme:true tresse;
         let _, _, (film, ecart) = prepare_triangulation tresse in
@@ -186,7 +206,11 @@ let film_tresse mode mot rendu =
   try
     let tresse = tresse_de_js mot in
     let appelle im k total = ignore (Js.Unsafe.fun_call rendu [| Js.Unsafe.inject im; Js.Unsafe.inject k; Js.Unsafe.inject total |]) in
-    (match Js.to_string mode with
+    (* un suffixe « +etude » demande, pour le film conforme, le journal et les plans w de chaque image (banc d'essai) *)
+    let nom = Js.to_string mode in
+    let etude = String.ends_with ~suffix:"+etude" nom in
+    let nom = if etude then String.sub nom 0 (String.length nom - 6) else nom in
+    (match nom with
     | "triangulation" ->
         verifie_limites ~conforme:true tresse;
         let sous_pas, total, _ = prepare_triangulation tresse in
@@ -199,7 +223,7 @@ let film_tresse mode mot rendu =
         let total = 1 + (nombre_images_conforme * List.length tresse) in
         let k = ref 0 in
         let anomalies =
-          Film_conforme.film ~verifie:true ~sans_fantomes:(mode = "conforme_libre") ~libre:(mode = "conforme_libre") ~sans_maillage:(mode = "conforme_sans_maillage") ~satellites:(if mode = "conforme_satellites" then 8 else 0) ~hauteur:cote ~largeur:cote ~marge
+          Film_conforme.film ~verifie:true ~sans_fantomes:(mode = "conforme_libre") ~libre:(mode = "conforme_libre") ~sans_maillage:(mode = "conforme_sans_maillage") ~satellites:(if mode = "conforme_satellites" then 8 else 0) ~etude ~hauteur:cote ~largeur:cote ~marge
             ~rendu:(fun im -> appelle (image_conforme { x = marge; y = marge } im) !k total; incr k)
             tresse
         in
