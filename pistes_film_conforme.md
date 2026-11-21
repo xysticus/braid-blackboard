@@ -402,3 +402,28 @@ dans `Arcs.py`), l'alignement gardant les voisins immédiats. Essais écartés :
 voisins à distance (autour d'un trou où les brins s'enroulent serré, ces voisins sont de l'autre côté du trou et
 tirent les brins par-dessus : dessin emmêlé) ; arrondir le dessin par Chaikin (le défaut est dans les pieds, pas dans
 le dessin). Le film des méandres garde l'ancien comportement (option à 0 par défaut, empreinte inchangée).
+
+### Essai du raccord par régions, sans maillage (2026-11-21) : écarté, le film à maillage reste la version de base
+
+`etude/lacets/essai_regions.py` (Python, avec un film et des images précalculées jouables dans le banc d'essai). À la verticale, le
+plan est coupé par le quadrilatère L–T–R–Bas et sa diagonale A–B en quatre régions (le haut, le bas avec le clou, les deux triangles) ;
+chaque morceau de lacet y est l'image d'un demi-cercle par la carte conforme de la région (Schwarz–Christoffel pour le haut et le bas,
+une carte écrite à part pour les triangles, par la fonction bêta incomplète). Les pieds sont ceux des deux dessins conformes, figés
+aux bouts de la fenêtre, mélangés fraction par fraction ; aux deux bouts, une rampe mélange (`raccorde`) le dessin conforme et celui
+des régions.
+
+- **Gain** : plus d'angles autour des trous (arcs ronds), sans maillage. 0 croisement sur σ₁ et `1 -2 1 -2` ; sur la tresse chargée,
+  5 images sur 432 ont de minuscules croisements (moins d'un pixel d'écart, dans les rampes, lettres 5 à 9).
+- **Défaut** : des S serrés de brins collés le long de la diagonale (image 218 de la chargée), parce que la tangente perpendiculaire à
+  chaque arête est imposée à ses pieds, y compris sur A–B, qui n'est qu'une arête de construction.
+- **Écarté** : mélanger les pieds en antécédents w (≤ 11 px de différence, ne change pas le serrage) ; aplatir les demi-cercles du
+  plan w (écrase tout le dessin) ; réunir les triangles en un quadrilatère sans pied sur A–B (carte de Schwarz–Christoffel à quatre
+  sommets, 2 images à croisements au lieu de 5, mais l'écart minimal entre brins reste de 1,3 px : pas mieux).
+- **Pièges rencontrés** : les deux dessins conformes de la fenêtre ne sont corrects que près de leur bout du demi-tour (ils se croisent
+  loin de lui) : d'où les pieds figés aux bouts ; l'inverse de la fonction bêta par table est trop grossier près des sommets (résoudre
+  par Newton en x^a) ; des segments minuscules posés sur une arête échappent à `traversees`.
+- **Étude de la projection sur la chargée** : la lettre 7 (σ₃, avec 4 trous) a son segment B–R écrasé (antécédents à 17 d'écart au lieu
+  de 100 à 200), R étant le point virtuel du bord ; c'est aussi là que les croisements du film par régions sont les plus nombreux.
+
+Décision de l'utilisateur : la version actuelle (raccord par triangulation mobile, mode « conforme » de la page publique, sans
+aucune case du banc cochée) convient ; elle reste la version de base.
