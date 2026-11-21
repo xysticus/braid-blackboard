@@ -174,10 +174,12 @@ let journal_de_l_image ~(l : Conforme.lettre) ~k ~n ~images ~n_lettres ~s ~poids
    verticale par la triangulation pendant la fenêtre (part du mouvement). [rendu] est appelé avec chaque image dans
    l'ordre (la première est l'image clé de départ). Le cadre intérieur fait (hauteur − 2 marge) × (largeur − 2 marge).
    verifie : relit les mots et compte les croisements sur chaque image. detente : détend le dessin pendant le raccord
-   (Detente, avec 4 poids (1 − poids)). Rend les anomalies. L'ordre des calculs est
+   (Detente, avec 4 poids (1 − poids)). premiere, lettres : ne calculer que l'image clé de départ (si premiere) et les lettres
+   de ces indices (toutes par défaut) ; chaque lettre ne dépend que de son état de départ, son calcul est le même seule ou
+   dans le film (la page en répartit les lettres sur plusieurs workers). Rend les anomalies. L'ordre des calculs est
    celui du Python, y compris celui des appels qui remplissent le cache des cartes : les derniers chiffres en
    dépendent. *)
-let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ?(satellites = 0) ?(etude = false) ?(detente = false) ~hauteur ~largeur ~marge ~rendu tresse =
+let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ?(satellites = 0) ?(etude = false) ?(detente = false) ?(premiere = true) ?lettres ~hauteur ~largeur ~marge ~rendu tresse =
   let entiers = List.map Tresses.entier_de_lettre tresse in
   let nb_trous = (match entiers with [] -> 5 | _ -> List.fold_left (fun a x -> max a (abs x)) 0 entiers) + 1 in
   let h_int = hauteur -. (2. *. marge) and l_int = largeur -. (2. *. marge) in
@@ -185,12 +187,15 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
   let etat n = Tresses.etat_de_tresse ~nb_trous (prefixe n) in
   let anomalies = ref [] in
   (* première image : l'image clé, dessinée elle aussi par la carte (descentes en géodésiques) *)
-  let premiere = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat 0) (etat 1) (List.hd tresse) in
-  rendu
-    { lignes = Conforme.dessin premiere ~reduction:1. 0 0.; trous = Conforme.trous_ecran premiere ~reduction:1. 0.;
-      clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0.; maillage = []; etude = None };
+  if premiere then begin
+    let premiere = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat 0) (etat 1) (List.hd tresse) in
+    rendu
+      { lignes = Conforme.dessin premiere ~reduction:1. 0 0.; trous = Conforme.trous_ecran premiere ~reduction:1. 0.;
+        clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0.; maillage = []; etude = None }
+  end;
   List.iteri
     (fun k sigma ->
+      if match lettres with None -> true | Some ls -> List.mem k ls then begin
       let l = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat k) (etat (k + 1)) sigma in
       let mots = List.map (fun j -> Array.to_list (Tresses.calcule_autofn_de_tresse ~nb_trous (prefixe (k + j)))) [ 0; 1 ] in
       let temps = Array.init (images + 1) (fun n -> lisse (float_of_int n /. float_of_int images)) in
@@ -265,6 +270,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
         in
         rendu { lignes; trous; clou = l.clou; construction = construction l ~reduction s ~poids; ab = indice_ab l ~reduction s; maillage = !maillage;
                 etude = etude_de_l_image }
-      done)
+      done
+      end)
     tresse;
   List.rev !anomalies

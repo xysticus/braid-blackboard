@@ -332,6 +332,38 @@ let statique_libre film =
     match !derniere with Some im -> im | None -> failwith "pas d'image"
   with e -> Js.Unsafe.obj [| ("erreur", Js.Unsafe.inject (Js.string (message e))) |]
 
+(* Une partie du film conforme, pour les workers auxiliaires de travail.js : l'image clé de départ (si premiere) et les
+   lettres d'indices [lettres] ; [rendu] reçoit chaque image avec son numéro dans le film entier. Rend le nombre d'images
+   douteuses (mots ou croisements), ou un message d'erreur. *)
+let film_lettres mode mot (lettres : float Js.js_array Js.t) (premiere : bool Js.t) rendu =
+  try
+    let tresse = tresse_de_js mot in
+    let nom = Js.to_string mode in
+    let etude = String.ends_with ~suffix:"+etude" nom in
+    let nom = if etude then String.sub nom 0 (String.length nom - 6) else nom in
+    if not (List.mem nom [ "conforme"; "conforme_libre"; "conforme_sans_maillage"; "conforme_satellites"; "conforme_detendu" ]) then
+      invalid_arg ("film_lettres : mode " ^ nom);
+    verifie_limites ~conforme:true tresse;
+    let lettres = List.sort compare (List.map int_of_float (Array.to_list (Js.to_array lettres))) in
+    let premiere = Js.to_bool premiere in
+    let total = 1 + (nombre_images_conforme * List.length tresse) in
+    let numeros =
+      ref ((if premiere then [ 0 ] else []) @ List.concat_map (fun k -> List.init nombre_images_conforme (fun n -> 1 + (nombre_images_conforme * k) + n)) lettres)
+    in
+    let anomalies =
+      Film_conforme.film ~verifie:true ~sans_fantomes:(nom = "conforme_libre") ~libre:(nom = "conforme_libre") ~sans_maillage:(nom = "conforme_sans_maillage")
+        ~satellites:(if nom = "conforme_satellites" then 8 else 0) ~detente:(nom = "conforme_detendu") ~etude ~premiere ~lettres ~hauteur:cote ~largeur:cote ~marge
+        ~rendu:(fun im ->
+          match !numeros with
+          | k :: reste ->
+              numeros := reste;
+              ignore (Js.Unsafe.fun_call rendu [| Js.Unsafe.inject (image_conforme { x = marge; y = marge } im); Js.Unsafe.inject k; Js.Unsafe.inject total |])
+          | [] -> failwith "film_lettres : une image de trop")
+        tresse
+    in
+    Js.Unsafe.obj [| ("douteuses", Js.Unsafe.inject (List.length anomalies)) |]
+  with e -> Js.Unsafe.obj [| ("erreur", Js.Unsafe.inject (Js.string (message e))) |]
+
 let statique mode mot =
   match Js.to_string mode with
   | "escargot" -> statique_libre film_escargot
@@ -374,4 +406,5 @@ let () =
        [| ("analyse", Js.Unsafe.inject (Js.wrap_callback analyse));
           ("statique", Js.Unsafe.inject (Js.wrap_callback statique));
           ("film", Js.Unsafe.inject (Js.wrap_callback film));
+          ("film_lettres", Js.Unsafe.inject (Js.wrap_callback film_lettres));
           ("detend", Js.Unsafe.inject (Js.wrap_callback detend)) |])

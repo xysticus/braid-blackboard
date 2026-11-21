@@ -2,9 +2,7 @@
 // puis le film d'un mode, et envoie les images au fil de l'eau. Un worker par mode ; la page le tue (terminate)
 // quand le mot change.
 //
-// Le film détendu (mode conforme_detendu, éventuellement +etude) est réparti : ce worker calcule le film conforme, et la
-// détente des images du raccord (la partie longue) est confiée à des workers auxiliaires (ce même fichier, message
-// « detend »), un par cœur disponible. Les images sont rendues à la page dans l'ordre.
+// Le film conforme (modes conforme et conforme_detendu) est réparti sur des workers auxiliaires : voir filmReparti.
 importScripts('ardoise_lib.js');
 
 // Un champ qui est un tableau de nombres devient un Float32Array, un tableau de tableaux (les lacets) un tableau de
@@ -40,17 +38,31 @@ function forceDetente(k) {
   return poids > 0 && poids < 1 ? 4 * poids * (1 - poids) : 0;
 }
 
-function filmDetenduReparti(mode, mot) {
+// Le film conforme (détendu ou non, avec ou sans « +etude ») est réparti sur des workers auxiliaires (ce même fichier) :
+// - par lettres : chaque lettre ne dépend que de son état de départ ; les lettres sont données une à une aux auxiliaires
+//   à mesure qu'ils se libèrent (message « lettre ») ;
+// - pour le film détendu, les lettres sont calculées sans détente, et chaque image du raccord revient brute (en nombres
+//   double précision) ; sa détente (Detente, la partie longue) est confiée à son tour à un auxiliaire (message « detend »).
+// Ce worker calcule l'image clé de départ et rend les images à la page dans l'ordre.
+function filmReparti(mode, mot) {
+  const detendu = mode.startsWith('conforme_detendu');
   const base = mode.replace('conforme_detendu', 'conforme');
-  const fixe = self.ardoise.statique(base, mot);
+  const fixe = self.ardoise.statique(mode, mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
   const image = enFloat32(fixe);
   postMessage({ type: 'statique', image }, tampons(image));
-  const nb = Math.max(1, Math.min(8, (self.navigator.hardwareConcurrency || 2) - 1));
+  const pretes = [], brutes = new Map();
+  let suivante = 0, total = 0, douteuses = 0, croisements = 0, erreur = null, enCours = 0, aDetendre = 0, prochaine = 0;
+  const aFaire = mot.map((_, k) => k);
   const aides = [];
-  const enAttente = new Map();      // k → l'image conforme, en attendant ses lacets détendus
-  const pretes = [];                // k → l'image à rendre
-  let suivante = 0, total = 0, envoyees = 0, revenues = 0, croisements = 0, messageFilm = null;
+  const termine = () => {
+    aides.forEach((w) => w.terminate());
+    if (erreur) { postMessage({ type: 'fini', message: erreur, erreur: true }); return; }
+    const parties = [];
+    if (douteuses) parties.push(`film fait, mais ${douteuses} image(s) douteuse(s) (mots ou croisements)`);
+    if (croisements) parties.push(`${croisements} croisement(s) après la détente`);
+    postMessage({ type: 'fini', message: parties.join(' ; '), erreur: false });
+  };
   const rend = () => {
     while (pretes[suivante] !== undefined) {
       const f = pretes[suivante];
@@ -58,49 +70,68 @@ function filmDetenduReparti(mode, mot) {
       postMessage({ type: 'image', image: f, k: suivante, total }, tampons(f));
       suivante++;
     }
-    if (messageFilm !== null && revenues === envoyees && suivante === total) {
-      aides.forEach((w) => w.terminate());
-      let message = messageFilm;
-      if (croisements) message = (message ? message + ' ; ' : '') + `${croisements} croisement(s) après la détente`;
-      postMessage({ type: 'fini', message, erreur: false });
-    }
+    if (enCours === 0 && aDetendre === 0 && aFaire.length === 0 && (erreur || suivante === total)) termine();
   };
-  const recoit = (ev) => {
-    const r = ev.data;
-    const im = enAttente.get(r.k);
-    enAttente.delete(r.k);
-    if (!r.erreur) { im.lacets = r.lacets; croisements += r.croisements; }
-    revenues++;
-    pretes[r.k] = enFloat32(im);
-    rend();
+  const donneLettre = (w) => {
+    if (erreur || aFaire.length === 0) return;
+    w.postMessage({ type: 'lettre', mode: base, mot, k: aFaire.shift(), brutes: detendu });
+    enCours++;
   };
-  for (let i = 0; i < nb; i++) { const w = new Worker('travail.js'); w.onmessage = recoit; aides.push(w); }
-  // le film conforme ; ses images à détendre partent aux auxiliaires (qui travaillent pendant que le film se calcule)
-  const message = self.ardoise.film(base, mot, (im, k, t) => {
-    total = t;
-    const force = forceDetente(k);
-    if (force > 0) {
-      enAttente.set(k, im);
-      aides[envoyees % nb].postMessage({ type: 'detend', k, lacets: im.lacets, trous: im.trous, clou: im.clou, force });
-      envoyees++;
-    } else {
-      pretes[k] = enFloat32(im);
-      rend();
-    }
-  });
-  messageFilm = message || '';
+  // l'image clé de départ, ici
+  const r0 = self.ardoise.film_lettres(base, mot, [], true, (im, k, t) => { total = t; pretes[k] = enFloat32(im); });
+  if (r0.erreur) { postMessage({ type: 'fini', message: r0.erreur, erreur: true }); return; }
   rend();
+  const nb = Math.max(1, Math.min(8, self.navigator.hardwareConcurrency || 2));
+  for (let i = 0; i < nb; i++) {
+    const w = new Worker('travail.js');
+    w.onmessage = (ev) => {
+      const d = ev.data;
+      if (d.type === 'image') { pretes[d.k] = d.image; rend(); return; }
+      if (d.type === 'brute') {   // une image du raccord à détendre : au prochain auxiliaire, à tour de rôle
+        brutes.set(d.k, d.image);
+        aDetendre++;
+        aides[prochaine++ % nb].postMessage({ type: 'detend', k: d.k, lacets: d.image.lacets, trous: d.image.trous, clou: d.image.clou, force: forceDetente(d.k) });
+        return;
+      }
+      if (d.type === 'detendue') {
+        const im = brutes.get(d.k);
+        brutes.delete(d.k);
+        if (d.erreur) erreur = d.erreur; else { im.lacets = d.lacets; croisements += d.croisements; }
+        aDetendre--;
+        pretes[d.k] = enFloat32(im);
+        rend();
+        return;
+      }
+      // une lettre finie : son bilan, puis la suivante
+      enCours--;
+      if (d.erreur) { erreur = d.erreur; aFaire.length = 0; }
+      douteuses += d.douteuses || 0;
+      donneLettre(w);
+      rend();
+    };
+    aides.push(w);
+  }
+  aides.forEach(donneLettre);
 }
 
 onmessage = (e) => {
   const d = e.data;
+  if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme
+    const r = self.ardoise.film_lettres(d.mode, d.mot, [d.k], false, (im, k) => {
+      if (d.brutes && forceDetente(k) > 0) { postMessage({ type: 'brute', image: im, k }); return; }   // à détendre : en double précision
+      const f = enFloat32(im);
+      postMessage({ type: 'image', image: f, k }, tampons(f));
+    });
+    postMessage({ type: 'lettre', k: d.k, douteuses: r.douteuses || 0, erreur: r.erreur });
+    return;
+  }
   if (d.type === 'detend') {   // un worker auxiliaire : la détente d'une image
     const r = self.ardoise.detend(d.lacets, d.trous, d.clou, d.force);
-    postMessage({ k: d.k, lacets: r.lacets, croisements: r.croisements || 0, erreur: r.erreur });
+    postMessage({ type: 'detendue', k: d.k, lacets: r.lacets, croisements: r.croisements || 0, erreur: r.erreur });
     return;
   }
   const { mode, mot } = d;
-  if (/^conforme_detendu(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmDetenduReparti(mode, mot); return; }
+  if (/^conforme(_detendu)?(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmReparti(mode, mot); return; }
   const fixe = self.ardoise.statique(mode, mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
   const image = enFloat32(fixe);
