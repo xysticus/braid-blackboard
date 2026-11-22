@@ -94,9 +94,11 @@ def detend(lignes, trous, clou, force, iterations=None):
     precedent[bouts[:-1]] = bouts[:-1]; suivant[bouts[1:] - 1] = bouts[1:] - 1
     trous = np.asarray(trous, float); clou = np.asarray(clou, float)
     ecart_indices = int(math.ceil(2.5 * ECART / PAS)) + 2
+    # les paires sont cherchées toutes les 8 itérations : dans l'intervalle, deux points se rapprochent d'au plus 16 PAS_MAX ; on
+    # les cherche donc jusqu'à 1,6 ECART + 16 PAS_MAX, sinon deux brins pourraient passer sous ECART sans se repousser
     for it in range(iterations):
         if it % 8 == 0:
-            I, J = paires_proches(X, lacet, indice, 1.6 * ECART, ecart_indices)
+            I, J = paires_proches(X, lacet, indice, 1.6 * ECART + 16 * PAS_MAX, ecart_indices)
         F = TENSION * ((X[precedent] + X[suivant]) / 2 - X)
         # répulsion entre brins, éteinte près du clou
         if len(I):
@@ -120,7 +122,34 @@ def detend(lignes, trous, clou, force, iterations=None):
         F[trop] *= (PAS_MAX / n[trop])[:, None]
         F[fixe] = 0
         X = X + F
-        if it % 25 == 24 and it < iterations - 1:   # rééchantillonner pour garder des points réguliers
+        # la barrière des trous : aucun point plus près d'un trou que `barriere` (la répulsion n'est qu'une force, que la tension des
+        # boucles serrées peut vaincre) ; des segments de longueur sous 2 barriere ne peuvent alors pas passer par-dessus un trou
+        barriere = max(0.6 * RAYON_TROU, 0.75 * PAS)
+        # sur les segments, pas seulement les points : deux points écartés par la répulsion peuvent laisser entre eux un segment
+        # qui enjambe le trou ; un segment trop proche est repoussé en bloc (ses deux bouts du même vecteur). Un segment ne bougeant
+        # que de PAS_MAX par itération, il ne peut plus passer par-dessus un trou.
+        dans_brin = np.ones(len(X) - 1, bool)
+        dans_brin[bouts[1:-1] - 1] = False
+        ia = np.nonzero(dans_brin)[0]
+        for c in trous:
+            A, B = X[ia], X[ia + 1]
+            AB = B - A
+            t = np.clip(((c - A) * AB).sum(1) / np.maximum((AB * AB).sum(1), 1e-12), 0, 1)
+            V = A + t[:, None] * AB - c
+            ds = np.hypot(*V.T)
+            proche = (ds < barriere) & (ds > 1e-9)
+            if proche.any():
+                pousse = V[proche] * (np.minimum(barriere - ds[proche], PAS_MAX) / ds[proche])[:, None]   # pas plus que PAS_MAX : sinon le segment saute par-dessus un brin voisin
+                deplacement = np.zeros_like(X)
+                np.add.at(deplacement, ia[proche], pousse); np.add.at(deplacement, ia[proche] + 1, pousse)
+                compte = np.zeros(len(X)); np.add.at(compte, ia[proche], 1); np.add.at(compte, ia[proche] + 1, 1)
+                bouge = (compte > 0) & ~fixe
+                X[bouge] += deplacement[bouge] / compte[bouge][:, None]
+        # rééchantillonner pour garder des points réguliers : toutes les 25 itérations, et dès qu'un segment dépasse 1,5 PAS (la
+        # répulsion n'agit qu'entre les points : deux longs segments pourraient se croiser, leurs points restant écartés)
+        longueurs = np.hypot(*np.diff(X, axis=0).T)
+        longueurs[bouts[1:-1] - 1] = 0
+        if (it % 25 == 24 or longueurs.max() > 1.5 * PAS) and it < iterations - 1:
             brins = [reechantillonne(X[bouts[k]:bouts[k + 1]], PAS) for k in range(len(tailles))]
             tailles = [len(b) for b in brins]
             X = np.concatenate(brins)
@@ -130,7 +159,7 @@ def detend(lignes, trous, clou, force, iterations=None):
             fixe = np.zeros(len(X), bool); fixe[bouts[:-1]] = True; fixe[bouts[1:] - 1] = True
             precedent = np.arange(len(X)) - 1; suivant = np.arange(len(X)) + 1
             precedent[bouts[:-1]] = bouts[:-1]; suivant[bouts[1:] - 1] = bouts[1:] - 1
-            I, J = paires_proches(X, lacet, indice, 1.6 * ECART, ecart_indices)
+            I, J = paires_proches(X, lacet, indice, 1.6 * ECART + 16 * PAS_MAX, ecart_indices)
     return [X[bouts[k]:bouts[k + 1]] for k in range(len(tailles))]
 
 

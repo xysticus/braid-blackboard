@@ -139,7 +139,9 @@ let detend ?(reglages = defaut) (lignes : point array list) (trous : point array
     let ecart_indices = int_of_float (Float.ceil (2.5 *. r.ecart /. r.pas)) + 2 in
     let pi = ref [||] and pj = ref [||] in
     let cherche () =
-      let a, b = paires_proches !xs !ys !lacet !indice (1.6 *. r.ecart) ecart_indices in
+      (* les paires sont cherchées toutes les 8 itérations : dans l'intervalle, deux points se rapprochent d'au plus 16 pas_max ;
+         on les cherche donc jusqu'à 1,6 ecart + 16 pas_max, sinon deux brins pourraient passer sous l'écart sans se repousser *)
+      let a, b = paires_proches !xs !ys !lacet !indice ((1.6 *. r.ecart) +. (16. *. r.pas_max)) ecart_indices in
       pi := a;
       pj := b
     in
@@ -204,8 +206,51 @@ let detend ?(reglages = defaut) (lignes : point array list) (trous : point array
         xs_.(i) <- xs_.(i) +. fx.(i);
         ys_.(i) <- ys_.(i) +. fy.(i)
       done;
-      (* rééchantillonner de temps en temps, pour garder des points réguliers *)
-      if it mod 25 = 24 && it < r.iterations - 1 then begin
+      (* la barrière des trous, sur les segments et pas seulement les points : la répulsion n'est qu'une force, que la tension des
+         boucles serrées peut vaincre, et deux points écartés peuvent laisser entre eux un segment qui enjambe le trou. Un segment
+         plus proche d'un trou que [barriere] est repoussé en bloc (ses deux bouts du même vecteur, moyenné si un bout est poussé
+         par ses deux segments), de [pas_max] au plus : un segment ne s'approche pas plus vite d'un trou, il ne peut donc plus passer
+         par-dessus, et une poussée plus forte le ferait sauter par-dessus un brin voisin. *)
+      let barriere = Float.max (0.6 *. r.rayon_trou) (0.75 *. r.pas) in
+      Array.iter
+        (fun t ->
+          let px = Array.make n 0. and py = Array.make n 0. and compte = Array.make n 0 in
+          let touche = ref false in
+          for k = 0 to nb_brins - 1 do
+            for i = b.(k) to b.(k + 1) - 2 do
+              let ax = xs_.(i) and ay = ys_.(i) and abx = xs_.(i + 1) -. xs_.(i) and aby = ys_.(i + 1) -. ys_.(i) in
+              let l2 = Float.max ((abx *. abx) +. (aby *. aby)) 1e-12 in
+              let u = clip 0. 1. ((((t.x -. ax) *. abx) +. ((t.y -. ay) *. aby)) /. l2) in
+              let vx = ax +. (u *. abx) -. t.x and vy = ay +. (u *. aby) -. t.y in
+              let ds = longueur vx vy in
+              if ds < barriere && ds > 1e-9 then begin
+                let c = Float.min (barriere -. ds) r.pas_max /. ds in   (* pas plus que pas_max : sinon le segment saute par-dessus un brin voisin *)
+                px.(i) <- px.(i) +. (c *. vx); py.(i) <- py.(i) +. (c *. vy); compte.(i) <- compte.(i) + 1;
+                px.(i + 1) <- px.(i + 1) +. (c *. vx); py.(i + 1) <- py.(i + 1) +. (c *. vy); compte.(i + 1) <- compte.(i + 1) + 1;
+                touche := true
+              end
+            done
+          done;
+          if !touche then begin
+            let fixe i = Array.exists (fun k -> i = b.(k) || i = b.(k + 1) - 1) (Array.init nb_brins Fun.id) in
+            for i = 0 to n - 1 do
+              if compte.(i) > 0 && not (fixe i) then begin
+                xs_.(i) <- xs_.(i) +. (px.(i) /. float_of_int compte.(i));
+                ys_.(i) <- ys_.(i) +. (py.(i) /. float_of_int compte.(i))
+              end
+            done
+          end)
+        trous;
+      (* rééchantillonner pour garder des points réguliers *)
+      (* toutes les 25 itérations, et dès qu'un segment dépasse 1,5 pas : la répulsion n'agit qu'entre les points, deux longs
+         segments pourraient se croiser, leurs points restant écartés *)
+      let trop_long = ref false in
+      for k = 0 to nb_brins - 1 do
+        for i = b.(k) to b.(k + 1) - 2 do
+          if longueur (xs_.(i + 1) -. xs_.(i)) (ys_.(i + 1) -. ys_.(i)) > 1.5 *. r.pas then trop_long := true
+        done
+      done;
+      if (it mod 25 = 24 || !trop_long) && it < r.iterations - 1 then begin
         installe
           (List.init nb_brins (fun k ->
                let a = b.(k) and m = b.(k + 1) - b.(k) in

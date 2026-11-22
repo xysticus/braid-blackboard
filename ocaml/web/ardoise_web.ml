@@ -384,9 +384,11 @@ let film mode mot rendu =
 
 (* La détente d'une image du film conforme (Detente), pour les workers auxiliaires de travail.js : lacets (tableaux plats
    x, y), trous (plat), clou (plat), force ∈ [0, 1]. La détente ne dépend que des positions relatives : les coordonnées de
-   la page (décalées de la marge) conviennent. Rend { lacets, croisements } (nombre de croisements entre lacets, comme la
-   vérification du film). *)
-let detend (lacets : float Js.js_array Js.t Js.js_array Js.t) (trous : float Js.js_array Js.t) (clou : float Js.js_array Js.t) (force : float) =
+   la page (décalées de la marge) conviennent. ecart : l'écart minimal entre brins (0 : les réglages de Detente.defaut, écart 6 px et 12 px autour des trous) ; sinon le
+   rayon autour des trous lui est égal (le film de la triangulation resserre ses brins près des trous : à 2 écarts, la répulsion
+   des trous poussait plusieurs couches de brins à la fois et pouvait en faire passer une par-dessus l'autre). Rend
+   { lacets, croisements } (nombre de croisements entre lacets, comme la vérification du film). *)
+let detend (lacets : float Js.js_array Js.t Js.js_array Js.t) (trous : float Js.js_array Js.t) (clou : float Js.js_array Js.t) (force : float) (ecart : float) =
   try
     let points (a : float Js.js_array Js.t) =
       let v = Js.to_array a in
@@ -394,7 +396,8 @@ let detend (lacets : float Js.js_array Js.t Js.js_array Js.t) (trous : float Js.
     in
     let lignes = List.map points (Array.to_list (Js.to_array lacets)) in
     let clou = (points clou).(0) in
-    let sortie = Detente.detend lignes (points trous) clou force in
+    let reglages = if ecart > 0. then { Detente.defaut with ecart; rayon_trou = ecart; repulsion = 4. } else Detente.defaut in
+    let sortie = Detente.detend ~reglages lignes (points trous) clou force in
     Js.Unsafe.obj
       [| ("lacets", Js.Unsafe.inject (Js.array (Array.of_list (List.map plat sortie))));
          ("croisements", Js.Unsafe.inject (Film_conforme.nb_croisements sortie clou)) |]

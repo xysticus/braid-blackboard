@@ -47,3 +47,6 @@ h1 { font-size: 1.4rem; }
 .plans figcaption { font-size: 0.82rem; color: var(--doux); margin-top: 3px; }
 
 #chrono-mot { margin-bottom: 8px; }
+
+/* une case grisée (sans objet pour le film affiché, ou fichier précalculé absent) */
+label:has(input:disabled) { color: #a8a8a8; cursor: default; }

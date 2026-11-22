@@ -22,6 +22,9 @@ const EXEMPLES = [
 const MAX_BRINS = 6;      // les limites du film conforme (web/ardoise.js)
 const MAX_LETTRES = 14;
 const IMAGES_PAR_LETTRE = 48;   // nombre_images_conforme de ocaml/web/ardoise_web.ml
+// Images par lettre du film affiché : 48 pour les lacets conformes ; pour la triangulation, le nombre de sous-pas du film (tout le film
+// se partage également entre les lettres).
+const imagesParLettre = () => etat.film === 'triangulation' && etat.mot.length && etat.total > 1 ? Math.round((etat.total - 1) / etat.mot.length) : IMAGES_PAR_LETTRE;
 const ECHELLE = 2;              // 1600 / 800
 const PALETTE = ['#d92626', '#1a9926', '#2640d9', '#bf9900', '#a626a6', '#0d9aa6', '#e6761a', '#6b4fbb'];
 // Pendant le raccord, la ligne de départ (L–A, B–R : opacité 1 − poids) et la ligne d'arrivée (L–B, A–R : opacité poids) coexistent, l'une
@@ -78,7 +81,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, precalcule: null, detendu: true, reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -371,7 +374,7 @@ function dessine(k) {
     ctx.stroke();
   }
   if (etat.construction && image.construction) segments(ctx, image.construction, image.opacites, etat.etude && image.etude ? stylesDeConstruction(image) : null);
-  image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3.5; trace(ctx, p); });
+  image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = etat.film === 'triangulation' && image.brin ? image.brin : 3.5; trace(ctx, p); });   // la triangulation affine le trait quand les brins sont serrés
   disques(ctx, image.trous, 4, '#000');
   disques(ctx, image.clou, 4, '#000');
   if (etat.etude && image.etude && etat.construction) etiquettes(ctx, image);
@@ -406,8 +409,9 @@ function dessine(k) {
 
 function descriptionImage(k) {
   if (k === 0) return 'image de départ (avant la première lettre)';
-  const j = Math.floor((k - 1) / IMAGES_PAR_LETTRE), m = ((k - 1) % IMAGES_PAR_LETTRE) + 1;
-  return `lettre ${j + 1}/${etat.mot.length} (${nomLettre(etat.mot[j])}), pas ${m}/${IMAGES_PAR_LETTRE}` + (m === IMAGES_PAR_LETTRE ? ' : image clé' : '');
+  const N = imagesParLettre();
+  const j = Math.min(etat.mot.length - 1, Math.floor((k - 1) / N)), m = ((k - 1) % N) + 1;
+  return `lettre ${j + 1}/${etat.mot.length} (${nomLettre(etat.mot[j])}), pas ${m}/${N}` + (m === N ? ' : image clé' : '');
 }
 
 function va(k) {
@@ -455,8 +459,8 @@ function brancheCommandes() {
   $('fin').onclick = () => { arrete(); va(etat.total - 1); };
   $('moins').onclick = () => pas(-1);
   $('plus').onclick = () => pas(1);
-  $('lettre-moins').onclick = () => pas(-IMAGES_PAR_LETTRE);
-  $('lettre-plus').onclick = () => pas(IMAGES_PAR_LETTRE);
+  $('lettre-moins').onclick = () => pas(-imagesParLettre());
+  $('lettre-plus').onclick = () => pas(imagesParLettre());
   $('joue').onclick = () => (etat.lecture ? arrete() : joue());
   $('curseur').oninput = (e) => { arrete(); va(Number(e.target.value)); };
   $('numero').onchange = (e) => { arrete(); va(Number(e.target.value) - 1); };
@@ -468,6 +472,7 @@ function brancheCommandes() {
   $('c-etude').onchange = (e) => { etat.etude = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // le journal et les plans w : recalcule le film
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
   $('c-satellites').onchange = (e) => { etat.satellites = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : 8 sommets de plus autour de chacun des deux trous qui tournent
+  $('film').onchange = (e) => { etat.film = e.target.value; etat.reprise = null; if (etat.precalcule) { $('c-' + etat.precalcule).checked = false; etat.precalcule = null; } metsAJourOptions(); lance(etat.mot); };   // lacets conformes ou triangulation
   $('c-detendu').onchange = (e) => { etat.detendu = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // la détente du raccord (Detente), calculée par la page
   $('c-libre').onchange = (e) => { etat.libre = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // recalcule le film, et revient à la même image
   PRECALCULES.forEach((sorte) => {   // les films précalculés : une seule case à la fois
@@ -480,7 +485,7 @@ function brancheCommandes() {
   $('vitesse').onchange = (e) => { etat.ips = Number(e.target.value); };
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input[type=text], input[type=number], select') || etat.images.length < 2) return;
-    const lettre = e.shiftKey ? IMAGES_PAR_LETTRE : 1;
+    const lettre = e.shiftKey ? imagesParLettre() : 1;
     if (e.key === 'ArrowRight') { pas(lettre); e.preventDefault(); }
     else if (e.key === 'ArrowLeft') { pas(-lettre); e.preventDefault(); }
     else if (e.key === 'Home') { arrete(); va(0); e.preventDefault(); }
@@ -503,7 +508,22 @@ function efface() {
 const PRECALCULES = ['regions'];
 const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 
+// Les cases qui n'ont de sens que pour les lacets conformes (essais du raccord, projection, fantômes des lignes estompées, maillage
+// du raccord) : grisées quand le film affiché est la triangulation.
+const SEULEMENT_CONFORME = ['c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
+
+function metsAJourOptions() {
+  const tri = etat.film === 'triangulation';
+  SEULEMENT_CONFORME.forEach((id) => {
+    $(id).disabled = tri;
+    $(id).closest('label').title = tri ? 'pas pour la triangulation (lacets conformes seulement)' : ($(id).closest('label').dataset.titre || '');
+  });
+  if (tri) PRECALCULES.forEach((sorte) => { $('c-' + sorte).disabled = true; });
+  else verifiePrecalcules(etat.mot);
+}
+
 function verifiePrecalcules(mot) {
+  if (etat.film === 'triangulation') return;   // les films précalculés sont des lacets conformes
   PRECALCULES.forEach((sorte) => {
     $('c-' + sorte).disabled = true;
     fetch(fichierPrecalcule(mot, sorte), { method: 'HEAD' }).then((r) => {
@@ -545,6 +565,7 @@ function lance(mot) {
   efface();
   $('commandes').hidden = true;
   $('mot-titre').textContent = mot.map(nomLettre).join(' ');
+  $('film-titre').textContent = etat.film === 'triangulation' ? 'Triangulation' : 'Lacets conformes';
   if (etat.precalcule) {
     const sorte = etat.precalcule;
     $('etat-calcul').innerHTML = '<span>chargement des images précalculées…</span>';
@@ -557,7 +578,8 @@ function lance(mot) {
 function calcule(mot) {
   $('etat-calcul').innerHTML = '<progress max="1" value="0"></progress><span>calcul…</span>';
   let w;
-  try { w = new Worker('../../web/travail.js'); } catch (e) {
+  // ?v= : toujours la version du disque (le banc change souvent), pas celle du cache du navigateur
+  try { w = new Worker('../../web/travail.js?v=' + Date.now()); } catch (e) {
     $('etat-calcul').innerHTML = '<span class="ko">Ouvre la page par un serveur (python3 -m http.server à la racine du dépôt), pas en file://.</span>';
     return;
   }
@@ -576,6 +598,7 @@ function calcule(mot) {
       termine(d.message);
     }
   };
+  if (etat.film === 'triangulation') { w.postMessage({ mode: etat.detendu ? 'triangulation_detendu' : 'triangulation', mot }); return; }
   w.postMessage({ mode: (etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
@@ -612,7 +635,10 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('sansprojection')) { etat.etude = false; $('c-etude').checked = false; }   // ?sansprojection (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
   PRECALCULES.forEach((sorte) => { if (new URLSearchParams(location.search).has(sorte)) { etat.precalcule = sorte; $('c-' + sorte).checked = true; } });   // ?regions : un film précalculé au départ (captures)
+  if (new URLSearchParams(location.search).has('triangulation')) { etat.film = 'triangulation'; $('film').value = 'triangulation'; }   // ?triangulation (captures)
   if (new URLSearchParams(location.search).has('nondetendu')) { etat.detendu = false; $('c-detendu').checked = false; }   // ?nondetendu : le film à maillage seul (captures)
+  SEULEMENT_CONFORME.forEach((id) => { const l = $(id).closest('label'); l.dataset.titre = l.title || ''; });   // le titre d'origine, rendu quand on revient aux lacets conformes
+  metsAJourOptions();
   brancheCommandes();
   let minuterie = null;
   champ.addEventListener('input', () => { clearTimeout(minuterie); minuterie = setTimeout(() => miseAJour(champ.value), 400); });

@@ -3,7 +3,10 @@
 // quand le mot change.
 //
 // Le film conforme (modes conforme et conforme_detendu) est réparti sur des workers auxiliaires : voir filmReparti.
-importScripts('ardoise_lib.js');
+// Une éventuelle requête (?v=… : le banc d'essai l'ajoute pour échapper au cache du navigateur) est transmise à la bibliothèque
+// et aux workers auxiliaires, pour qu'ils soient de la même version que ce fichier.
+const VERSION = self.location.search || '';
+importScripts('ardoise_lib.js' + VERSION);
 
 // Un champ qui est un tableau de nombres devient un Float32Array, un tableau de tableaux (les lacets) un tableau de
 // Float32Array ; les nombres restent des nombres.
@@ -83,14 +86,14 @@ function filmReparti(mode, mot) {
   rend();
   const nb = Math.max(1, Math.min(8, self.navigator.hardwareConcurrency || 2));
   for (let i = 0; i < nb; i++) {
-    const w = new Worker('travail.js');
+    const w = new Worker('travail.js' + VERSION);
     w.onmessage = (ev) => {
       const d = ev.data;
       if (d.type === 'image') { pretes[d.k] = d.image; rend(); return; }
       if (d.type === 'brute') {   // une image du raccord à détendre : au prochain auxiliaire, à tour de rôle
         brutes.set(d.k, d.image);
         aDetendre++;
-        aides[prochaine++ % nb].postMessage({ type: 'detend', k: d.k, lacets: d.image.lacets, trous: d.image.trous, clou: d.image.clou, force: forceDetente(d.k) });
+        aides[prochaine++ % nb].postMessage({ type: 'detend', k: d.k, lacets: d.image.lacets, trous: d.image.trous, clou: d.image.clou, force: forceDetente(d.k), ecart: 0 });
         return;
       }
       if (d.type === 'detendue') {
@@ -114,6 +117,54 @@ function filmReparti(mode, mot) {
   aides.forEach(donneLettre);
 }
 
+// Le film de la triangulation détendu (mode triangulation_detendu, banc d'essai) : chaque image se calcule à partir de la
+// précédente, on ne peut donc pas répartir les lettres ; ce worker calcule le film, et la détente de chaque image (intensité
+// constante 1, écart des brins du film) est confiée à tour de rôle à des workers auxiliaires. Images rendues dans l'ordre.
+function triangulationDetendue(mot) {
+  const fixe = self.ardoise.statique('triangulation', mot);
+  if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
+  const image = enFloat32(fixe);
+  postMessage({ type: 'statique', image }, tampons(image));
+  const nb = Math.max(1, Math.min(8, (self.navigator.hardwareConcurrency || 2) - 1));
+  const aides = [], enAttente = new Map(), pretes = [];
+  let suivante = 0, total = 0, envoyees = 0, revenues = 0, croisements = 0, messageFilm = null;
+  const rend = () => {
+    while (pretes[suivante] !== undefined) {
+      const f = pretes[suivante];
+      pretes[suivante] = undefined;
+      postMessage({ type: 'image', image: f, k: suivante, total }, tampons(f));
+      suivante++;
+    }
+    if (messageFilm !== null && revenues === envoyees && suivante === total) {
+      aides.forEach((w) => w.terminate());
+      let message = messageFilm;
+      if (croisements) message = (message ? message + ' ; ' : '') + `${croisements} croisement(s) après la détente`;
+      postMessage({ type: 'fini', message, erreur: false });
+    }
+  };
+  for (let i = 0; i < nb; i++) {
+    const w = new Worker('travail.js' + VERSION);
+    w.onmessage = (ev) => {
+      const r = ev.data;
+      const im = enAttente.get(r.k);
+      enAttente.delete(r.k);
+      if (!r.erreur) { im.lacets = r.lacets; croisements += r.croisements; }
+      revenues++;
+      pretes[r.k] = enFloat32(im);
+      rend();
+    };
+    aides.push(w);
+  }
+  const message = self.ardoise.film('triangulation', mot, (im, k, t) => {
+    total = t;
+    enAttente.set(k, im);
+    aides[envoyees % nb].postMessage({ type: 'detend', k, lacets: im.lacets, trous: im.trous, clou: im.clou, force: 1, ecart: im.ecart || 0 });
+    envoyees++;
+  });
+  messageFilm = message || '';
+  rend();
+}
+
 onmessage = (e) => {
   const d = e.data;
   if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme
@@ -126,12 +177,13 @@ onmessage = (e) => {
     return;
   }
   if (d.type === 'detend') {   // un worker auxiliaire : la détente d'une image
-    const r = self.ardoise.detend(d.lacets, d.trous, d.clou, d.force);
+    const r = self.ardoise.detend(d.lacets, d.trous, d.clou, d.force, d.ecart || 0);
     postMessage({ type: 'detendue', k: d.k, lacets: r.lacets, croisements: r.croisements || 0, erreur: r.erreur });
     return;
   }
   const { mode, mot } = d;
   if (/^conforme(_detendu)?(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmReparti(mode, mot); return; }
+  if (mode === 'triangulation_detendu' && typeof Worker !== 'undefined') { triangulationDetendue(mot); return; }
   const fixe = self.ardoise.statique(mode, mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
   const image = enFloat32(fixe);
