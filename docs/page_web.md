@@ -42,3 +42,8 @@ diagramme de courbes, rubans, triangulation. Les films se calculent **l'un aprè
 nouveau worker ne part que quand le précédent a fini ; chaque film occupe déjà tous les cœurs, quatre à la fois se gêneraient). Les
 vues qui attendent affichent « en attente » et leur image fixe, calculée tout de suite par un petit worker (`demarreFixe`, message
 `fixe` de `web/travail.js`, `imageFixe`). Un nouveau mot abandonne la file (`generationCalculs`).
+
+**Publication GitHub Pages : une panne passagère à connaître (2026-11-22).** Il arrive que le workflow échoue à l'étape de dépôt (`deploy-pages`)
+avec « No artifacts named "github-pages" were found for this workflow run » : c'est un incident de GitHub (l'archive du site, qu'on
+vient d'envoyer, est introuvable). Rien à corriger dans le dépôt : `gh run rerun <numéro> --failed` relance l'étape et elle réussit
+(vu deux fois). Le serveur personnel, lui, n'en dépend pas (`web/deploie.sh`).

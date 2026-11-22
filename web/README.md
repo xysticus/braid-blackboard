@@ -11,6 +11,9 @@ Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse 
    montrent leur image fixe, calculée tout de suite par un petit worker (message `fixe`) ;
 5. « Un peu de poésie » : l'escargot et le premier bouquet (films sans mot de tresse, lancés une fois au chargement).
 
+L'en-tête porte un lien vers le projet sur GitHub (`https://github.com/xysticus/braid-blackboard`, classe `lien-projet`) ; le pied de
+page en a un aussi (« Code source »), avec les licences (code sous MIT, textes et schémas sous CC BY 4.0).
+
 Le calcul est celui de `ocaml/lib/`, compilé en JavaScript par js_of_ocaml (`ocaml/web/ardoise_web.ml` est le pont) ; un
 film est une suite de polylignes redessinées sur le canvas, pas une vidéo. Étude et choix : `../etude_page_web.md`.
 
