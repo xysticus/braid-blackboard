@@ -59,7 +59,10 @@ Pendant le raccord, le dessin des lacets est aussi **détendu** (`ocaml/lib/dete
 répulsion garde leurs écarts ; l'intensité est nulle aux bords de la fenêtre (images clés inchangées). `web/travail.js` répartit cette
 détente sur des workers auxiliaires, un par cœur (8 au plus), et rend les images dans l'ordre. La vue « triangulation » est elle aussi
 détendue (mode `triangulation_detendu`), sur toutes ses images et son image fixe, avec l'écart de ses brins et une répulsion plus forte
-(les boucles y sont serrées autour des trous) ; ce film se calcule image après image, seule sa détente est répartie. Les films du **diagramme de courbes** et des **rubans** ont aussi la case : elle trace les arêtes du maillage
+(les boucles y sont serrées autour des trous) ; ce film se calcule image après image, seule sa détente est répartie.
+La vue « diagramme de courbes » l'est de même (mode `diagramme_detendu`), ses points fixes comptés comme des trous ; les bouts
+des arcs restent sur leur trou. Les rubans ne le sont pas : la page n'en reçoit que les bords, qu'il faudrait reconstruire
+après avoir détendu les arcs du centre. Les films du **diagramme de courbes** et des **rubans** ont aussi la case : elle trace les arêtes du maillage
 sur lequel les arcs sont posés (au centre des rubans), et elles bougent avec les trous. Le zoom (`etendue`) compte les trous fixes des films d'arcs et ignore leur « clou »
 factice hors du cadre, qui les faisait reculer à tort (diagramme et rubans). Étude : `etude_lignes_de_construction.md`.
 

@@ -382,7 +382,7 @@ function vueDe(canvas, images, mode) {
 // (au survol, au clavier ou à l'appui).
 const MODES_AVEC_CONSTRUCTION = new Map([
   ['triangulation', 'Le maillage (une triangulation) sur lequel les brins sont posés : il se déplace avec les trous, et les brins le suivent et se tendent ; le dessin est ensuite détendu (les brins s\'arrondissent).'],
-  ['diagramme', 'Le maillage (une triangulation) sur lequel les arcs sont posés et tendus : il se déplace avec les trous.'],
+  ['diagramme', 'Le maillage (une triangulation) sur lequel les arcs sont posés et tendus : il se déplace avec les trous ; le dessin est ensuite détendu (les arcs s\'arrondissent).'],
   ['rubans', 'Le maillage (une triangulation) sur lequel les arcs, au centre des rubans, sont posés et tendus : il se déplace avec les trous.'],
   ['conforme', 'L\'axe et la ligne brisée L–A–B–R sur lesquels le dessin est construit. Pendant le demi-tour, la ligne de départ et celle d\'arrivée s\'estompent l\'une dans l\'autre, et le dessin passe alors par une triangulation mobile, puis se détend : les brins s\'arrondissent et s\'espacent.'],
 ]);
@@ -703,8 +703,9 @@ function arreteTravailleurs() {
 }
 
 // Le mode de calcul d'une vue, quand il diffère de son nom : les lacets sont le film conforme détendu pendant le raccord, la
-// triangulation est détendue sur toutes ses images (Detente ; travail.js répartit la détente sur plusieurs workers).
-const MODE_DE_CALCUL = { conforme: 'conforme_detendu', triangulation: 'triangulation_detendu' };
+// triangulation et le diagramme de courbes sont détendus sur toutes leurs images (Detente ; travail.js répartit la détente sur
+// plusieurs workers).
+const MODE_DE_CALCUL = { conforme: 'conforme_detendu', triangulation: 'triangulation_detendu', diagramme: 'diagramme_detendu' };
 
 // Un Web Worker pour un mode et un lecteur ; rend le worker (ou null si le navigateur refuse, par exemple en file://).
 function demarreTravailleur(mode, mot, lecteur) {
