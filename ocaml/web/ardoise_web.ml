@@ -396,7 +396,7 @@ let detend (lacets : float Js.js_array Js.t Js.js_array Js.t) (trous : float Js.
     in
     let lignes = List.map points (Array.to_list (Js.to_array lacets)) in
     let clou = (points clou).(0) in
-    let reglages = if ecart > 0. then { Detente.defaut with ecart; rayon_trou = ecart; repulsion = 4. } else Detente.defaut in
+    let reglages = if ecart > 0. then { Detente.defaut with ecart; rayon_trou = ecart; repulsion = 4.; iterations = 150 } else Detente.defaut in
     let sortie = Detente.detend ~reglages lignes (points trous) clou force in
     Js.Unsafe.obj
       [| ("lacets", Js.Unsafe.inject (Js.array (Array.of_list (List.map plat sortie))));

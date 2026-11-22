@@ -57,7 +57,9 @@ d'arrivée sont les références entre lesquelles on raccorde ; `image.opacites`
 Pendant le raccord, le dessin des lacets est aussi **détendu** (`ocaml/lib/detente.ml`, mode de calcul `conforme_detendu`, `MODE_DE_CALCUL` dans
 `web/ardoise.js`) : un court flot de courbure contraint arrondit les brins autour des trous qui tournent et efface les zigzags, une
 répulsion garde leurs écarts ; l'intensité est nulle aux bords de la fenêtre (images clés inchangées). `web/travail.js` répartit cette
-détente sur des workers auxiliaires, un par cœur (8 au plus), et rend les images dans l'ordre. Les films du **diagramme de courbes** et des **rubans** ont aussi la case : elle trace les arêtes du maillage
+détente sur des workers auxiliaires, un par cœur (8 au plus), et rend les images dans l'ordre. La vue « triangulation » est elle aussi
+détendue (mode `triangulation_detendu`), sur toutes ses images et son image fixe, avec l'écart de ses brins et une répulsion plus forte
+(les boucles y sont serrées autour des trous) ; ce film se calcule image après image, seule sa détente est répartie. Les films du **diagramme de courbes** et des **rubans** ont aussi la case : elle trace les arêtes du maillage
 sur lequel les arcs sont posés (au centre des rubans), et elles bougent avec les trous. Le zoom (`etendue`) compte les trous fixes des films d'arcs et ignore leur « clou »
 factice hors du cadre, qui les faisait reculer à tort (diagramme et rubans). Étude : `etude_lignes_de_construction.md`.
 

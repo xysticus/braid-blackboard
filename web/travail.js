@@ -117,12 +117,14 @@ function filmReparti(mode, mot) {
   aides.forEach(donneLettre);
 }
 
-// Le film de la triangulation détendu (mode triangulation_detendu, banc d'essai) : chaque image se calcule à partir de la
+// Le film de la triangulation détendu (mode triangulation_detendu : la vue 3 de la page, le banc d'essai) : chaque image se calcule à partir de la
 // précédente, on ne peut donc pas répartir les lettres ; ce worker calcule le film, et la détente de chaque image (intensité
 // constante 1, écart des brins du film) est confiée à tour de rôle à des workers auxiliaires. Images rendues dans l'ordre.
 function triangulationDetendue(mot) {
   const fixe = self.ardoise.statique('triangulation', mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
+  const fd = self.ardoise.detend(fixe.lacets, fixe.trous, fixe.clou, 1, fixe.ecart || 0);   // l'image fixe aussi, comme le film
+  if (!fd.erreur) fixe.lacets = fd.lacets;
   const image = enFloat32(fixe);
   postMessage({ type: 'statique', image }, tampons(image));
   const nb = Math.max(1, Math.min(8, (self.navigator.hardwareConcurrency || 2) - 1));

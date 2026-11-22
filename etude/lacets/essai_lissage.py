@@ -52,6 +52,62 @@ def reechantillonne(P, pas):
     return np.column_stack((np.interp(t, l, P[:, 0]), np.interp(t, l, P[:, 1])))
 
 
+def distance_segment(a, b, c):
+    """Distance du point c au segment [a, b]."""
+    ab = b - a
+    t = min(1.0, max(0.0, float(np.dot(c - a, ab) / max(float(np.dot(ab, ab)), 1e-12))))
+    return float(np.hypot(*(a + t * ab - c)))
+
+
+def retouche(P, pas, trous, fusion=True):
+    """Garde des points à peu près réguliers sans jamais rapprocher la courbe d'un trou (le rééchantillonnage, qui remplace la
+    courbe par des cordes, coupe à l'intérieur des boucles serrées ; répété, il amenait un brin sur son trou) : les segments plus
+    longs que 1,5 pas sont découpés par des points pris sur eux (la courbe ne bouge pas) ; un point dont un segment est plus court
+    qu'un demi-pas est retiré (fusion) seulement si la corde qui le remplace ne dépasse pas 1,2 pas (sinon elle serait redécoupée) et
+    n'est pas plus près d'un trou que les deux segments retirés. Une corde peut couper un brin voisin : `detend` vérifie après coup et
+    refait la retouche sans fusion."""
+    pts = [P[0]]
+    for q in P[1:]:
+        p = pts[-1]
+        L = float(np.hypot(*(q - p)))
+        k = int(math.ceil(L / pas)) if L > 1.5 * pas else 1
+        for j in range(1, k): pts.append(p + (q - p) * (j / k))
+        pts.append(q)
+    garde = [pts[0]]
+    for i in range(1, len(pts) - 1):
+        a, m, b = garde[-1], pts[i], pts[i + 1]
+        if fusion and min(np.hypot(*(m - a)), np.hypot(*(b - m))) < 0.5 * pas and np.hypot(*(b - a)) <= 1.2 * pas and \
+           all(distance_segment(a, b, c) >= min(distance_segment(a, m, c), distance_segment(m, b, c)) for c in trous):
+            continue
+        garde.append(m)
+    garde.append(pts[-1])
+    return np.array(garde)
+
+
+def croisement_existe(X, bouts, I, J, clou, pas):
+    """Deux segments de brins se croisent-ils (parmi les voisins des paires proches I, J ; hors des 12 px autour du clou) ?"""
+    if not len(I): return False
+    ok_seg = np.zeros(len(X), bool)
+    dans = np.ones(len(X) - 1, bool); dans[bouts[1:-1] - 1] = False
+    ok_seg[np.nonzero(dans)[0]] = True
+    loin = np.hypot(*(X - clou).T) > 12
+    proches = np.hypot(*(X[I] - X[J]).T) < 4 * pas
+    I, J = I[proches], J[proches]
+    sa = np.concatenate((I - 1, I, I - 1, I)); sb = np.concatenate((J - 1, J - 1, J, J))
+    v = (sa >= 0) & (sb >= 0) & (sa < len(X) - 1) & (sb < len(X) - 1)
+    sa, sb = sa[v], sb[v]
+    v = ok_seg[sa] & ok_seg[sb] & (np.abs(sa - sb) > 1) & loin[sa] & loin[sa + 1] & loin[sb] & loin[sb + 1]
+    sa, sb = sa[v], sb[v]
+    p0, d1 = X[sa], X[sa + 1] - X[sa]
+    q0, d2 = X[sb], X[sb + 1] - X[sb]
+    den = d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0]
+    w = q0 - p0
+    with np.errstate(divide='ignore', invalid='ignore'):
+        t = (w[:, 0] * d2[:, 1] - w[:, 1] * d2[:, 0]) / den
+        u = (w[:, 0] * d1[:, 1] - w[:, 1] * d1[:, 0]) / den
+    return bool(((den != 0) & (t >= 0) & (t <= 1) & (u >= 0) & (u <= 1)).any())
+
+
 def paires_proches(X, lacet, indice, rayon, ecart_indices):
     """Les paires (i, j), i < j, de points à moins de `rayon`, sauf deux points voisins d'un même brin (indices à moins de
     `ecart_indices`). Par paquets, avec un tri sur x pour ne comparer que des points proches en abscisse."""
@@ -82,7 +138,21 @@ def detend(lignes, trous, clou, force, iterations=None):
     """Le dessin détendu (voir le docstring du module) ; force ∈ [0, 1] (0 : le dessin rééchantillonné, inchangé à l'œil)."""
     iterations = ITERATIONS if iterations is None else iterations
     if force <= 0: return [np.array(l, float) for l in lignes]
-    brins = [reechantillonne(np.asarray(l, float), PAS) for l in lignes]
+    # avant de rééchantillonner, éloigner des trous les points trop proches : une boucle plus petite que le pas, rééchantillonnée,
+    # peut ne plus contenir son trou (le brin l'aurait sauté avant même la première itération). Dilatation radiale autour de chaque
+    # trou, la distance r devenant r + force b (1 − r / 2b) en deçà de 2b (b : la barrière) : elle garde l'ordre des distances,
+    # aucun brin n'en croise un autre ni ne passe par-dessus le trou ; nulle à force 0 (le film reste continu).
+    barriere = max(0.6 * RAYON_TROU, 0.75 * PAS)
+    lignes = [np.array(l, float) for l in lignes]
+    for c in np.asarray(trous, float):
+        for l in lignes:
+            D = l - c
+            r = np.hypot(*D.T)
+            pres = (r < 2 * barriere) & (r > 1e-9)
+            if pres.any():
+                nouveau = r[pres] + force * barriere * (1 - r[pres] / (2 * barriere))
+                l[pres] = c + D[pres] * (nouveau / r[pres])[:, None]
+    brins = [reechantillonne(l, PAS) for l in lignes]
     tailles = [len(b) for b in brins]
     X = np.concatenate(brins)
     lacet = np.concatenate([np.full(n, k) for k, n in enumerate(tailles)])
@@ -121,36 +191,70 @@ def detend(lignes, trous, clou, force, iterations=None):
         trop = n > PAS_MAX
         F[trop] *= (PAS_MAX / n[trop])[:, None]
         F[fixe] = 0
+        precedent_X = X
         X = X + F
-        # la barrière des trous : aucun point plus près d'un trou que `barriere` (la répulsion n'est qu'une force, que la tension des
-        # boucles serrées peut vaincre) ; des segments de longueur sous 2 barriere ne peuvent alors pas passer par-dessus un trou
+        # la barrière des trous : un segment qui passerait plus près d'un trou que `barriere`, en s'en rapprochant, reprend sa position
+        # d'avant (ses deux bouts). Revenir à une position juste ne peut ni croiser un brin voisin ni sauter le trou (pousser le segment
+        # le pouvait), et la distance d'un segment à un trou, une fois sous la barrière, ne diminue plus. On recommence tant qu'un
+        # retour en arrière en a fait passer un autre sous la barrière.
         barriere = max(0.6 * RAYON_TROU, 0.75 * PAS)
-        # sur les segments, pas seulement les points : deux points écartés par la répulsion peuvent laisser entre eux un segment
-        # qui enjambe le trou ; un segment trop proche est repoussé en bloc (ses deux bouts du même vecteur). Un segment ne bougeant
-        # que de PAS_MAX par itération, il ne peut plus passer par-dessus un trou.
         dans_brin = np.ones(len(X) - 1, bool)
         dans_brin[bouts[1:-1] - 1] = False
         ia = np.nonzero(dans_brin)[0]
-        for c in trous:
-            A, B = X[ia], X[ia + 1]
+        def distances(Y, c):
+            A, B = Y[ia], Y[ia + 1]
             AB = B - A
             t = np.clip(((c - A) * AB).sum(1) / np.maximum((AB * AB).sum(1), 1e-12), 0, 1)
-            V = A + t[:, None] * AB - c
-            ds = np.hypot(*V.T)
-            proche = (ds < barriere) & (ds > 1e-9)
-            if proche.any():
-                pousse = V[proche] * (np.minimum(barriere - ds[proche], PAS_MAX) / ds[proche])[:, None]   # pas plus que PAS_MAX : sinon le segment saute par-dessus un brin voisin
-                deplacement = np.zeros_like(X)
-                np.add.at(deplacement, ia[proche], pousse); np.add.at(deplacement, ia[proche] + 1, pousse)
-                compte = np.zeros(len(X)); np.add.at(compte, ia[proche], 1); np.add.at(compte, ia[proche] + 1, 1)
-                bouge = (compte > 0) & ~fixe
-                X[bouge] += deplacement[bouge] / compte[bouge][:, None]
-        # rééchantillonner pour garder des points réguliers : toutes les 25 itérations, et dès qu'un segment dépasse 1,5 PAS (la
-        # répulsion n'agit qu'entre les points : deux longs segments pourraient se croiser, leurs points restant écartés)
+            return np.hypot(*(A + t[:, None] * AB - c).T)
+        avant = [distances(precedent_X, c) for c in trous]
+        for _ in range(20):
+            retour = np.zeros(len(X), bool)
+            for c, da in zip(trous, avant):
+                dn = distances(X, c)
+                fautif = (dn < barriere) & (dn < da - 1e-12)
+                retour[ia[fautif]] = True; retour[ia[fautif] + 1] = True
+            retour &= np.any(X != precedent_X, axis=1)
+            if not retour.any(): break
+            X = X.copy(); X[retour] = precedent_X[retour]
+        # pas de croisement entre brins : si un segment en croise un autre (d'un autre brin, ou un passage éloigné du même), les
+        # points des deux reprennent leur position d'avant ; le dessin de départ n'en a pas, il n'en aura donc jamais. Les segments
+        # qui se croisent ont des bouts à moins d'un pas et demi : ils sont dans les paires proches.
+        if len(I):
+            ok_seg = np.zeros(len(X), bool); ok_seg[ia] = True     # le segment s (points s, s + 1) existe
+            loin_clou = np.hypot(*(X - clou).T) > 12
+            for _ in range(20):
+                sa = np.concatenate((I - 1, I, I - 1, I)); sb = np.concatenate((J - 1, J - 1, J, J))
+                v = (sa >= 0) & (sb >= 0) & (sa < len(X) - 1) & (sb < len(X) - 1)
+                sa, sb = sa[v], sb[v]
+                v = ok_seg[sa] & ok_seg[sb] & (np.abs(sa - sb) > 1) & loin_clou[sa] & loin_clou[sa + 1] & loin_clou[sb] & loin_clou[sb + 1]
+                sa, sb = sa[v], sb[v]
+                if not len(sa): break
+                p0, d1 = X[sa], X[sa + 1] - X[sa]
+                q0, d2 = X[sb], X[sb + 1] - X[sb]
+                den = d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0]
+                w = q0 - p0
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    t = (w[:, 0] * d2[:, 1] - w[:, 1] * d2[:, 0]) / den
+                    u = (w[:, 0] * d1[:, 1] - w[:, 1] * d1[:, 0]) / den
+                croise = (den != 0) & (t >= 0) & (t <= 1) & (u >= 0) & (u <= 1)
+                if not croise.any(): break
+                retour = np.zeros(len(X), bool)
+                for s_ in (sa[croise], sa[croise] + 1, sb[croise], sb[croise] + 1): retour[s_] = True
+                retour &= np.any(X != precedent_X, axis=1)
+                if not retour.any(): break
+                X = X.copy(); X[retour] = precedent_X[retour]
+        # retoucher les points : toutes les 25 itérations, et dès qu'un segment dépasse 2 PAS (les croisements sont bloqués plus haut,
+        # mais leur détection suppose des segments assez courts pour que leurs bouts soient dans les paires proches)
         longueurs = np.hypot(*np.diff(X, axis=0).T)
         longueurs[bouts[1:-1] - 1] = 0
-        if (it % 25 == 24 or longueurs.max() > 1.5 * PAS) and it < iterations - 1:
-            brins = [reechantillonne(X[bouts[k]:bouts[k + 1]], PAS) for k in range(len(tailles))]
+        if (it % 25 == 24 or longueurs.max() > 2 * PAS) and it < iterations - 1:
+            ancien_X, anciens_bouts = X, bouts
+            brins = [retouche(X[bouts[k]:bouts[k + 1]], PAS, trous) for k in range(len(tailles))]
+            nb = np.cumsum([0] + [len(b) for b in brins]); Xn = np.concatenate(brins)
+            ln = np.concatenate([np.full(len(b), k) for k, b in enumerate(brins)]); idn = np.concatenate([np.arange(len(b)) for b in brins])
+            In, Jn = paires_proches(Xn, ln, idn, 1.6 * ECART + 16 * PAS_MAX, ecart_indices)
+            if croisement_existe(Xn, nb, In, Jn, clou, PAS):   # une fusion a fait couper un brin voisin : retouche sans fusion
+                brins = [retouche(ancien_X[anciens_bouts[k]:anciens_bouts[k + 1]], PAS, trous, fusion=False) for k in range(len(tailles))]
             tailles = [len(b) for b in brins]
             X = np.concatenate(brins)
             lacet = np.concatenate([np.full(n, k) for k, n in enumerate(tailles)])
