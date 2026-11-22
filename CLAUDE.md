@@ -79,6 +79,8 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 - `docs/prochaines_etapes.md` : objectifs et avancement du film des méandres.
 - `etude_tresses_personnalisees.md` (étude, rien d'implémenté : tresses mémorisées par la personne, texte libre, couleurs des brins
   et du fond).
+- `etude_exploitation_des_images.md` (étude, rien d'implémenté : chapitres par lettre, image avant/après, export PNG/SVG de l'image
+  en cours, zip des images clés, film MP4 AV1 encodé dans le navigateur par WebCodecs).
 - `pistes_film_conforme.md`, `plan_ocaml.md`, `etude_page_web.md`, `conventions_de_signe.md` (β de l'article *Des matrices pour des
   tresses* = β⁻¹ chez nous : on garde nos conventions), `etude_lignes_de_construction.md` (lignes de construction facultatives, notebook et page web : faite pour les films de la triangulation,
 des lacets et du diagramme de courbes de la page web ; le reste est à l'étude).
