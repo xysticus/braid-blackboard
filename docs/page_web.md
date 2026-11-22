@@ -36,3 +36,9 @@ image par image que la triangulation (`filmDetenduParImages` dans `web/travail.j
 dilatation de départ de la détente laisse les bouts des courbes en place (ceux des arcs sont sur un trou ou un point fixe). Rapide : peu
 de brins. Les rubans ne sont pas détendus : la page n'en reçoit que les bords (deux traits par ruban, que la détente écarterait l'un de
 l'autre) ; il faudrait détendre les arcs du centre en OCaml, puis reconstruire les rubans.
+
+**L'ordre et la file de calcul des quatre vues (2026-11-22).** Les quatre méandres sont affichés (et calculés) dans l'ordre : lacets,
+diagramme de courbes, rubans, triangulation. Les films se calculent **l'un après l'autre** (`lanceCalculs` dans `web/ardoise.js` : un
+nouveau worker ne part que quand le précédent a fini ; chaque film occupe déjà tous les cœurs, quatre à la fois se gêneraient). Les
+vues qui attendent affichent « en attente » et leur image fixe, calculée tout de suite par un petit worker (`demarreFixe`, message
+`fixe` de `web/travail.js`, `imageFixe`). Un nouveau mot abandonne la file (`generationCalculs`).

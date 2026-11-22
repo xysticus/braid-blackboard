@@ -122,11 +122,21 @@ function filmReparti(mode, mot) {
 // le film, et la détente de chaque image (intensité constante 1, écart des brins du film ; obstacles : les trous et les points
 // fixes des films d'arcs) est confiée à tour de rôle à des workers auxiliaires. Images rendues dans l'ordre.
 const obstacles = (im) => Array.from(im.trous).concat(Array.from(im.fixes || []));
+
+// L'image fixe d'un mode (l'image d'arrivée) ; pour les films détendus sur toutes leurs images, l'image fixe l'est aussi.
+function imageFixe(mode, mot) {
+  const detendu = /^(triangulation|diagramme)_detendu$/.test(mode);
+  const fixe = self.ardoise.statique(detendu ? mode.replace('_detendu', '') : mode, mot);
+  if (!fixe.erreur && detendu) {
+    const fd = self.ardoise.detend(fixe.lacets, obstacles(fixe), fixe.clou, 1, fixe.ecart || 0);
+    if (!fd.erreur) fixe.lacets = fd.lacets;
+  }
+  return fixe;
+}
+
 function filmDetenduParImages(base, mot) {
-  const fixe = self.ardoise.statique(base, mot);
+  const fixe = imageFixe(base + '_detendu', mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
-  const fd = self.ardoise.detend(fixe.lacets, obstacles(fixe), fixe.clou, 1, fixe.ecart || 0);   // l'image fixe aussi, comme le film
-  if (!fd.erreur) fixe.lacets = fd.lacets;
   const image = enFloat32(fixe);
   postMessage({ type: 'statique', image }, tampons(image));
   const nb = Math.max(1, Math.min(8, (self.navigator.hardwareConcurrency || 2) - 1));
@@ -183,6 +193,12 @@ onmessage = (e) => {
   if (d.type === 'detend') {   // un worker auxiliaire : la détente d'une image
     const r = self.ardoise.detend(d.lacets, d.trous, d.clou, d.force, d.ecart || 0);
     postMessage({ type: 'detendue', k: d.k, lacets: r.lacets, croisements: r.croisements || 0, erreur: r.erreur });
+    return;
+  }
+  if (d.type === 'fixe') {   // seulement l'image fixe d'un mode : la page l'affiche pendant que les autres films se calculent
+    const fixe = imageFixe(d.mode, d.mot);
+    if (!fixe.erreur) { const image = enFloat32(fixe); postMessage({ type: 'statique', image }, tampons(image)); }
+    postMessage({ type: 'fixe-fini' });
     return;
   }
   const { mode, mot } = d;

@@ -496,6 +496,16 @@ class Lecteur {
     this.etat.innerHTML = '<progress max="1" value="0"></progress><span>calcul…</span>';
   }
 
+  // Une vue qui attend son tour de calcul (les films se calculent l'un après l'autre) : le cadre garde son image fixe, si elle est déjà là.
+  enAttente() {
+    this.etat.innerHTML = '<span>en attente (les films se calculent l\'un après l\'autre)</span>';
+  }
+
+  // Le calcul de cette vue commence : la barre de progression, sans effacer l'image fixe.
+  debute() {
+    this.etat.innerHTML = '<progress max="1" value="0"></progress><span>calcul…</span>';
+  }
+
   // Vue non calculée (mot hors des limites de cette vue) : un message dans le cadre, rien n'est lancé.
   indisponible(lignes) {
     this.arrete();
@@ -623,7 +633,7 @@ const SCHEMAS = {
   tresse: ['Diagramme de tresse', 'Un croisement σᵢ et son inverse σᵢ⁻¹, puis l\'exemple σ₁σ₂⁻¹ lu de haut en bas.'],
   fn: ['Action sur le groupe libre', 'Les lacets x₁ et x₂ avant et après σ₁ : x₁ ↦ x₁x₂x₁⁻¹ et x₂ ↦ x₁.'],
   diagramme: ['Diagramme de courbes', 'Un point fixe à gauche ; les arcs sont les segments de l\'axe, que le demi-tour de deux trous emporte. La case « lignes de construction » trace le maillage en gris.'],
-  lacets: ['Lacets conformes', 'Des demi-cercles du demi-plan et leurs images par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R. La case « lignes de construction » trace l\'axe et cette ligne brisée ; pendant le demi-tour, elles s\'estompent et le dessin passe par une triangulation mobile.'],
+  lacets: ['Lacets conformes', 'Le dessin est l\'image de demi-cercles du demi-plan par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R. Pendant le demi-tour, il passe par une triangulation mobile et se détend : les brins s\'arrondissent et s\'espacent. La case « lignes de construction » trace l\'axe et cette ligne brisée, qui s\'estompent pendant le demi-tour.'],
   triangulation: ['Triangulation mobile', 'Un maillage et des points sur ses arêtes ; quand les trous tournent, les brins suivent et se tendent. La case « lignes de construction » trace le maillage en gris.'],
   rubans: ['Rubans', 'Un ruban par trou voyageur, du trou fixe (la queue) au trou voyageur ; après le demi-tour, les rubans s\'enroulent.'],
 };
@@ -684,11 +694,13 @@ function ajouteAides() {
 
 // ---------------------------------------------------------------- la page
 
+// Les quatre vues principales, dans l'ordre de l'affichage (deux par ligne) et du calcul : les films se calculent l'un après l'autre
+// (chacun se répartit déjà sur tous les cœurs : voir lanceCalculs).
 const MODES = [
-  { id: 'diagramme', titre: 'Diagramme de courbes', schema: 'diagramme' },
   { id: 'conforme', titre: 'Action sur le groupe libre et ses lacets', schema: 'lacets', limite: true },
-  { id: 'triangulation', titre: 'Action sur le groupe libre et sa triangulation', schema: 'triangulation', limite: true },
+  { id: 'diagramme', titre: 'Diagramme de courbes', schema: 'diagramme' },
   { id: 'rubans', titre: 'Action sur le groupe libre et ses rubans', schema: 'rubans' },
+  { id: 'triangulation', titre: 'Action sur le groupe libre et sa triangulation', schema: 'triangulation', limite: true },
 ];
 
 let lecteurs = [];
@@ -708,40 +720,74 @@ function arreteTravailleurs() {
 const MODE_DE_CALCUL = { conforme: 'conforme_detendu', triangulation: 'triangulation_detendu', diagramme: 'diagramme_detendu' };
 
 // Un Web Worker pour un mode et un lecteur ; rend le worker (ou null si le navigateur refuse, par exemple en file://).
-function demarreTravailleur(mode, mot, lecteur) {
+// `suite` est appelée une fois, quand le film est fini (ou que le calcul a échoué) : c'est elle qui lance la vue suivante.
+function demarreTravailleur(mode, mot, lecteur, suite) {
   let w;
+  let finie = false;
+  const termine = () => { if (!finie) { finie = true; if (suite) suite(); } };
   try {
     w = new Worker('travail.js');
   } catch (e) {
     lecteur.vide('Ouvre la page par un serveur (python -m http.server dans web/), pas en file://.');
     return null;
   }
-  w.onerror = () => lecteur.vide('le calcul a échoué (ardoise_lib.js introuvable ? voir construit.sh)');
+  w.onerror = () => { lecteur.vide('le calcul a échoué (ardoise_lib.js introuvable ? voir construit.sh)'); termine(); };
   w.onmessage = (e) => {
     const d = e.data;
     if (d.type === 'statique') lecteur.recoitFixe(d.image);
     else if (d.type === 'image') lecteur.recoitImage(d.image, d.k, d.total);
-    else if (d.type === 'fini') lecteur.fini(d.message, d.erreur);
+    else if (d.type === 'fini') { lecteur.fini(d.message, d.erreur); w.terminate(); termine(); }   // le worker a fini : il libère ses auxiliaires
   };
   w.postMessage({ mode: MODE_DE_CALCUL[mode] || mode, mot });
   return w;
 }
 
+let generationCalculs = 0;   // un nouveau mot abandonne la file de calcul en cours
+
+// L'image fixe d'une vue qui attend : un petit worker ne la calcule que pour l'afficher tout de suite (le film arrive à son tour).
+function demarreFixe(mode, mot, lecteur) {
+  let w;
+  try { w = new Worker('travail.js'); } catch (e) { return null; }
+  w.onmessage = (e) => {
+    if (e.data.type === 'statique') lecteur.recoitFixe(e.data.image);
+    else if (e.data.type === 'fixe-fini') w.terminate();
+  };
+  w.postMessage({ type: 'fixe', mode: MODE_DE_CALCUL[mode] || mode, mot });
+  return w;
+}
+
+// Les vues se calculent l'une après l'autre, dans l'ordre de MODES : chaque film occupe déjà tous les cœurs (travail.js répartit
+// ses lettres et sa détente sur des workers auxiliaires), et quatre films à la fois se gêneraient. Les vues qui attendent le disent.
 function lanceCalculs(mot) {
   arreteTravailleurs();
+  const generation = ++generationCalculs;
   lecteurs.forEach((l) => l.recommence());
   const brins = nbBrins(mot), lettres = mot.length;
   const trop = [];
   if (brins > MAX_BRINS_CONFORME) trop.push(`${brins} brins (limite : ${MAX_BRINS_CONFORME})`);
   if (lettres > MAX_LETTRES_CONFORME) trop.push(`${lettres} lettres (limite : ${MAX_LETTRES_CONFORME})`);
+  const file = [];
   MODES.forEach((m, j) => {
     if (m.limite && trop.length) {   // les vues « lacets » et « triangulation » sont limitées : on le dit au lieu de lancer un calcul trop long
       lecteurs[j].indisponible([`Ce mot a ${trop.join(' et ')} : trop pour cette vue.`, 'Les autres vues sont calculées.']);
       return;
     }
-    const w = demarreTravailleur(m.id, mot, lecteurs[j]);
+    file.push(j);
+  });
+  file.slice(1).forEach((j) => {
+    lecteurs[j].enAttente();
+    const w = demarreFixe(MODES[j].id, mot, lecteurs[j]);
     if (w) travailleurs.push(w);
   });
+  const suivante = () => {
+    if (generation !== generationCalculs) return;   // le mot a changé entre-temps
+    const j = file.shift();
+    if (j === undefined) return;
+    lecteurs[j].debute();
+    const w = demarreTravailleur(MODES[j].id, mot, lecteurs[j], suivante);
+    if (w) travailleurs.push(w); else suivante();
+  };
+  suivante();
 }
 
 const LIBRES = [
