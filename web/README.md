@@ -5,8 +5,10 @@ Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse 
 1. le mot en notation mathématique, tel qu'il est écrit (MathML) ;
 2. le diagramme de tresse classique, de haut en bas ;
 3. l'action de la tresse sur le groupe libre F_n (l'image de chaque x_i) ;
-4. les méandres en quatre modes (diagramme de courbes, lacets conformes, lacets sur la triangulation mobile, rubans) : d'abord une image fixe, puis le
-   film, calculé en tâche de fond par un Web Worker par mode, qui la remplace ;
+4. les méandres en quatre modes, dans l'ordre lacets conformes, diagramme de courbes, rubans, lacets sur la triangulation mobile : d'abord
+   une image fixe, puis le film, calculé en tâche de fond par un Web Worker qui la remplace. Les quatre films se calculent **l'un
+   après l'autre** dans cet ordre (chacun occupe déjà tous les cœurs : `lanceCalculs` dans `ardoise.js`) ; les vues qui attendent
+   montrent leur image fixe, calculée tout de suite par un petit worker (message `fixe`) ;
 5. « Un peu de poésie » : l'escargot et le premier bouquet (films sans mot de tresse, lancés une fois au chargement).
 
 Le calcul est celui de `ocaml/lib/`, compilé en JavaScript par js_of_ocaml (`ocaml/web/ardoise_web.ml` est le pont) ; un
