@@ -47,6 +47,13 @@ s'approche pas d'un trou, retouche refaite sans fusion si une corde a coupé un 
 est lent sous JS). Réglages de la triangulation (`ardoise_web.ml`, `detend`) : écart du film, rayon des trous égal à l'écart,
 répulsion 4, 150 itérations. Vérifié sur les deux tresses d'essai, triangulation et lacets conformes détendus : 0 croisement, 0 trou
 traversé (nombres d'enroulement de chaque lacet autour de chaque trou, avant et après), 0 image douteuse.
+Vitesse de la détente (2026-11-22) : les garde-fous coûtaient surtout l'anti-croisement, qui testait toutes les paires de points proches à
+chaque itération. Un point ne bougeant que de `pas_max` par itération, deux segments ne peuvent se croiser avant la prochaine recherche
+(toutes les 8 itérations) que s'ils sont à moins de 16 `pas_max` + 1 l'un de l'autre : on dresse cette liste de **segments candidats**,
+par une grille sur les milieux des segments (chaque paire n'y est vue qu'une fois, sans table de hachage), et l'anti-croisement ne teste
+qu'eux ; la répulsion entre brins n'a plus que les paires à moins de `ecart + 16 pas_max`. Mêmes décisions qu'avant (le test contre le
+Python, qui teste toutes les paires, passe à 1e-6) ; image 769 de la triangulation de la chargée : 24 s → 3,6 s ; image 264 des lacets :
+3,9 s → 1,5 s. Pas de `Float.hypot` ni de `**` dans les boucles chaudes sous js_of_ocaml (lents), pas d'allocation de listes par paire.
 La dilatation de départ laisse en place les bouts des courbes (2026-11-22, v1.4) : le diagramme de courbes est détendu lui aussi,
 ses arcs finissant sur un trou ou un point fixe ; vérifié (0 croisement, 0 trou ni point fixe traversé : l'arc d'origine suivi de
 l'arc détendu à l'envers n'entoure aucun obstacle).

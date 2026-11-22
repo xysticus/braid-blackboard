@@ -168,31 +168,15 @@ let paires_proches xs ys lacet indice rayon ecart_indices =
 
 let clip a b v = Float.min b (Float.max a v)
 
-(* Deux segments de brins (s : points s, s + 1) se croisent-ils ? Parmi les segments voisins des paires proches (pi, pj), hors des
-   12 px autour du clou (les brins s'y rejoignent) ; [existe s] : le segment s est dans un brin. *)
-let croisement_existe xs ys existe pi pj (clou : point) pas =
-  let n = Array.length xs in
-  let loin i = Float.sqrt (((xs.(i) -. clou.x) ** 2.) +. ((ys.(i) -. clou.y) ** 2.)) > 12. in
-  let teste sa sb =
-    sa >= 0 && sb >= 0 && sa < n - 1 && sb < n - 1 && existe.(sa) && existe.(sb) && abs (sa - sb) > 1
-    && loin sa && loin (sa + 1) && loin sb && loin (sb + 1)
-    &&
-    let d1x = xs.(sa + 1) -. xs.(sa) and d1y = ys.(sa + 1) -. ys.(sa) and d2x = xs.(sb + 1) -. xs.(sb) and d2y = ys.(sb + 1) -. ys.(sb) in
-    let den = (d1x *. d2y) -. (d1y *. d2x) in
-    den <> 0.
-    &&
-    let wx = xs.(sb) -. xs.(sa) and wy = ys.(sb) -. ys.(sa) in
-    let t = ((wx *. d2y) -. (wy *. d2x)) /. den and u = ((wx *. d1y) -. (wy *. d1x)) /. den in
-    t >= 0. && t <= 1. && u >= 0. && u <= 1.
-  in
-  let trouve = ref false and q = ref 0 in
-  while (not !trouve) && !q < Array.length pi do
-    let i = pi.(!q) and j = pj.(!q) in
-    if Float.sqrt (((xs.(i) -. xs.(j)) ** 2.) +. ((ys.(i) -. ys.(j)) ** 2.)) < 4. *. pas then
-      List.iter (fun (sa, sb) -> if teste sa sb then trouve := true) [ (i - 1, j - 1); (i, j - 1); (i - 1, j); (i, j) ];
-    incr q
-  done;
-  !trouve
+(* Les segments sa et sb (points sa, sa + 1 et sb, sb + 1) se croisent-ils ? *)
+let segments_se_croisent (xs : float array) (ys : float array) sa sb =
+  let d1x = xs.(sa + 1) -. xs.(sa) and d1y = ys.(sa + 1) -. ys.(sa) and d2x = xs.(sb + 1) -. xs.(sb) and d2y = ys.(sb + 1) -. ys.(sb) in
+  let den = (d1x *. d2y) -. (d1y *. d2x) in
+  den <> 0.
+  &&
+  let wx = xs.(sb) -. xs.(sa) and wy = ys.(sb) -. ys.(sa) in
+  let t = ((wx *. d2y) -. (wy *. d2x)) /. den and u = ((wx *. d1y) -. (wy *. d1x)) /. den in
+  t >= 0. && t <= 1. && u >= 0. && u <= 1.
 
 (* Longueur d'un vecteur : sqrt plutôt que Float.hypot, que js_of_ocaml traduit par Math.hypot, très lent. *)
 let longueur dx dy = Float.sqrt ((dx *. dx) +. (dy *. dy))
@@ -235,21 +219,66 @@ let detend ?(reglages = defaut) (lignes : point array list) (trous : point array
     let lignes = List.map (fun l -> Array.mapi (fun i p -> if i = 0 || i = Array.length l - 1 then p else dilate p) l) lignes in
     installe (List.map (fun l -> reechantillonne r.pas (Array.map (fun p -> p.x) l) (Array.map (fun p -> p.y) l)) lignes);
     let ecart_indices = int_of_float (Float.ceil (2.5 *. r.ecart /. r.pas)) + 2 in
-    let pi = ref [||] and pj = ref [||] in
-    let cherche () =
-      (* les paires sont cherchées toutes les 8 itérations : dans l'intervalle, deux points se rapprochent d'au plus 16 pas_max ;
-         on les cherche donc jusqu'à 1,6 ecart + 16 pas_max, sinon deux brins pourraient passer sous l'écart sans se repousser *)
-      let a, b = paires_proches !xs !ys !lacet !indice ((1.6 *. r.ecart) +. (16. *. r.pas_max)) ecart_indices in
-      pi := a;
-      pj := b
-    in
+    (* Deux listes, refaites toutes les 8 itérations (dans l'intervalle, deux points se rapprochent d'au plus 16 pas_max, un point
+       ne bougeant que de pas_max par itération) :
+       - rep : les paires de points à moins de ecart + 16 pas_max, que la répulsion entre brins parcourt ;
+       - cand : les paires de segments (sa, sb) qui peuvent se croiser d'ici la prochaine recherche, c'est-à-dire à moins de
+         16 pas_max + 1 l'un de l'autre (un croisement exige une distance nulle) ; l'anti-croisement ne teste que celles-là.
+       Deux tels segments (de longueur sous 2,2 pas) ont un bout de l'un à moins de 16 pas_max + 1 + 2,2 pas de l'autre : ils sont
+       dans les paires de points cherchées jusqu'à cette distance. *)
+    let rep_i = ref [||] and rep_j = ref [||] and cand_a = ref [||] and cand_b = ref [||] in
     let nb_brins = List.length lignes in
+    let cherche () =
+      let marge_mvt = 16. *. r.pas_max in
+      let xs_ = !xs and ys_ = !ys and bo = !bornes in
+      let n = Array.length xs_ in
+      (* les paires de répulsion : points à moins de ecart + 16 pas_max *)
+      let a, b = paires_proches xs_ ys_ !lacet !indice (r.ecart +. marge_mvt) ecart_indices in
+      rep_i := a;
+      rep_j := b;
+      (* les paires de segments candidates au croisement : par une grille sur les milieux des segments (chaque paire n'y est vue
+         qu'une fois). Deux segments à moins de lim_c ont leurs milieux à moins de lim_c + lmax (lmax : le plus long segment). *)
+      let existe = Array.make n true in
+      for k = 0 to nb_brins - 1 do existe.(bo.(k + 1) - 1) <- false done;
+      let lim_c = marge_mvt +. 1. in
+      let lmax = ref 0. in
+      for i = 0 to n - 2 do
+        if existe.(i) then lmax := Float.max !lmax (longueur (xs_.(i + 1) -. xs_.(i)) (ys_.(i + 1) -. ys_.(i)))
+      done;
+      let xm = Array.init n (fun i -> if i < n - 1 then (xs_.(i) +. xs_.(i + 1)) /. 2. else xs_.(i)) in
+      let ym = Array.init n (fun i -> if i < n - 1 then (ys_.(i) +. ys_.(i + 1)) /. 2. else ys_.(i)) in
+      let seg_proches sa sb =
+        (* distance de deux segments qui ne se croisent pas : le plus petit des quatre bouts à l'autre segment ; un croisement compte aussi *)
+        let ax = xs_.(sa) and ay = ys_.(sa) and bx = xs_.(sa + 1) and by = ys_.(sa + 1) in
+        let cx = xs_.(sb) and cy = ys_.(sb) and dx = xs_.(sb + 1) and dy = ys_.(sb + 1) in
+        (* d'abord les boîtes englobantes, élargies de lim_c : les segments éloignés sont écartés sans calcul de distance *)
+        (Float.min ax bx -. lim_c < Float.max cx dx && Float.min cx dx -. lim_c < Float.max ax bx
+         && Float.min ay by -. lim_c < Float.max cy dy && Float.min cy dy -. lim_c < Float.max ay by
+         && Float.min
+              (Float.min (distance_segment ax ay bx by cx cy) (distance_segment ax ay bx by dx dy))
+              (Float.min (distance_segment cx cy dx dy ax ay) (distance_segment cx cy dx dy bx by))
+            < lim_c)
+        || segments_se_croisent xs_ ys_ sa sb
+      in
+      let sa_s, sb_s = paires_proches xm ym !lacet !indice (lim_c +. !lmax +. 0.01) 2 in
+      let ca = pile () and cb = pile () in
+      Array.iteri
+        (fun q sa ->
+          let sb = sb_s.(q) in
+          if existe.(sa) && existe.(sb) && seg_proches sa sb then begin empile ca sa; empile cb sb end)
+        sa_s;
+      cand_a := Array.sub ca.donnees 0 ca.taille;
+      cand_b := Array.sub cb.donnees 0 cb.taille
+    in
     for it = 0 to r.iterations - 1 do
       if it mod 8 = 0 then cherche ();
       let xs_ = !xs and ys_ = !ys and b = !bornes in
       let n = Array.length xs_ in
       let fx = Array.make n 0. and fy = Array.make n 0. in
       let au_clou = Array.init n (fun i -> longueur (xs_.(i) -. clou.x) (ys_.(i) -. clou.y)) in
+      let loin_clou = Array.map (fun d -> d > 12.) au_clou in
+      let existe = Array.make n true in   (* le segment s (points s et s + 1) existe : s n'est pas le dernier point d'un brin *)
+      for k = 0 to nb_brins - 1 do existe.(b.(k + 1) - 1) <- false done;
       (* la tension ; les bouts de chaque brin (au clou) sont leurs propres voisins *)
       for k = 0 to nb_brins - 1 do
         for i = b.(k) to b.(k + 1) - 1 do
@@ -259,7 +288,7 @@ let detend ?(reglages = defaut) (lignes : point array list) (trous : point array
         done
       done;
       (* la répulsion entre brins, éteinte près du clou *)
-      let ai = !pi and aj = !pj in
+      let ai = !rep_i and aj = !rep_j in
       for q = 0 to Array.length ai - 1 do
         let i = ai.(q) and j = aj.(q) in
         let dx = xs_.(i) -. xs_.(j) and dy = ys_.(i) -. ys_.(j) in
@@ -344,51 +373,33 @@ let detend ?(reglages = defaut) (lignes : point array list) (trous : point array
         done
       done;
       (* pas de croisement entre brins : si un segment en croise un autre (d'un autre brin, ou un passage éloigné du même), les points
-         des deux reprennent leur position d'avant ; le dessin de départ n'en a pas, il n'en aura donc jamais. Les segments qui se
-         croisent ont des bouts à moins d'un pas et demi : ils sont dans les paires proches. *)
-      let existe = Array.make n false in
-      for k = 0 to nb_brins - 1 do
-        for i = b.(k) to b.(k + 1) - 2 do existe.(i) <- true done
-      done;
-      let loin_clou = Array.init n (fun i -> longueur (xs_.(i) -. clou.x) (ys_.(i) -. clou.y) > 12.) in
-      let loin i = loin_clou.(i) in
-      let teste sa sb =
-        sa >= 0 && sb >= 0 && sa < n - 1 && sb < n - 1 && existe.(sa) && existe.(sb) && abs (sa - sb) > 1
-        && loin sa && loin (sa + 1) && loin sb && loin (sb + 1)
-        &&
-        let d1x = xs_.(sa + 1) -. xs_.(sa) and d1y = ys_.(sa + 1) -. ys_.(sa) in
-        let d2x = xs_.(sb + 1) -. xs_.(sb) and d2y = ys_.(sb + 1) -. ys_.(sb) in
-        let den = (d1x *. d2y) -. (d1y *. d2x) in
-        den <> 0.
-        &&
-        let wx = xs_.(sb) -. xs_.(sa) and wy = ys_.(sb) -. ys_.(sa) in
-        let t = ((wx *. d2y) -. (wy *. d2x)) /. den and u = ((wx *. d1y) -. (wy *. d1x)) /. den in
-        t >= 0. && t <= 1. && u >= 0. && u <= 1.
-      in
-      let ai = !pi and aj = !pj in
+         des deux reprennent leur position d'avant ; le dessin de départ n'en a pas, il n'en aura donc jamais. Seules les paires de
+         segments candidates (cand, refaites toutes les 8 itérations) sont testées : les autres sont trop loin pour se croiser avant la
+         prochaine recherche. *)
+      let ca = !cand_a and cb = !cand_b in
       let encore = ref true and passes = ref 0 in
       while !encore && !passes < 20 do
         incr passes;
         let retour = Array.make n false in
-        for q = 0 to Array.length ai - 1 do
-          let i = ai.(q) and j = aj.(q) in
-          (* deux segments de longueur sous 2 pas qui se croisent ont deux bouts à moins de 2 pas *)
-          if longueur (xs_.(i) -. xs_.(j)) (ys_.(i) -. ys_.(j)) < 4. *. r.pas then
-          List.iter
-            (fun (sa, sb) ->
-              if teste sa sb then begin
-                retour.(sa) <- true; retour.(sa + 1) <- true; retour.(sb) <- true; retour.(sb + 1) <- true
-              end)
-            [ (i - 1, j - 1); (i, j - 1); (i - 1, j); (i, j) ]
+        let trouve = ref false in
+        let teste sa sb =
+          if loin_clou.(sa) && loin_clou.(sa + 1) && loin_clou.(sb) && loin_clou.(sb + 1) && segments_se_croisent xs_ ys_ sa sb then begin
+            retour.(sa) <- true; retour.(sa + 1) <- true; retour.(sb) <- true; retour.(sb + 1) <- true;
+            trouve := true
+          end
+        in
+        for q = 0 to Array.length ca - 1 do
+          teste ca.(q) cb.(q)
         done;
         encore := false;
-        for i = 0 to n - 1 do
-          if retour.(i) && (xs_.(i) <> avx.(i) || ys_.(i) <> avy.(i)) then begin
-            xs_.(i) <- avx.(i);
-            ys_.(i) <- avy.(i);
-            encore := true
-          end
-        done
+        if !trouve then
+          for i = 0 to n - 1 do
+            if retour.(i) && (xs_.(i) <> avx.(i) || ys_.(i) <> avy.(i)) then begin
+              xs_.(i) <- avx.(i);
+              ys_.(i) <- avy.(i);
+              encore := true
+            end
+          done
       done;
       (* rééchantillonner pour garder des points réguliers *)
       (* toutes les 25 itérations, et dès qu'un segment dépasse 2 pas (les croisements sont bloqués plus loin, mais leur détection
@@ -408,13 +419,17 @@ let detend ?(reglages = defaut) (lignes : point array list) (trous : point array
           cherche ()
         in
         retouche_tout true;
-        (* une fusion a pu faire couper un brin voisin par sa corde : on refait alors la retouche sans fusion *)
-        let existe = Array.make (Array.length !xs) false in
-        let b2 = !bornes in
-        for k = 0 to nb_brins - 1 do
-          for i = b2.(k) to b2.(k + 1) - 2 do existe.(i) <- true done
+        (* une fusion a pu faire couper un brin voisin par sa corde : on refait alors la retouche sans fusion ; un croisement est
+           forcément parmi les paires candidates *)
+        let croise = ref false and q = ref 0 in
+        let xs_ = !xs and ys_ = !ys and ca = !cand_a and cb = !cand_b in
+        while (not !croise) && !q < Array.length ca do
+          let sa = ca.(!q) and sb = cb.(!q) in
+          let loin i = longueur (xs_.(i) -. clou.x) (ys_.(i) -. clou.y) > 12. in
+          if loin sa && loin (sa + 1) && loin sb && loin (sb + 1) && segments_se_croisent xs_ ys_ sa sb then croise := true;
+          incr q
         done;
-        if croisement_existe !xs !ys existe !pi !pj clou r.pas then retouche_tout false
+        if !croise then retouche_tout false
       end
     done;
     let b = !bornes in
