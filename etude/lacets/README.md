@@ -54,7 +54,8 @@ ECART=6 RAYON_TROU=12 …`. La détente est portée en OCaml (`ocaml/lib/detente
 
 ## Le film de la triangulation
 
-Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page) et la triangulation (vue 3, `?triangulation`). « détendu »
-s'applique aux deux (pour la triangulation, sur toutes les images, avec l'écart de ses brins) ; les cases qui ne concernent que les
+Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page), la triangulation (vue 3, `?triangulation`) et le
+diagramme de courbes (vue 1, `?diagramme`, points fixes en gris). « détendu »
+s'applique aux trois (pour la triangulation et le diagramme, sur toutes les images, avec l'écart de leurs brins) ; les cases qui ne concernent que les
 lacets conformes (fantômes, maillage, sans maillage, satellites, projection, arcs libres, régions) sont grisées. Le banc crée son
 worker avec `travail.js?v=<heure>` : il joue toujours les scripts du disque, pas ceux du cache du navigateur.

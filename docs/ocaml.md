@@ -47,6 +47,9 @@ s'approche pas d'un trou, retouche refaite sans fusion si une corde a coupé un 
 est lent sous JS). Réglages de la triangulation (`ardoise_web.ml`, `detend`) : écart du film, rayon des trous égal à l'écart,
 répulsion 4, 150 itérations. Vérifié sur les deux tresses d'essai, triangulation et lacets conformes détendus : 0 croisement, 0 trou
 traversé (nombres d'enroulement de chaque lacet autour de chaque trou, avant et après), 0 image douteuse.
+La dilatation de départ laisse en place les bouts des courbes (2026-11-22, v1.4) : le diagramme de courbes est détendu lui aussi,
+ses arcs finissant sur un trou ou un point fixe ; vérifié (0 croisement, 0 trou ni point fixe traversé : l'arc d'origine suivi de
+l'arc détendu à l'envers n'entoure aucun obstacle).
 Étape 8 faite : le premier bouquet (`lib/bouquet.ml` : la classe `Pousse` de `python/Bouquet.py`, `test/test_bouquet.ml`,
 concordant à 1e-6 près ; 0,8 s au lieu de 30 s). L'escargot et le bouquet sont dans la page web (section « Un peu de
 poésie »), dessinés en canvas par `web/ardoise.js` (le dessin Cairo n'est pas traduit pour le bouquet).

@@ -30,3 +30,9 @@ ses brins (`ardoise.detend`, 5ᵉ argument), répartie sur les workers auxiliair
 minute pour (σ₁σ₂⁻¹)³, plusieurs minutes pour la tresse chargée ; l'image fixe détendue s'affiche dès le début. Les scripts des workers
 ne portent pas de numéro de version : après une mise à jour, recharger en navigation privée ou vider le cache (le banc d'essai, lui,
 ajoute `?v=` à `travail.js`, qui le transmet à la bibliothèque et à ses auxiliaires).
+
+**Le diagramme de courbes détendu (2026-11-22, tag v1.4).** La vue « diagramme de courbes » demande `diagramme_detendu` : même détente
+image par image que la triangulation (`filmDetenduParImages` dans `web/travail.js`), ses points fixes comptés comme des trous ; la
+dilatation de départ de la détente laisse les bouts des courbes en place (ceux des arcs sont sur un trou ou un point fixe). Rapide : peu
+de brins. Les rubans ne sont pas détendus : la page n'en reçoit que les bords (deux traits par ruban, que la détente écarterait l'un de
+l'autre) ; il faudrait détendre les arcs du centre en OCaml, puis reconstruire les rubans.
