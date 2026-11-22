@@ -93,6 +93,18 @@ les ouvre, un appui ailleurs, Échap ou un défilement les ferment (le survol n'
 Adaptation aux petits écrans (`ardoise.css`, deux seuils : 1000 px, une seule colonne ; 640 px, marges réduites, exemples sur deux colonnes,
 commandes de lecture plus grandes, infobulle en feuille collée en bas de l'écran) ; testée à 390 px de large.
 
+## Tresses mémorisées et personnalisées
+
+Les 12 exemples sont suivis des tresses de la personne (étude : `etude_tresses_personnalisees.md`), gardées dans le navigateur
+(`localStorage`, clé `ardoise.tresses`, version 1 ; tout accès est protégé par un `try/catch`, la page marche sans). Un mot tapé puis
+validé (Entrée ou sortie du champ) crée toujours une entrée ; un clic sur une carte ne fait que la sélectionner ; ⧉ duplique n'importe
+quelle carte ; ✕ efface une carte personnelle après confirmation en ligne. Chaque carte personnelle porte une note libre (100 signes) à la
+place de la légende. Les pastilles de la carte « Le mot » (une par brin, plus un carré pour le fond) changent les couleurs de l'entrée
+sélectionnée, sans jamais en créer une ; sur un exemple ou un mot non mémorisé, elles sont grisées (« Dupliquer pour la colorer »).
+Un avertissement ⚠ signale un brin trop proche du fond. 30 entrées au plus. « Exporter mes tresses » / « Importer… » : un fichier JSON
+(version 1), entièrement validé avant d'être pris (sinon refusé avec la raison), identifiants régénérés, doublons exacts sautés, jamais
+de HTML. Les couleurs ne demandent aucun recalcul : les films sont déjà des polylignes, que `dessineImage` redessine.
+
 ## Limites
 
 8 brins et 40 lettres au plus pour la page ; les films des lacets (conforme : de 0,4 à 2 s par lettre ; triangulation :

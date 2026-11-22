@@ -47,3 +47,7 @@ vues qui attendent affichent « en attente » et leur image fixe, calculée tout
 avec « No artifacts named "github-pages" were found for this workflow run » : c'est un incident de GitHub (l'archive du site, qu'on
 vient d'envoyer, est introuvable). Rien à corriger dans le dépôt : `gh run rerun <numéro> --failed` relance l'étape et elle réussit
 (vu deux fois). Le serveur personnel, lui, n'en dépend pas (`web/deploie.sh`).
+
+**Tresses personnalisées (2026-11-22).** Le bloc « les tresses mémorisées » de `web/ardoise.js` (mémoire, cartes, pastilles, export et
+import JSON) est décrit dans `web/README.md` ; décisions et raisons : `etude_tresses_personnalisees.md`. La palette et le fond sont
+des variables globales (`PALETTE`, `FOND`, `fondDe`) lues au dessin : changer une couleur redessine (`recolore`), sans calcul.

@@ -25,10 +25,16 @@ const MAX_LETTRES = 40;
 const MAX_BRINS_CONFORME = 6;     // les films des lacets (conforme et triangulation)
 const MAX_LETTRES_CONFORME = 14;
 
-// Une seule palette pour toutes les vues : le brin i du diagramme de tresse, le lacet image de x_i dans les trois films
+// Une seule palette pour toutes les vues : le brin i du diagramme de tresse, le lacet image de x_i dans les quatre films
 // et la ligne x_i ↦ … de l'action sur F_n ont la même couleur (les variables CSS --c0 … --c7 de ardoise.css, un peu
 // éclaircies en thème sombre, reprennent ces teintes pour le texte).
-const PALETTE = ['#d92626', '#1a9926', '#2640d9', '#bf9900', '#a626a6', '#0d9aa6', '#e6761a', '#6b4fbb'];
+const PALETTE_DEFAUT = ['#d92626', '#1a9926', '#2640d9', '#bf9900', '#a626a6', '#0d9aa6', '#e6761a', '#6b4fbb'];
+const FOND_DEFAUT = '#ffffff';
+// Les couleurs courantes : celles de la tresse mémorisée sélectionnée (voir « les tresses mémorisées »), sinon celles par défaut.
+// Le fond est celui des canvas du diagramme de tresse et des quatre méandres ; l'escargot et les iris gardent le leur.
+let PALETTE = PALETTE_DEFAUT.slice();
+let FOND = FOND_DEFAUT;
+const fondDe = (mode) => (mode === 'escargot' || mode === 'bouquet' ? '#fff' : FOND);
 
 // ---------------------------------------------------------------- lecture du mot
 
@@ -149,7 +155,7 @@ function dessineTresse(canvas, mot) {
   canvas.style.height = hauteur + 'px';
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = FOND;
   ctx.fillRect(0, 0, largeur, hauteur);
   ctx.lineCap = 'butt';
   const brin = Math.max(2.2, maille / 9), trou = maille / 3;
@@ -164,7 +170,7 @@ function dessineTresse(canvas, mot) {
       ctx.bezierCurveTo(x0, maille / 2, x1, maille / 2, x1, maille + d);
       ctx.stroke();
     };
-    trace(trou, '#fff', 0);      // le liseré blanc coupe ce qui passe dessous
+    trace(trou, FOND, 0);        // le liseré de la couleur du fond coupe ce qui passe dessous
     trace(brin, couleur, 1);
   };
 
@@ -417,7 +423,7 @@ function dessineImage(canvas, image, mode, vue = null, construction = false) {
   if (mode === 'bouquet') { dessineBouquet(canvas, image); return; }
   const ctx = canvas.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = FOND;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   if (vue) ctx.setTransform(vue.s, 0, 0, vue.s, vue.tx, vue.ty);
   ctx.lineCap = 'round';
@@ -429,7 +435,7 @@ function dessineImage(canvas, image, mode, vue = null, construction = false) {
       ctx.lineWidth = mode === 'triangulation' ? image.brin : 3.5;   // la triangulation : trait plus fin quand les brins sont serrés
       trace(ctx, p);
     } else if (mode === 'diagramme') {
-      ctx.strokeStyle = '#fff';           // liseré blanc : les brins voisins restent lisibles
+      ctx.strokeStyle = FOND;             // liseré de la couleur du fond : les brins voisins restent lisibles
       ctx.lineWidth = 0.85 * image.ecart;
       trace(ctx, p);
       ctx.strokeStyle = PALETTE[i % PALETTE.length];
@@ -481,8 +487,16 @@ class Lecteur {
   efface() {
     const ctx = this.canvas.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = fondDe(this.mode);
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  // Les couleurs ou le fond ont changé : on redessine ce qui est à l'écran (aucun calcul : les films sont des polylignes).
+  recolore() {
+    if (this.mode === 'escargot' || this.mode === 'bouquet') return;
+    if (this.images.length >= 2 && this.curseur) this.montre();
+    else if (this.fixe) dessineImage(this.canvas, this.fixe, this.mode, this.vue, this.construction);
+    else this.efface();
   }
 
   // Un nouveau mot : on repart de zéro.
@@ -822,9 +836,14 @@ function mise_a_jour(texte, { immediat } = {}) {
   document.body.classList.remove('mot-invalide');
   const mot = r.mot;
   const cle = mot.join(' ');
-  document.querySelectorAll('.exemple').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mot === cle)));
-  if (cle === motCourant) return;
+  const memorisee = entreeCourante();
+  if (memorisee && motEnTexte(memorisee.mot) !== cle) choisis(null);   // le mot n'est plus celui de la tresse mémorisée sélectionnée
+  const identique = cle === motCourant;
   motCourant = cle;
+  metsAJourSelection();
+  if (identique) return;
+  motEntiers = mot;
+  afficheCouleurs();
   try { history.replaceState(null, '', mot.length ? '#' + encodeURIComponent(cle) : location.pathname); } catch (e) { /* file:// */ }
   afficheMot(mot);
   etatLimites(mot);
@@ -873,20 +892,431 @@ function etatLimites(mot) {
     (hors ? ' <span class="attention">Les vues « lacets » et « triangulation » ne sont pas calculées pour ce mot.</span>' : '');
 }
 
+// ---------------------------------------------------------------- les tresses mémorisées
+
+// Les tresses que la personne a saisies, gardées dans le navigateur (localStorage), à la suite des tresses d'exemple : chacune a son
+// texte libre, ses couleurs (une par brin) et son fond. Voir etude_tresses_personnalisees.md.
+const CLE_MEMOIRE = 'ardoise.tresses';
+const MAX_TRESSES = 30, MAX_TEXTE = 100;
+const memoire = { courant: null, tresses: [], disponible: true };   // courant : l'id de l'entrée sélectionnée, ou null
+let motEntiers = [];          // le mot affiché
+let modifie = false;          // la personne a tapé dans le champ depuis la dernière validation
+
+const COULEUR_VALIDE = /^#[0-9a-fA-F]{6}$/;
+const couleursParDefaut = (n) => PALETTE_DEFAUT.slice(0, n);
+const motEnTexte = (mot) => mot.join(' ');
+const SOUS = '₀₁₂₃₄₅₆₇₈₉';
+const nomLettre = (k) => 'σ' + String(Math.abs(k)).replace(/\d/g, (c) => SOUS[Number(c)]) + (k < 0 ? '⁻¹' : '');
+const nomMot = (mot) => mot.map(nomLettre).join('');
+// Un espace sans chasse avant chaque σ : le nom d'une carte se coupe entre deux lettres, jamais au milieu d'une (σ₂⁻¹).
+const coupable = (nom) => nom.replace(/(?!^)σ/g, '\u200Bσ');
+
+// Une entrée lue (du navigateur ou d'un fichier) : { id, mot, texte, couleurs, fond } nettoyée, ou { erreur } avec la raison.
+function validerEntree(e) {
+  if (!e || typeof e !== 'object') return { erreur: 'ce n\'est pas une tresse' };
+  const mot = e.mot;
+  if (!Array.isArray(mot) || mot.length === 0 || mot.length > MAX_LETTRES) return { erreur: `le mot doit avoir de 1 à ${MAX_LETTRES} lettres` };
+  if (!mot.every((k) => Number.isInteger(k) && k !== 0 && Math.abs(k) <= MAX_BRINS - 1)) return { erreur: `le mot ne contient pas que des entiers non nuls de valeur absolue au plus ${MAX_BRINS - 1}` };
+  const n = nbBrins(mot);
+  if (!Array.isArray(e.couleurs) || e.couleurs.length !== n || !e.couleurs.every((c) => typeof c === 'string' && COULEUR_VALIDE.test(c)))
+    return { erreur: `il faut ${n} couleurs (#rrggbb), une par brin` };
+  if (typeof e.fond !== 'string' || !COULEUR_VALIDE.test(e.fond)) return { erreur: 'le fond doit être une couleur (#rrggbb)' };
+  const texte = e.texte === undefined || e.texte === null ? '' : e.texte;
+  if (typeof texte !== 'string') return { erreur: 'le texte doit être une chaîne' };
+  return { id: typeof e.id === 'string' ? e.id : null, mot: mot.slice(), texte: texte.slice(0, MAX_TEXTE), couleurs: e.couleurs.map((c) => c.toLowerCase()), fond: e.fond.toLowerCase() };
+}
+
+function nouvelId() {
+  let id;
+  do { id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); } while (memoire.tresses.some((e) => e.id === id));
+  return id;
+}
+
+function chargeMemoire() {
+  try {
+    const brut = localStorage.getItem(CLE_MEMOIRE);
+    if (!brut) return;
+    const j = JSON.parse(brut);
+    if (!j || j.version !== 1 || !Array.isArray(j.tresses)) return;
+    for (const e of j.tresses) {
+      const v = validerEntree(e);
+      if (v.erreur || !v.id || memoire.tresses.length >= MAX_TRESSES || memoire.tresses.some((x) => x.id === v.id)) continue;
+      memoire.tresses.push(v);
+    }
+    memoire.courant = typeof j.courant === 'string' && memoire.tresses.some((e) => e.id === j.courant) ? j.courant : null;
+  } catch (e) { memoire.disponible = false; }
+}
+
+function ecrisMemoire() {
+  try {
+    localStorage.setItem(CLE_MEMOIRE, JSON.stringify({ version: 1, courant: memoire.courant, tresses: memoire.tresses }));
+    return true;
+  } catch (e) {
+    if (memoire.disponible) {
+      memoire.disponible = false;
+      annonce('La mémoire du navigateur n\'est pas disponible : tes tresses ne seront pas gardées quand tu fermeras la page.');
+    }
+    return false;
+  }
+}
+
+let minuterieAnnonce = null;
+function annonce(texte) {
+  const zone = document.getElementById('memoire-info');
+  if (!zone) return;
+  zone.textContent = texte;
+  clearTimeout(minuterieAnnonce);
+  if (texte) minuterieAnnonce = setTimeout(() => { zone.textContent = ''; }, 9000);
+}
+
+const entreeCourante = () => memoire.tresses.find((e) => e.id === memoire.courant) || null;
+
+// Les couleurs courantes deviennent celles de l'entrée (null : les couleurs par défaut) ; les variables CSS --c0 … --c7 portent les
+// couleurs du texte de l'action sur F_n (posées en ligne seulement quand elles diffèrent du défaut : le thème sombre garde les siennes).
+function appliqueCouleurs(entree) {
+  PALETTE = PALETTE_DEFAUT.map((c, i) => (entree && entree.couleurs[i] ? entree.couleurs[i] : c));
+  FOND = entree ? entree.fond : FOND_DEFAUT;
+  recolore();
+}
+
+function appliqueCss() {
+  const racine = document.documentElement.style;
+  PALETTE.forEach((c, i) => {
+    if (c.toLowerCase() !== PALETTE_DEFAUT[i]) racine.setProperty('--c' + i, c); else racine.removeProperty('--c' + i);
+  });
+}
+
+// Redessine tout ce qui dépend des couleurs ou du fond : rien à recalculer.
+function recolore() {
+  appliqueCss();
+  const classique = document.getElementById('canvas-classique');
+  if (classique && motEntiers.length) dessineTresse(classique, motEntiers);
+  lecteurs.forEach((l) => l.recolore());
+}
+
+// La tresse sélectionnée change (null : un exemple ou un mot qui n'est pas mémorisé).
+function choisis(entree) {
+  memoire.courant = entree ? entree.id : null;
+  appliqueCouleurs(entree);
+  ecrisMemoire();
+  metsAJourSelection();
+  afficheCouleurs();
+}
+
+function metsAJourSelection() {
+  document.querySelectorAll('#exemples .exemple').forEach((carte) => {
+    const choisie = carte.classList.contains('perso') ? carte.dataset.id === memoire.courant : memoire.courant === null && carte.dataset.mot === (motCourant || '');
+    carte.classList.toggle('choisie', choisie);
+    carte.querySelector('.principal').setAttribute('aria-pressed', String(choisie));
+  });
+}
+
+// Une nouvelle entrée en fin de liste ; null (avec un message) quand la liste est pleine.
+function creeEntree({ mot, texte = '', couleurs, fond }) {
+  if (memoire.tresses.length >= MAX_TRESSES) {
+    annonce(`${MAX_TRESSES} tresses mémorisées au plus : efface-en une avant d'en garder une autre.`);
+    return null;
+  }
+  const v = validerEntree({ mot, texte, couleurs: couleurs || couleursParDefaut(nbBrins(mot)), fond: fond || FOND_DEFAUT });
+  if (v.erreur) return null;
+  v.id = nouvelId();
+  memoire.tresses.push(v);
+  return v;
+}
+
+function selectionneMot(mot, entree) {
+  const champ = document.getElementById('mot');
+  champ.value = motEnTexte(mot);
+  modifie = false;
+  choisis(entree);
+  mise_a_jour(champ.value, { immediat: true });
+}
+
+// ---- les cartes (les exemples fournis, puis les tresses mémorisées)
+
+function bouton(classe, texte, etiquette, titre) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'outil ' + classe;
+  b.textContent = texte;
+  b.setAttribute('aria-label', etiquette);
+  b.title = titre || etiquette;
+  return b;
+}
+
+function ajouteCarte(entree) {
+  const carte = cartePerso(entree);
+  document.getElementById('exemples').appendChild(carte);
+  return carte;
+}
+
+function carteFournie(e) {
+  const carte = document.createElement('div');
+  carte.className = 'exemple';
+  carte.dataset.mot = motEnTexte(e.mot);
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'principal';
+  b.title = motEnTexte(e.mot);
+  b.innerHTML = `<span class="nom">${coupable(e.nom)}</span><span class="legende">${e.legende}</span>`;
+  b.onclick = () => selectionneMot(e.mot, null);
+  const outils = document.createElement('span');
+  outils.className = 'outils';
+  const d = bouton('dupliquer', '⧉', `Dupliquer la tresse ${e.nom} dans mes tresses`, 'Dupliquer dans mes tresses');
+  d.onclick = () => dupliqueEntree({ mot: e.mot, texte: e.legende, couleurs: null, fond: null });
+  outils.appendChild(d);
+  carte.append(b, outils);
+  return carte;
+}
+
+function apercuCouleurs(entree) {
+  const a = document.createElement('span');
+  a.className = 'apercu';
+  a.setAttribute('aria-hidden', 'true');
+  entree.couleurs.forEach((c) => { const p = document.createElement('i'); p.style.background = c; a.appendChild(p); });
+  const f = document.createElement('i');
+  f.className = 'carre';
+  f.style.background = entree.fond;
+  a.appendChild(f);
+  return a;
+}
+
+function cartePerso(entree) {
+  const carte = document.createElement('div');
+  carte.className = 'exemple perso';
+  carte.dataset.id = entree.id;
+  carte.dataset.mot = motEnTexte(entree.mot);
+  const nom = nomMot(entree.mot);
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'principal';
+  b.title = motEnTexte(entree.mot);
+  const span = document.createElement('span');
+  span.className = 'nom';
+  span.textContent = coupable(nom);
+  b.appendChild(span);
+  b.onclick = () => selectionneMot(entree.mot, entree);
+  const outils = document.createElement('span');
+  outils.className = 'outils';
+  carte.append(b, outils);
+  rendsOutils(carte, entree);
+  const texte = document.createElement('input');
+  texte.type = 'text';
+  texte.className = 'texte';
+  texte.maxLength = MAX_TEXTE;
+  texte.placeholder = 'ajouter une note';
+  texte.autocomplete = 'off';
+  texte.spellcheck = false;
+  texte.value = entree.texte;
+  texte.setAttribute('aria-label', `Note de la tresse ${nom}`);
+  texte.onchange = () => { entree.texte = texte.value.trim().slice(0, MAX_TEXTE); texte.value = entree.texte; ecrisMemoire(); };
+  texte.onkeydown = (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); texte.blur(); }
+    else if (ev.key === 'Escape') { texte.value = entree.texte; texte.blur(); }
+  };
+  carte.appendChild(texte);
+  carte.appendChild(apercuCouleurs(entree));
+  return carte;
+}
+
+// Les boutons ⧉ et ✕ d'une carte mémorisée.
+function rendsOutils(carte, entree) {
+  const outils = carte.querySelector('.outils');
+  outils.textContent = '';
+  const nom = nomMot(entree.mot);
+  const d = bouton('dupliquer', '⧉', `Dupliquer la tresse ${nom}`, 'Dupliquer');
+  d.onclick = () => dupliqueEntree(entree);
+  const x = bouton('effacer', '✕', `Effacer la tresse ${nom}`, 'Effacer');
+  x.onclick = () => demandeEffacement(carte, entree);
+  outils.append(d, x);
+}
+
+// L'effacement se confirme sur la carte même (« Effacer ? Oui Non »), le focus sur « Non » ; Échap annule.
+function demandeEffacement(carte, entree) {
+  const outils = carte.querySelector('.outils');
+  outils.textContent = '';
+  const question = document.createElement('span');
+  question.className = 'confirme';
+  question.setAttribute('role', 'alert');
+  question.textContent = 'Effacer ? ';
+  const oui = document.createElement('button');
+  oui.type = 'button'; oui.className = 'outil oui'; oui.textContent = 'Oui';
+  const non = document.createElement('button');
+  non.type = 'button'; non.className = 'outil non'; non.textContent = 'Non';
+  question.append(oui, non);
+  outils.appendChild(question);
+  non.focus();
+  const annule = () => { rendsOutils(carte, entree); const x = carte.querySelector('.effacer'); if (x) x.focus(); };
+  non.onclick = annule;
+  carte.onkeydown = (ev) => { if (ev.key === 'Escape' && carte.querySelector('.confirme')) { ev.preventDefault(); annule(); } };
+  oui.onclick = () => {
+    const i = memoire.tresses.indexOf(entree);
+    if (i < 0) return;
+    const etait = memoire.courant === entree.id;
+    const suivante = carte.nextElementSibling || carte.previousElementSibling;
+    memoire.tresses.splice(i, 1);
+    carte.remove();
+    if (etait) choisis(null); else ecrisMemoire();
+    annonce(`Tresse ${nomMot(entree.mot)} effacée.`);
+    const cible = suivante && suivante.querySelector('.principal');
+    (cible || document.getElementById('mot')).focus();
+  };
+}
+
+// Dupliquer : une copie en fin de liste (pour un exemple : sa légende comme texte, les couleurs par défaut), sélectionnée.
+function dupliqueEntree(source) {
+  const n = creeEntree({ mot: source.mot, texte: source.texte, couleurs: source.couleurs ? source.couleurs.slice() : null, fond: source.fond });
+  if (!n) return;
+  const carte = ajouteCarte(n);
+  selectionneMot(n.mot, n);
+  carte.scrollIntoView({ block: 'nearest' });
+  carte.querySelector('.principal').focus();
+  annonce(`Tresse ${nomMot(n.mot)} dupliquée dans tes tresses.`);
+}
+
+// Une saisie validée (Entrée, ou sortie du champ après avoir tapé) crée toujours une entrée, même si le mot existe déjà.
+function valideSaisie() {
+  if (!modifie) return;
+  modifie = false;
+  const champ = document.getElementById('mot');
+  const r = lisMot(champ.value);
+  if (r.erreur || r.mot.length === 0) return;
+  const n = creeEntree({ mot: r.mot });
+  if (!n) return;
+  ajouteCarte(n);
+  choisis(n);
+  mise_a_jour(champ.value, { immediat: true });
+  annonce(`Tresse ${nomMot(n.mot)} gardée dans tes tresses.`);
+}
+
+// ---- les pastilles de couleur (dans la carte « Le mot ») : une par brin, puis le carré du fond
+
+function luminance(couleur) {
+  const c = [1, 3, 5].map((i) => parseInt(couleur.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function contraste(a, b) {
+  const [x, y] = [luminance(a), luminance(b)].sort((u, v) => v - u);
+  return (x + 0.05) / (y + 0.05);
+}
+
+// Un brin dont la couleur est presque celle du fond disparaît : un ⚠ le dit (un conseil, pas un blocage).
+function metsAJourAlertes() {
+  document.querySelectorAll('#pastilles .brin').forEach((span) => {
+    const c = span.querySelector('input').value;
+    span.querySelector('.alerte').hidden = contraste(c, FOND) >= 3;
+  });
+}
+
+let imageDemandee = false;
+function redessineVues() {   // au plus un redessin par image d'écran pendant qu'on déplace le curseur du sélecteur de couleur
+  if (imageDemandee) return;
+  imageDemandee = true;
+  requestAnimationFrame(() => { imageDemandee = false; recolore(); metsAJourAlertes(); });
+}
+
+function afficheCouleurs() {
+  const zone = document.getElementById('couleurs');
+  if (!zone) return;
+  if (motEntiers.length === 0) { zone.hidden = true; return; }
+  zone.hidden = false;
+  const entree = entreeCourante();
+  const actif = entree !== null;
+  const pastilles = document.getElementById('pastilles');
+  pastilles.textContent = '';
+  const n = nbBrins(motEntiers);
+  const regle = (input, appliquer) => {
+    input.addEventListener('input', () => { appliquer(input.value.toLowerCase()); redessineVues(); });
+    input.addEventListener('change', () => {   // la fin du geste : on enregistre
+      if (!entree) return;
+      entree.couleurs = PALETTE.slice(0, nbBrins(entree.mot));
+      entree.fond = FOND;
+      ecrisMemoire();
+      const carte = document.querySelector(`#exemples .perso[data-id="${entree.id}"]`);
+      if (carte) carte.querySelector('.apercu').replaceWith(apercuCouleurs(entree));
+    });
+  };
+  for (let i = 0; i < n; i++) {
+    const span = document.createElement('span');
+    span.className = 'brin';
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.className = 'pastille';
+    input.value = PALETTE[i];
+    input.disabled = !actif;
+    input.setAttribute('aria-label', `Couleur du brin ${i + 1}`);
+    input.title = `Couleur du brin ${i + 1}`;
+    regle(input, (c) => { PALETTE[i] = c; });
+    const alerte = document.createElement('span');
+    alerte.className = 'alerte';
+    alerte.textContent = '⚠';
+    alerte.hidden = true;
+    alerte.title = 'Cette couleur est presque celle du fond : le brin sera difficile à voir.';
+    span.append(input, alerte);
+    pastilles.appendChild(span);
+  }
+  const fond = document.createElement('input');
+  fond.type = 'color';
+  fond.className = 'pastille fond';
+  fond.value = FOND;
+  fond.disabled = !actif;
+  fond.setAttribute('aria-label', 'Couleur du fond');
+  fond.title = 'Couleur du fond';
+  regle(fond, (c) => { FOND = c; });
+  pastilles.appendChild(fond);
+  document.getElementById('dupliquer-courante').hidden = actif;
+  document.getElementById('couleurs-aide').textContent = actif ? '' : 'Pour changer les couleurs, duplique d\'abord cette tresse dans tes tresses.';
+  metsAJourAlertes();
+}
+
+// ---- exporter et importer ses tresses (un fichier JSON : { version, tresses: [{ mot, texte, couleurs, fond }] })
+
+function exporteTresses() {
+  const contenu = { version: 1, tresses: memoire.tresses.map(({ mot, texte, couleurs, fond }) => ({ mot, texte, couleurs, fond })) };
+  const blob = new Blob([JSON.stringify(contenu, null, 2) + '\n'], { type: 'application/json' });
+  const lien = document.createElement('a');
+  lien.href = URL.createObjectURL(blob);
+  lien.download = 'mes-tresses.json';
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+  setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
+  annonce(memoire.tresses.length ? `${memoire.tresses.length} tresse${memoire.tresses.length > 1 ? 's' : ''} exportée${memoire.tresses.length > 1 ? 's' : ''} dans mes-tresses.json.` : 'Aucune tresse mémorisée : le fichier est vide.');
+}
+
+// Tout est validé avant d'écrire quoi que ce soit : un fichier invalide est refusé en entier, avec la raison.
+function importeTresses(texte) {
+  let j;
+  try { j = JSON.parse(texte); } catch (e) { annonce('Fichier refusé : ce n\'est pas du JSON.'); return; }
+  if (!j || j.version !== 1 || !Array.isArray(j.tresses)) { annonce('Fichier refusé : ce n\'est pas un fichier de tresses (version 1 attendue).'); return; }
+  const lues = [];
+  for (let i = 0; i < j.tresses.length; i++) {
+    const v = validerEntree(j.tresses[i]);
+    if (v.erreur) { annonce(`Fichier refusé : tresse ${i + 1} : ${v.erreur}.`); return; }
+    lues.push(v);
+  }
+  const meme = (a, b) => motEnTexte(a.mot) === motEnTexte(b.mot) && a.texte === b.texte && a.fond === b.fond && a.couleurs.join() === b.couleurs.join();
+  let ajoutees = 0, deja = 0, trop = 0;
+  for (const v of lues) {
+    if (memoire.tresses.some((e) => meme(e, v))) { deja++; continue; }
+    const n = memoire.tresses.length >= MAX_TRESSES ? null : Object.assign(v, { id: nouvelId() });
+    if (!n) { trop++; continue; }
+    memoire.tresses.push(n);
+    ajouteCarte(n);
+    ajoutees++;
+  }
+  if (ajoutees) ecrisMemoire();
+  annonce(`${ajoutees} tresse${ajoutees > 1 ? 's' : ''} importée${ajoutees > 1 ? 's' : ''}` + (deja ? `, ${deja} déjà présente${deja > 1 ? 's' : ''}` : '') +
+    (trop ? `, ${trop} ignorée${trop > 1 ? 's' : ''} (plafond de ${MAX_TRESSES} tresses)` : '') + '.');
+}
+
 async function demarre() {
   afficheLimites();
   ajouteAides();
+  chargeMemoire();
   const exemples = document.getElementById('exemples');
-  EXEMPLES.forEach((e) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'exemple';
-    b.dataset.mot = e.mot.join(' ');
-    b.title = e.mot.join(' ');
-    b.innerHTML = `<span class="nom">${e.nom}</span><span class="legende">${e.legende}</span>`;
-    b.onclick = () => { champ.value = e.mot.join(' '); mise_a_jour(champ.value, { immediat: true }); };
-    exemples.appendChild(b);
-  });
+  EXEMPLES.forEach((e) => exemples.appendChild(carteFournie(e)));
+  memoire.tresses.forEach((e) => exemples.appendChild(cartePerso(e)));
   const panneaux = document.getElementById('panneaux');
   lecteurs = MODES.map((m) => new Lecteur(panneaux, m.id, m.titre, 800, 800, undefined, m.schema));
   const champ = document.getElementById('mot');
@@ -901,11 +1331,47 @@ async function demarre() {
   lanceLibres();
   let minuterie = null;
   champ.addEventListener('input', () => {
+    modifie = true;
     clearTimeout(minuterie);
     minuterie = setTimeout(() => mise_a_jour(champ.value), 400);
   });
-  const depart = decodeURIComponent(location.hash.slice(1)) || EXEMPLES[7].mot.join(' ');
+  champ.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); valideSaisie(); } });
+  champ.addEventListener('blur', valideSaisie);
+  document.getElementById('dupliquer-courante').onclick = () => {
+    const entree = entreeCourante();
+    const fournie = EXEMPLES.find((e) => motEnTexte(e.mot) === motEnTexte(motEntiers));
+    if (!entree) dupliqueEntree({ mot: motEntiers, texte: fournie ? fournie.legende : '', couleurs: null, fond: null });
+  };
+  document.getElementById('exporter-tresses').onclick = exporteTresses;
+  const fichier = document.getElementById('importer-tresses');
+  document.getElementById('importer-bouton').onclick = () => fichier.click();
+  fichier.onchange = () => {
+    const f = fichier.files[0];
+    fichier.value = '';
+    if (!f) return;
+    if (f.size > 1e6) { annonce('Fichier refusé : il est trop gros (plus d\'un Mo).'); return; }
+    const lecteur = new FileReader();
+    lecteur.onload = () => importeTresses(String(lecteur.result));
+    lecteur.onerror = () => annonce('Le fichier n\'a pas pu être lu.');
+    lecteur.readAsText(f);
+  };
+  if (!memoire.disponible) annonce('La mémoire du navigateur n\'est pas disponible : tes tresses ne seront pas gardées quand tu fermeras la page.');
+  // le mot de départ : celui du lien ; sinon la dernière tresse mémorisée sélectionnée ; sinon un exemple
+  const lien = decodeURIComponent(location.hash.slice(1));
+  const sauvee = entreeCourante();
+  let entree = null, depart;
+  if (lien) {
+    depart = lien;
+    const lu = lisMot(lien);
+    if (sauvee && !lu.erreur && motEnTexte(lu.mot) === motEnTexte(sauvee.mot)) entree = sauvee;
+  } else if (sauvee) {
+    depart = motEnTexte(sauvee.mot);
+    entree = sauvee;
+  } else {
+    depart = motEnTexte(EXEMPLES[7].mot);
+  }
   champ.value = depart;
+  choisis(entree);
   mise_a_jour(depart);
 }
 

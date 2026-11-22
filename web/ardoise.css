@@ -42,13 +42,57 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 
 #exemples { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 8px; margin-top: 12px; }
 .exemple {
-  text-align: left; font: inherit; cursor: pointer; padding: 8px 12px; border-radius: 8px;
+  position: relative; padding: 8px 12px; border-radius: 8px;
   border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
 }
 .exemple:hover { border-color: var(--accent); }
-.exemple[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--carte)); }
-.exemple .nom { display: block; font-size: 1.05rem; overflow-wrap: anywhere; }
+.exemple.choisie { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--carte)); }
+.exemple .principal {
+  display: block; width: 100%; box-sizing: border-box; padding: 0 54px 0 0; text-align: left; font: inherit; cursor: pointer;
+  border: 0; background: none; color: inherit;
+}
+.exemple .principal:focus-visible, .outil:focus-visible, .outil-texte:focus-visible, .texte:focus-visible, .pastille:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px;
+}
+.exemple .nom { display: block; font-size: 1.05rem; overflow-wrap: break-word; }
 .exemple .legende { display: block; font-size: 0.8rem; color: var(--doux); line-height: 1.3; }
+.exemple .outils { position: absolute; top: 3px; right: 4px; display: flex; gap: 2px; align-items: center; }
+.outil {
+  min-width: 30px; height: 30px; padding: 0 6px; font: inherit; font-size: 0.95rem; line-height: 1; cursor: pointer;
+  border: 0; border-radius: 6px; background: none; color: var(--doux);
+}
+.outil:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--encre); }
+.outil.effacer:hover, .outil.oui:hover { color: var(--erreur); }
+.confirme { font-size: 0.85rem; white-space: nowrap; }
+.exemple .texte {
+  display: block; width: 100%; margin-top: 4px; padding: 2px 0; font: inherit; font-size: 0.8rem; color: var(--doux);
+  border: 0; border-bottom: 1px dashed var(--trait); border-radius: 0; background: none;
+}
+.exemple .texte:focus { color: var(--encre); border-bottom-color: var(--accent); outline: none; }
+.exemple .texte::placeholder { color: color-mix(in srgb, var(--doux) 70%, transparent); font-style: italic; }
+.apercu { display: flex; gap: 3px; margin-top: 6px; }
+.apercu i { display: block; width: 10px; height: 10px; border-radius: 50%; }
+.apercu i.carre { width: 10px; border-radius: 2px; margin-left: 3px; border: 1px solid var(--trait); }
+.memoire-outils { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.outil-texte {
+  font: inherit; font-size: 0.88rem; padding: 4px 10px; cursor: pointer; border-radius: 6px;
+  border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
+}
+.outil-texte:hover { border-color: var(--accent); }
+.couleurs { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.couleurs-titre { font-size: 0.92rem; color: var(--doux); }
+.pastilles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.brin { display: inline-flex; align-items: center; gap: 2px; }
+.alerte { color: var(--erreur); font-size: 0.8rem; cursor: help; }
+.pastille {
+  -moz-appearance: none; appearance: none; width: 28px; height: 28px; padding: 0; cursor: pointer;
+  border: 2px solid var(--trait); border-radius: 50%; background: none; overflow: hidden;
+}
+.pastille.fond { border-radius: 4px; }
+.pastille::-webkit-color-swatch-wrapper { padding: 0; }
+.pastille::-webkit-color-swatch { border: 0; border-radius: 0; }
+.pastille::-moz-color-swatch { border: 0; border-radius: 0; }
+.pastille:disabled { opacity: 0.5; cursor: default; }
 
 .carte { background: var(--carte); border: 1px solid var(--trait); border-radius: 12px; padding: 16px 18px; }
 .math-ligne { font-size: 1.3rem; line-height: 2.1; }
