@@ -231,7 +231,8 @@ let detend ?(reglages = defaut) (lignes : point array list) (trous : point array
           else p)
         p trous
     in
-    let lignes = List.map (Array.map dilate) lignes in
+    (* les bouts restent en place : ceux des arcs (diagramme de courbes) sont sur un trou ou un point fixe *)
+    let lignes = List.map (fun l -> Array.mapi (fun i p -> if i = 0 || i = Array.length l - 1 then p else dilate p) l) lignes in
     installe (List.map (fun l -> reechantillonne r.pas (Array.map (fun p -> p.x) l) (Array.map (fun p -> p.y) l)) lignes);
     let ecart_indices = int_of_float (Float.ceil (2.5 *. r.ecart /. r.pas)) + 2 in
     let pi = ref [||] and pj = ref [||] in

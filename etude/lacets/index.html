@@ -53,8 +53,8 @@
       <span id="position"></span>
     </div>
     <div class="etat options">
-      <label title="le film étudié : les lacets conformes (vue 2 de la page) ou les lacets sur la triangulation mobile (vue 3) ; « détendu » s'applique aux deux, les autres cases d'essai aux lacets conformes seulement (recalcule le film)">film
-        <select id="film"><option value="conforme" selected>lacets conformes</option><option value="triangulation">triangulation</option></select></label>
+      <label title="le film étudié : les lacets conformes (vue 2 de la page), les lacets sur la triangulation mobile (vue 3) ou le diagramme de courbes (vue 1) ; « détendu » s'applique aux deux, les autres cases d'essai aux lacets conformes seulement (recalcule le film)">film
+        <select id="film"><option value="conforme" selected>lacets conformes</option><option value="triangulation">triangulation</option><option value="diagramme">diagramme de courbes</option></select></label>
       <label><input type="checkbox" id="c-construction" checked> construction</label>
       <label><input type="checkbox" id="c-tangentes" checked> tangentes</label>
       <label><input type="checkbox" id="c-points" checked> points</label>
@@ -65,7 +65,7 @@
       <label title="le journal sous le film, la chronologie et les plans w : ce qui est projeté, sur quoi, de quand à quand (recalcule le film)"><input type="checkbox" id="c-etude" checked> projection</label>
       <label title="les arcs ne passent plus par les points fantômes (recalcule le film)"><input type="checkbox" id="c-libre"> arcs libres</label>
       <label title="le raccord par régions, sans maillage : images précalculées en Python (essai_regions.py exporte), seulement pour les mots dont le fichier est dans regions/"><input type="checkbox" id="c-regions" disabled> régions (précalculé)</label>
-      <label title="la détente (flot de courbure contraint, module OCaml Detente). Lacets conformes : pendant le raccord, le film de la page publique (décoché : le film à maillage seul). Triangulation : sur toutes les images, avec l'écart des brins du film (recalcule le film)"><input type="checkbox" id="c-detendu" checked> détendu</label>
+      <label title="la détente (flot de courbure contraint, module OCaml Detente). Lacets conformes : pendant le raccord, le film de la page publique (décoché : le film à maillage seul). Triangulation et diagramme : sur toutes les images, avec l'écart des brins du film (recalcule le film)"><input type="checkbox" id="c-detendu" checked> détendu</label>
       <label>ips
         <select id="vitesse"><option>2</option><option>5</option><option>12</option><option selected>25</option></select></label>
       <span id="compte-tangentes"></span>

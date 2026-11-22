@@ -149,6 +149,7 @@ def detend(lignes, trous, clou, force, iterations=None):
             D = l - c
             r = np.hypot(*D.T)
             pres = (r < 2 * barriere) & (r > 1e-9)
+            pres[0] = pres[-1] = False   # les bouts restent en place (ceux des arcs sont sur un trou ou un point fixe)
             if pres.any():
                 nouveau = r[pres] + force * barriere * (1 - r[pres] / (2 * barriere))
                 l[pres] = c + D[pres] * (nouveau / r[pres])[:, None]

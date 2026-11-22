@@ -117,13 +117,15 @@ function filmReparti(mode, mot) {
   aides.forEach(donneLettre);
 }
 
-// Le film de la triangulation détendu (mode triangulation_detendu : la vue 3 de la page, le banc d'essai) : chaque image se calcule à partir de la
-// précédente, on ne peut donc pas répartir les lettres ; ce worker calcule le film, et la détente de chaque image (intensité
-// constante 1, écart des brins du film) est confiée à tour de rôle à des workers auxiliaires. Images rendues dans l'ordre.
-function triangulationDetendue(mot) {
-  const fixe = self.ardoise.statique('triangulation', mot);
+// Un film détendu sur toutes ses images (modes triangulation_detendu : la vue 3 de la page et le banc ; diagramme_detendu : le banc) :
+// chaque image du film de base se calcule à partir de la précédente, on ne peut donc pas répartir les lettres ; ce worker calcule
+// le film, et la détente de chaque image (intensité constante 1, écart des brins du film ; obstacles : les trous et les points
+// fixes des films d'arcs) est confiée à tour de rôle à des workers auxiliaires. Images rendues dans l'ordre.
+const obstacles = (im) => Array.from(im.trous).concat(Array.from(im.fixes || []));
+function filmDetenduParImages(base, mot) {
+  const fixe = self.ardoise.statique(base, mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
-  const fd = self.ardoise.detend(fixe.lacets, fixe.trous, fixe.clou, 1, fixe.ecart || 0);   // l'image fixe aussi, comme le film
+  const fd = self.ardoise.detend(fixe.lacets, obstacles(fixe), fixe.clou, 1, fixe.ecart || 0);   // l'image fixe aussi, comme le film
   if (!fd.erreur) fixe.lacets = fd.lacets;
   const image = enFloat32(fixe);
   postMessage({ type: 'statique', image }, tampons(image));
@@ -157,10 +159,10 @@ function triangulationDetendue(mot) {
     };
     aides.push(w);
   }
-  const message = self.ardoise.film('triangulation', mot, (im, k, t) => {
+  const message = self.ardoise.film(base, mot, (im, k, t) => {
     total = t;
     enAttente.set(k, im);
-    aides[envoyees % nb].postMessage({ type: 'detend', k, lacets: im.lacets, trous: im.trous, clou: im.clou, force: 1, ecart: im.ecart || 0 });
+    aides[envoyees % nb].postMessage({ type: 'detend', k, lacets: im.lacets, trous: obstacles(im), clou: im.clou, force: 1, ecart: im.ecart || 0 });
     envoyees++;
   });
   messageFilm = message || '';
@@ -185,7 +187,7 @@ onmessage = (e) => {
   }
   const { mode, mot } = d;
   if (/^conforme(_detendu)?(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmReparti(mode, mot); return; }
-  if (mode === 'triangulation_detendu' && typeof Worker !== 'undefined') { triangulationDetendue(mot); return; }
+  if (/^(triangulation|diagramme)_detendu$/.test(mode) && typeof Worker !== 'undefined') { filmDetenduParImages(mode.replace('_detendu', ''), mot); return; }
   const fixe = self.ardoise.statique(mode, mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
   const image = enFloat32(fixe);

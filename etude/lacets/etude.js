@@ -24,7 +24,7 @@ const MAX_LETTRES = 14;
 const IMAGES_PAR_LETTRE = 48;   // nombre_images_conforme de ocaml/web/ardoise_web.ml
 // Images par lettre du film affiché : 48 pour les lacets conformes ; pour la triangulation, le nombre de sous-pas du film (tout le film
 // se partage également entre les lettres).
-const imagesParLettre = () => etat.film === 'triangulation' && etat.mot.length && etat.total > 1 ? Math.round((etat.total - 1) / etat.mot.length) : IMAGES_PAR_LETTRE;
+const imagesParLettre = () => etat.film !== 'conforme' && etat.mot.length && etat.total > 1 ? Math.round((etat.total - 1) / etat.mot.length) : IMAGES_PAR_LETTRE;
 const ECHELLE = 2;              // 1600 / 800
 const PALETTE = ['#d92626', '#1a9926', '#2640d9', '#bf9900', '#a626a6', '#0d9aa6', '#e6761a', '#6b4fbb'];
 // Pendant le raccord, la ligne de départ (L–A, B–R : opacité 1 − poids) et la ligne d'arrivée (L–B, A–R : opacité poids) coexistent, l'une
@@ -374,7 +374,8 @@ function dessine(k) {
     ctx.stroke();
   }
   if (etat.construction && image.construction) segments(ctx, image.construction, image.opacites, etat.etude && image.etude ? stylesDeConstruction(image) : null);
-  image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = etat.film === 'triangulation' && image.brin ? image.brin : 3.5; trace(ctx, p); });   // la triangulation affine le trait quand les brins sont serrés
+  image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = etat.film !== 'conforme' && image.brin ? image.brin : 3.5; trace(ctx, p); });   // la triangulation et le diagramme affinent le trait quand les brins sont serrés
+  if (image.fixes && image.fixes.length) disques(ctx, image.fixes, 3, '#888');   // les points fixes du diagramme de courbes
   disques(ctx, image.trous, 4, '#000');
   disques(ctx, image.clou, 4, '#000');
   if (etat.etude && image.etude && etat.construction) etiquettes(ctx, image);
@@ -509,21 +510,21 @@ const PRECALCULES = ['regions'];
 const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 
 // Les cases qui n'ont de sens que pour les lacets conformes (essais du raccord, projection, fantômes des lignes estompées, maillage
-// du raccord) : grisées quand le film affiché est la triangulation.
+// du raccord) : grisées quand le film affiché est la triangulation ou le diagramme de courbes.
 const SEULEMENT_CONFORME = ['c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
 
 function metsAJourOptions() {
-  const tri = etat.film === 'triangulation';
+  const tri = etat.film !== 'conforme';
   SEULEMENT_CONFORME.forEach((id) => {
     $(id).disabled = tri;
-    $(id).closest('label').title = tri ? 'pas pour la triangulation (lacets conformes seulement)' : ($(id).closest('label').dataset.titre || '');
+    $(id).closest('label').title = tri ? 'pas pour ce film (lacets conformes seulement)' : ($(id).closest('label').dataset.titre || '');
   });
   if (tri) PRECALCULES.forEach((sorte) => { $('c-' + sorte).disabled = true; });
   else verifiePrecalcules(etat.mot);
 }
 
 function verifiePrecalcules(mot) {
-  if (etat.film === 'triangulation') return;   // les films précalculés sont des lacets conformes
+  if (etat.film !== 'conforme') return;   // les films précalculés sont des lacets conformes
   PRECALCULES.forEach((sorte) => {
     $('c-' + sorte).disabled = true;
     fetch(fichierPrecalcule(mot, sorte), { method: 'HEAD' }).then((r) => {
@@ -565,7 +566,7 @@ function lance(mot) {
   efface();
   $('commandes').hidden = true;
   $('mot-titre').textContent = mot.map(nomLettre).join(' ');
-  $('film-titre').textContent = etat.film === 'triangulation' ? 'Triangulation' : 'Lacets conformes';
+  $('film-titre').textContent = { conforme: 'Lacets conformes', triangulation: 'Triangulation', diagramme: 'Diagramme de courbes' }[etat.film];
   if (etat.precalcule) {
     const sorte = etat.precalcule;
     $('etat-calcul').innerHTML = '<span>chargement des images précalculées…</span>';
@@ -598,7 +599,7 @@ function calcule(mot) {
       termine(d.message);
     }
   };
-  if (etat.film === 'triangulation') { w.postMessage({ mode: etat.detendu ? 'triangulation_detendu' : 'triangulation', mot }); return; }
+  if (etat.film !== 'conforme') { w.postMessage({ mode: etat.film + (etat.detendu ? '_detendu' : ''), mot }); return; }   // triangulation, diagramme
   w.postMessage({ mode: (etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
@@ -635,7 +636,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('sansprojection')) { etat.etude = false; $('c-etude').checked = false; }   // ?sansprojection (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
   PRECALCULES.forEach((sorte) => { if (new URLSearchParams(location.search).has(sorte)) { etat.precalcule = sorte; $('c-' + sorte).checked = true; } });   // ?regions : un film précalculé au départ (captures)
-  if (new URLSearchParams(location.search).has('triangulation')) { etat.film = 'triangulation'; $('film').value = 'triangulation'; }   // ?triangulation (captures)
+  ['triangulation', 'diagramme'].forEach((f) => { if (new URLSearchParams(location.search).has(f)) { etat.film = f; $('film').value = f; } });   // ?triangulation, ?diagramme (captures)
   if (new URLSearchParams(location.search).has('nondetendu')) { etat.detendu = false; $('c-detendu').checked = false; }   // ?nondetendu : le film à maillage seul (captures)
   SEULEMENT_CONFORME.forEach((id) => { const l = $(id).closest('label'); l.dataset.titre = l.title || ''; });   // le titre d'origine, rendu quand on revient aux lacets conformes
   metsAJourOptions();
