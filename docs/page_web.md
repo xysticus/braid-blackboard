@@ -23,3 +23,10 @@ plus) : les lettres leur sont données une à une (`ardoise.film_lettres`), calc
 en double précision pour être détendue à son tour par un auxiliaire (`ardoise.detend`) ; le worker principal calcule l'image clé de
 départ et rend les images dans l'ordre. Mêmes images qu'en un seul worker ; sur 12 cœurs, (σ₁σ₂⁻¹)³ en moins de 24 s et la tresse
 chargée en moins de 70 s (au lieu de 80 s et 4 min 45 en un seul worker).
+
+**La triangulation détendue (2026-11-22, tag v1.3).** La vue « triangulation » demande `triangulation_detendu` : le film de la
+triangulation (calculé image après image, il dépend de son histoire) dont chaque image, et l'image fixe, est détendue avec l'écart de
+ses brins (`ardoise.detend`, 5ᵉ argument), répartie sur les workers auxiliaires. Plus long que la triangulation brute : environ une
+minute pour (σ₁σ₂⁻¹)³, plusieurs minutes pour la tresse chargée ; l'image fixe détendue s'affiche dès le début. Les scripts des workers
+ne portent pas de numéro de version : après une mise à jour, recharger en navigation privée ou vider le cache (le banc d'essai, lui,
+ajoute `?v=` à `travail.js`, qui le transmet à la bibliothèque et à ses auxiliaires).

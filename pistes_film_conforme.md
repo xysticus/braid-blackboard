@@ -441,3 +441,9 @@ continu), maximale au milieu.
 Résultat : 0 anomalie (mots relus, croisements) sur (σ₁σ₂⁻¹)³ et sur la tresse chargée ; les coins carrés autour des trous qui
 tournent et les zigzags disparaissent (image 264 de (σ₁σ₂⁻¹)³) ; les brins se serrent un peu plus près des trous. Jugé « parfait »
 par l'utilisateur, c'est le film des lacets de la page publique.
+
+Garde-fous ajoutés le 2026-11-22 (tag v1.3), après qu'une boucle de la triangulation détendue eut glissé hors de son trou : la répulsion
+n'est qu'une force et la tension des boucles serrées peut la vaincre ; un long segment peut enjamber un trou ou croiser un autre brin
+alors que tous les points restent écartés ; le rééchantillonnage coupe à l'intérieur des boucles serrées. D'où la dilatation de départ,
+la barrière et l'anti-croisement par retour en arrière, et la retouche des points (détail : `docs/ocaml.md`). La même détente sert aux
+lacets conformes et à la triangulation de la page.

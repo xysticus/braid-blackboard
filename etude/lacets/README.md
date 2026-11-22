@@ -51,3 +51,10 @@ entre brins et trous (12 px) garde les écarts et empêche les croisements ; ell
 "1 -2 1 -2 1 -2"` écrit le film vérifié (`imgs/essai_lissage_film_*.mp4`). Réglages en arguments : `PAS=4 ITERATIONS=400
 ECART=6 RAYON_TROU=12 …`. La détente est portée en OCaml (`ocaml/lib/detente.ml`, les mêmes points à 1e-6 près) : la case
 « détendu » du banc la fait calculer par la page (mode `conforme_detendu`), pour n'importe quel mot.
+
+## Le film de la triangulation
+
+Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page) et la triangulation (vue 3, `?triangulation`). « détendu »
+s'applique aux deux (pour la triangulation, sur toutes les images, avec l'écart de ses brins) ; les cases qui ne concernent que les
+lacets conformes (fantômes, maillage, sans maillage, satellites, projection, arcs libres, régions) sont grisées. Le banc crée son
+worker avec `travail.js?v=<heure>` : il joue toujours les scripts du disque, pas ceux du cache du navigateur.

@@ -38,6 +38,15 @@ tension, répulsion entre brins et trous, pas borné, voisins par une grille au 
 qu'une partie du film (chaque lettre ne dépend que de son état de départ : la page en répartit les lettres sur plusieurs workers).
 `test/test_detente.ml` : mêmes points que le Python à 1e-6 près sur deux images (`reference_detente.json`, écrit par
 `genere_reference_detente.py`), et le film détendu de (σ₁σ₂⁻¹)³ sans anomalie. Le film non détendu et ses 83 tests sont inchangés.
+Détente sans faille (2026-11-22, tag v1.3), en OCaml comme en Python : dilatation radiale de départ autour des trous (le dessin commence
+hors de leur zone ; une boucle plus petite que le pas, rééchantillonnée, pouvait ne plus contenir son trou) ; barrière des trous et
+anti-croisement entre brins par **retour à la position précédente** (un segment qui s'approcherait trop d'un trou, ou deux segments qui
+se croiseraient, reprennent leur position d'avant : un dessin juste ne peut pas devenir faux ; pousser le segment le pouvait) ; retouche
+des points au lieu du rééchantillonnage (découpe des segments longs par des points pris sur eux, fusion seulement si la corde ne
+s'approche pas d'un trou, retouche refaite sans fusion si une corde a coupé un brin) ; voisins par une grille à listes chaînées (le tri
+est lent sous JS). Réglages de la triangulation (`ardoise_web.ml`, `detend`) : écart du film, rayon des trous égal à l'écart,
+répulsion 4, 150 itérations. Vérifié sur les deux tresses d'essai, triangulation et lacets conformes détendus : 0 croisement, 0 trou
+traversé (nombres d'enroulement de chaque lacet autour de chaque trou, avant et après), 0 image douteuse.
 Étape 8 faite : le premier bouquet (`lib/bouquet.ml` : la classe `Pousse` de `python/Bouquet.py`, `test/test_bouquet.ml`,
 concordant à 1e-6 près ; 0,8 s au lieu de 30 s). L'escargot et le bouquet sont dans la page web (section « Un peu de
 poésie »), dessinés en canvas par `web/ardoise.js` (le dessin Cairo n'est pas traduit pour le bouquet).
