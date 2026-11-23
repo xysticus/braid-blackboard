@@ -1236,8 +1236,15 @@ function bouton(classe, texte, etiquette, titre) {
 
 function ajouteCarte(entree) {
   const carte = cartePerso(entree);
-  document.getElementById('exemples').appendChild(carte);
+  document.getElementById('liste-perso').appendChild(carte);
+  metsAJourListeVide();
   return carte;
+}
+
+// « Mes tresses » est vide : une phrase le dit et dit quoi faire.
+function metsAJourListeVide() {
+  const vide = document.querySelectorAll('#liste-perso .exemple').length === 0;
+  document.getElementById('aucune-tresse').hidden = !vide;
 }
 
 function carteFournie(e) {
@@ -1336,6 +1343,7 @@ function demandeEffacement(carte, entree) {
     const suivante = carte.nextElementSibling || carte.previousElementSibling;
     memoire.tresses.splice(i, 1);
     carte.remove();
+    metsAJourListeVide();
     if (etait) choisis(null); else ecrisMemoire();
     annonce(`Tresse ${nomMot(entree.mot)} effacée.`);
     const cible = suivante && suivante.querySelector('.principal');
@@ -1479,9 +1487,10 @@ async function demarre() {
   afficheLimites();
   ajouteAides();
   chargeMemoire();
-  const exemples = document.getElementById('exemples');
+  const exemples = document.getElementById('liste-exemples'), perso = document.getElementById('liste-perso');
   EXEMPLES.forEach((e) => exemples.appendChild(carteFournie(e)));
-  memoire.tresses.forEach((e) => exemples.appendChild(cartePerso(e)));
+  memoire.tresses.forEach((e) => perso.appendChild(cartePerso(e)));
+  metsAJourListeVide();
   const panneaux = document.getElementById('panneaux');
   lecteurs = MODES.map((m) => new Lecteur(panneaux, m.id, m.titre, 800, 800, undefined, m.schema));
   const champ = document.getElementById('mot');

@@ -25,7 +25,13 @@
         <button type="button" id="enregistrer-mot" class="outil-texte" title="Enregistrer ce mot dans tes tresses (pour le colorer, le noter, le retrouver)">Enregistrer</button>
       </div>
       <div id="menu-tresses" class="menu-tresses" role="group" aria-label="Choisir une tresse" hidden>
-        <div id="exemples" role="group" aria-label="Tresses d'exemple et tresses mémorisées"></div>
+        <div id="exemples">
+          <h3 id="titre-exemples">Exemples</h3>
+          <div id="liste-exemples" class="grille-tresses" role="group" aria-labelledby="titre-exemples"></div>
+          <h3 id="titre-mes-tresses">Mes tresses</h3>
+          <p id="aucune-tresse" class="info" hidden>Aucune tresse enregistrée : écris un mot, puis « Enregistrer ».</p>
+          <div id="liste-perso" class="grille-tresses" role="group" aria-labelledby="titre-mes-tresses"></div>
+        </div>
         <div class="memoire-outils">
           <button type="button" id="exporter-tresses" class="outil-texte" title="Enregistrer mes tresses dans un fichier">Exporter mes tresses</button>
           <button type="button" id="importer-bouton" class="outil-texte" title="Ajouter les tresses d'un fichier exporté">Importer…</button>

@@ -40,7 +40,10 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 #mot:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
 .erreur { color: var(--erreur); margin: 6px 0 0; font-weight: 500; }
 
-#exemples { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 8px; }
+.grille-tresses { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 8px; }
+#exemples h3 { margin: 0 0 6px; font-size: 0.95rem; color: var(--doux); }
+#exemples h3 ~ h3 { margin-top: 14px; }
+#exemples p.info { margin: 0 0 4px; }
 .exemple {
   position: relative; padding: 8px 12px; border-radius: 8px;
   border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
@@ -158,7 +161,7 @@ main > *, .deux-colonnes > *, .quatre > *, .libres > * { min-width: 0; }   /* un
   h1 { font-size: 1.5rem; }
   main { gap: 14px; padding-top: 14px; }
   #mot { font-size: 1rem; padding: 9px 12px; }
-  #exemples { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .grille-tresses { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .exemple { padding: 7px 9px; }
   .exemple .nom { font-size: 0.95rem; }
   .exemple .legende { font-size: 0.75rem; }

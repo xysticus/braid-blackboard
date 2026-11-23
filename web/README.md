@@ -2,7 +2,7 @@
 
 Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse (ou on en choisit un dans le menu « Tresses » : douze exemples, puis les tresses gardées par la personne) ; tout le haut de la
 page est une seule carte, **« Mot courant »** : le champ de saisie, le mot en notation mathématique, les couleurs, l'état du mot (exemple fourni, enregistré dans
-ses tresses, pas enregistré), la note de la tresse enregistrée, et les boutons « Tresses ▾ » (la liste, qui s'ouvre en menu) et « Enregistrer ». Sous « Les méandres », le texte d'explication est
+ses tresses, pas enregistré), la note de la tresse enregistrée, et les boutons « Tresses ▾ » (la liste, qui s'ouvre en menu, sous deux titres : « Exemples » et « Mes tresses ») et « Enregistrer ». Sous « Les méandres », le texte d'explication est
 replié dans « Les coulisses ». La page montre :
 
 1. le mot en notation mathématique, tel qu'il est écrit (MathML) ;
