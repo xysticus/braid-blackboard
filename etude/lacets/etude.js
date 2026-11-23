@@ -81,7 +81,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, pur: false, plein: true, pointille: true, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, pur: false, plein: true, pointille: true, marqueurs: true, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -381,9 +381,22 @@ function dessine(k) {
     ctx.setLineDash([9, 7]);
     image.lacets_bis.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3; trace(ctx, p); });
     ctx.setLineDash([]);
-    disques(ctx, image.reperes_bis, 4, '#ff8c00');
+    if (!(etat.marqueurs && image.trajets && image.trajets.length)) disques(ctx, image.reperes_bis, 4, '#ff8c00');
   }
-  if (image.reperes && image.reperes.length && (etat.plein || !deux)) disques(ctx, image.reperes, 4, '#d62728');   // le mode pur : les pieds posés sur les lignes de construction
+  if (etat.marqueurs && image.trajets && image.trajets.length) {   // le mode pur : de chaque point du départ à son arrivée, selon son rôle
+    const COULEURS = ['#d62728', '#ff8c00', '#2ca02c', '#000000'];
+    const t = image.trajets;
+    ctx.lineWidth = 1.2;
+    for (let j = 0; j + 4 < t.length; j += 5) {
+      ctx.strokeStyle = COULEURS[t[j + 4]]; ctx.beginPath(); ctx.moveTo(t[j], t[j + 1]); ctx.lineTo(t[j + 2], t[j + 3]); ctx.stroke();
+    }
+    for (let j = 0; j + 4 < t.length; j += 5) {
+      ctx.fillStyle = COULEURS[t[j + 4]]; ctx.strokeStyle = COULEURS[t[j + 4]]; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(t[j], t[j + 1], 5, 0, 2 * Math.PI); ctx.fill();
+      ctx.beginPath(); ctx.arc(t[j + 2], t[j + 3], 6, 0, 2 * Math.PI); ctx.stroke();
+    }
+  }
+  if (image.reperes && image.reperes.length && (etat.plein || !deux) && !(etat.marqueurs && image.trajets && image.trajets.length)) disques(ctx, image.reperes, 4, '#d62728');   // le mode pur : les pieds posés sur les lignes de construction
   disques(ctx, image.trous, 4, '#000');
   disques(ctx, image.clou, 4, '#000');
   if (etat.etude && image.etude && etat.construction) etiquettes(ctx, image);
@@ -480,6 +493,7 @@ function brancheCommandes() {
   $('c-maillage').onchange = (e) => { etat.maillage = e.target.checked; redessine(); };
   $('c-etude').onchange = (e) => { etat.etude = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // le journal et les plans w : recalcule le film
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
+  $('c-marqueurs').onchange = (e) => { etat.marqueurs = e.target.checked; redessine(); };
   $('c-plein').onchange = (e) => { etat.plein = e.target.checked; redessine(); };
   $('c-pointille').onchange = (e) => { etat.pointille = e.target.checked; redessine(); };
   $('c-pur').onchange = (e) => { etat.pur = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : la projection conforme seule
@@ -522,7 +536,7 @@ const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 
 // Les cases qui n'ont de sens que pour les lacets conformes (essais du raccord, projection, fantômes des lignes estompées, maillage
 // du raccord) : grisées quand le film affiché est la triangulation ou le diagramme de courbes.
-const SEULEMENT_CONFORME = ['c-pur', 'c-plein', 'c-pointille', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
+const SEULEMENT_CONFORME = ['c-pur', 'c-marqueurs', 'c-plein', 'c-pointille', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
 
 function metsAJourOptions() {
   const tri = etat.film !== 'conforme';

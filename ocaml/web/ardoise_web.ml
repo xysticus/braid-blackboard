@@ -113,6 +113,7 @@ let image_conforme decalage (im : Film_conforme.image) =
   Js.Unsafe.set r "maillage" (Js.array a);
   Js.Unsafe.set r "reperes" (Js.array (Array.concat (List.map (fun p -> let p = p +: decalage in [| p.x; p.y |]) im.reperes)));   (* les pieds du mode pur *)
   let plat_lignes ls = Js.array (Array.of_list (List.map (fun p -> Js.array (Array.concat (List.map (fun (q : point) -> let q = q +: decalage in [| q.x; q.y |]) (Array.to_list p)))) ls)) in
+  Js.Unsafe.set r "trajets" (Js.array (Array.concat (List.map (fun ((p : point), (q : point), role) -> let p = p +: decalage and q = q +: decalage in [| p.x; p.y; q.x; q.y; float_of_int role |]) im.trajets)));
   Js.Unsafe.set r "lacets_bis" (plat_lignes im.lignes_bis);
   Js.Unsafe.set r "reperes_bis" (Js.array (Array.concat (List.map (fun p -> let p = p +: decalage in [| p.x; p.y |]) im.reperes_bis)));   (* les arêtes du maillage du raccord, à plat, pour le banc d'essai *)
   (match im.etude with

@@ -68,7 +68,9 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   seulement quand l'utilisateur le demande.
 - `etude/lacets/` : **banc d'essai** (document de travail, non déployé) du film des lacets : une page, un film en 1600 × 1600, lecteur pas à pas, lignes de construction et tangentes
   des arcs (`etude/lacets/README.md`). Il réutilise `web/travail.js` et `web/ardoise_lib.js` sans les modifier. Essais en
-  Python : `essai_lissage.py` (la détente, retenue), `essai_regions.py` (raccord par régions, écarté).
+  Python : `essai_lissage.py` (la détente, retenue), `essai_regions.py` (raccord par régions, écarté). Essai OCaml « pur » (2026-11-23, case du banc, mode `conforme_pur`,
+  `Conforme.dessin_pur`) : la projection conforme seule, pieds sur les lignes de construction, arcs de cercle sans souci des tangentes ni
+  des croisements, les deux phases (départ plein, arrivée pointillée) dessinées ensemble, au choix.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README et un `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés)

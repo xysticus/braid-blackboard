@@ -179,6 +179,17 @@ val agit : etat -> sigma lettre -> etat
 (** L'état non réduit après le demi-tour du bloc des trous i et i + 1 (le [detail] du Python n'est pas traduit).
     Ne pas confondre avec [conjugaison_locale], l'action d'Artin sur les mots. *)
 
+type origine = Glisse of int | Tourne of int | Ne of int
+(** L'origine d'un point de l'état non réduit : un point ancien hors du bloc qui tourne (il glisse avec son trou), un point ancien
+    dans le bloc (il tourne), ou un point né sur un arc qui entre dans le bloc ou en sort (l'entier est l'indice de son point père,
+    l'extrémité intérieure de l'arc). *)
+
+val agit_origines : etat -> sigma lettre -> etat * origine array list
+(** Comme [agit], avec pour chaque lacet l'origine de chacun de ses points. *)
+
+val bigones : etat -> (int array * int array) list
+(** Pour chaque lacet d'un état non réduit : le rang de chaque point dans le lacet réduit (-1 s'il s'annule) et son partenaire d'annulation (-1 sinon). *)
+
 val reduit : etat -> etat
 (** Supprime les bigones : deux points consécutifs d'un lacet dans le même intervalle s'annulent. *)
 

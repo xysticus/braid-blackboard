@@ -28,6 +28,7 @@ type image = {
       (** Les arêtes de la triangulation sur laquelle les lacets sont posés pendant le raccord (vide hors du raccord, où le dessin est
           conforme) ; avec les arêtes qui vont au bord convexe, hors de l'image. *)
   lignes_bis : point array list;  (** mode pur : le dessin de l'arrivée (état k+1 sur L–B–A–R), en même temps que celui du départ *)
+  trajets : (point * point * int) list;  (** mode pur : de chaque point du départ à son arrivée, avec son rôle (Conforme.trajets) *)
   reperes_bis : point list;  (** ses pieds *)
   reperes : point list;  (** les pieds posés sur les lignes de construction (mode pur seulement) *)
   etude : etude option;  (** le journal et les plans w, seulement si [film ~etude:true] *)
@@ -121,7 +122,7 @@ let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
   let k = n_lettres - 1 in
   let l = Conforme.lettre ~hauteur:(hauteur -. (2. *. marge)) ~largeur:(largeur -. (2. *. marge)) (etat k) (etat (k + 1)) (List.nth tresse k) in
   let lignes, reduction = dessin_reduit l 1 1. in
-  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1.; ab = indice_ab l ~reduction 1.; maillage = []; reperes = []; lignes_bis = []; reperes_bis = []; etude = None }
+  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1.; ab = indice_ab l ~reduction 1.; maillage = []; reperes = []; lignes_bis = []; reperes_bis = []; trajets = []; etude = None }
 
 
 (* Le journal d'une image du film, pour l'étude de la projection : ce qui est projeté, sur quoi, de quand à quand. *)
@@ -195,7 +196,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
     let premiere = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat 0) (etat 1) (List.hd tresse) in
     rendu
       { lignes = Conforme.dessin premiere ~reduction:1. 0 0.; trous = Conforme.trous_ecran premiere ~reduction:1. 0.;
-        clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0.; maillage = []; reperes = []; lignes_bis = []; reperes_bis = []; etude = None }
+        clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0.; maillage = []; reperes = []; lignes_bis = []; reperes_bis = []; trajets = []; etude = None }
   end;
   List.iteri
     (fun k sigma ->
@@ -210,7 +211,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
       let precedent = ref None and triangule = ref None in
       for n = 1 to images do
         let s = temps.(n) and poids = poids_de.(n) in
-        let maillage = ref [] and reperes = ref [] and lignes_bis = ref [] and reperes_bis = ref [] in
+        let maillage = ref [] and reperes = ref [] and lignes_bis = ref [] and reperes_bis = ref [] and trajets = ref [] in
         let lignes, reduction =
           if pur then begin
             (* projection seule, les deux phases confondues : le départ (état k sur L–A–B–R) et l'arrivée (état k+1 sur L–B–A–R)
@@ -220,7 +221,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
             let y_min = Float.min (ymin e0) (ymin e1) in
             let reduction = if y_min < 10. then (l.y_axe -. 10.) /. (l.y_axe -. y_min) else 1. in
             let lignes, pieds = Conforme.dessin_pur l ~reduction 0 s and bis, pieds_bis = Conforme.dessin_pur l ~reduction 1 s in
-            reperes := pieds; lignes_bis := bis; reperes_bis := pieds_bis;
+            reperes := pieds; trajets := Conforme.trajets l ~reduction s; lignes_bis := bis; reperes_bis := pieds_bis;
             (lignes, reduction)
           end
           else if 0. < poids && poids < 1. then begin
@@ -283,7 +284,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
             Some { journal; phase; n_a; n_b; s_a; s_b; plan_depart; plan_arrivee }
           end
         in
-        rendu { lignes; trous; clou = l.clou; construction = construction ~tout:pur l ~reduction s ~poids; ab = indice_ab l ~reduction s; maillage = !maillage; reperes = !reperes; lignes_bis = !lignes_bis; reperes_bis = !reperes_bis;
+        rendu { lignes; trous; clou = l.clou; construction = construction ~tout:pur l ~reduction s ~poids; ab = indice_ab l ~reduction s; maillage = !maillage; reperes = !reperes; lignes_bis = !lignes_bis; reperes_bis = !reperes_bis; trajets = !trajets;
                 etude = etude_de_l_image }
       done
       end)

@@ -551,3 +551,29 @@ let dessin_pur l ~reduction e s =
       pieds
   in
   (lignes, List.concat_map Array.to_list pieds)
+
+(* Les pieds à l'écran de chaque lacet de l'état e au temps s. *)
+let pieds_ecran l ~reduction e s =
+  let v = ligne l e s in
+  List.map (fun lacet -> Array.map (fun x -> ecran_de l ~reduction (pied l e x s v).position s) lacet) l.etats.(e).Tresses.lacets
+
+(* Les trajets des points de la lettre au temps s (le départ sur L–A–B–R, l'arrivée sur L–B–A–R) : pour chaque point de l'état non
+   réduit après σ (Tresses.agit_origines), son départ (le pied du point ancien, ou celui de son père s'il est né), son arrivée (son
+   pied dans l'état k+1, ou le milieu des départs des deux points qui s'annulent) et son rôle : 0 il glisse avec son trou, 1 il tourne
+   avec le bloc, 2 il est né sur un arc, 3 il s'annule (bigone). *)
+let trajets l ~reduction s =
+  let d = pieds_ecran l ~reduction 0 s and a = pieds_ecran l ~reduction 1 s in
+  let non_reduit, origines = Tresses.agit_origines l.etats.(0) l.sigma in
+  let bigs = Tresses.bigones non_reduit in
+  List.concat
+    (List.mapi
+       (fun lacet ((origines : Tresses.origine array), (rang, partenaire)) ->
+         let dl = List.nth d lacet and al = List.nth a lacet in
+         let borne t k = t.(max 0 (min (Array.length t - 1) k)) in
+         let depart k = match origines.(k) with Tresses.Glisse j | Tresses.Tourne j | Tresses.Ne j -> borne dl j in
+         List.init (Array.length origines) (fun k ->
+             let p = depart k in
+             if rang.(k) >= 0 then
+               (p, borne al rang.(k), match origines.(k) with Tresses.Glisse _ -> 0 | Tresses.Tourne _ -> 1 | Tresses.Ne _ -> 2)
+             else (p, 0.5 *: (p +: depart partenaire.(k)), 3)))
+       (List.combine origines bigs))

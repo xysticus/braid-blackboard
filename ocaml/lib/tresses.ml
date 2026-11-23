@@ -293,7 +293,9 @@ let normalise etat =
 (* σ_i fait tourner d'un demi-tour le bloc (trous i, i+1 et ce qui est entre eux) : les points du bloc sont
    réfléchis, chaque arc qui sort du bloc reçoit un point nouveau (à droite du bloc pour un arc du haut et σ
    positif, à gauche sinon ; l'inverse pour σ⁻¹), dans l'ordre des extrémités intérieures de ces arcs. *)
-let agit etat (sigma : sigma lettre) =
+type origine = Glisse of int | Tourne of int | Ne of int
+
+let agit_origines etat (sigma : sigma lettre) =
   let i = sigma.indice in
   let a = etat.trous.(i - 1) and b = etat.trous.(i) in
   let dedans = function Some x -> a < x && x < b | None -> false in
@@ -336,12 +338,16 @@ let agit etat (sigma : sigma lettre) =
         List.concat
           (List.init (n + 1) (fun k ->
                let j = k - 1 in
-               (if j >= 0 then [ (if dedans (Some lacet.(j)) then (2. *. centre) -. lacet.(j) else lacet.(j)) ] else [])
-               @ match Hashtbl.find_opt nouveau (l, j) with Some x -> [ x ] | None -> []))
+               (if j >= 0 then [ (if dedans (Some lacet.(j)) then ((2. *. centre) -. lacet.(j), Tourne j) else (lacet.(j), Glisse j)) ] else [])
+               @ match Hashtbl.find_opt nouveau (l, j) with
+                 | Some x -> [ (x, Ne (if j >= 0 && dedans (Some lacet.(j)) then j else j + 1)) ]
+                 | None -> []))
         |> Array.of_list)
       etat.lacets
   in
-  { etat with lacets }
+  ({ etat with lacets = List.map (Array.map fst) lacets }, List.map (Array.map snd) lacets)
+
+let agit etat sigma = fst (agit_origines etat sigma)
 
 (* Deux points consécutifs d'un lacet dans le même intervalle forment un bigone : ils s'annulent (pile). *)
 let reduit etat =
@@ -355,6 +361,26 @@ let reduit etat =
     |> List.rev |> Array.of_list
   in
   { etat with lacets = List.map reduit_lacet etat.lacets }
+
+(* Pour chaque lacet de l'état non réduit : le rang du point dans le lacet réduit, ou -1 s'il s'annule (bigone), et son partenaire
+   (le point avec lequel il s'annule, -1 sinon). *)
+let bigones etat =
+  List.map
+    (fun lacet ->
+      let n = Array.length lacet in
+      let rang = Array.make n 0 and partenaire = Array.make n (-1) in
+      let pile = ref [] in
+      Array.iteri
+        (fun k x ->
+          match !pile with
+          | j :: reste when intervalle lacet.(j) etat.trous = intervalle x etat.trous ->
+              pile := reste; rang.(j) <- -1; rang.(k) <- -1; partenaire.(j) <- k; partenaire.(k) <- j
+          | _ -> pile := k :: !pile)
+        lacet;
+      let r = ref 0 in
+      Array.iteri (fun k _ -> if rang.(k) >= 0 then begin rang.(k) <- !r; incr r end) lacet;
+      (rang, partenaire))
+    etat.lacets
 
 let verifie_action tresse =
   let nb_trous = 1 + List.fold_left (fun m (l : sigma lettre) -> max m l.indice) 0 tresse in
