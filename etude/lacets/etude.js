@@ -650,7 +650,7 @@ function calcule(mot) {
       termine(d.message);
     }
   };
-  if (etat.film !== 'conforme') { w.postMessage({ mode: etat.film + (etat.detendu ? '_detendu' : ''), mot }); return; }   // triangulation, diagramme
+  if (etat.film !== 'conforme') { w.postMessage({ mode: etat.film === 'triangulation_envers' ? etat.film : etat.film + (etat.detendu ? '_detendu' : ''), mot }); return; }   // triangulation, diagramme
   w.postMessage({ mode: (etat.pur ? (etat.detendu ? 'conforme_pur_detendu' : 'conforme_pur') : etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude && !etat.pur ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
@@ -689,6 +689,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)
   PRECALCULES.forEach((sorte) => { if (new URLSearchParams(location.search).has(sorte)) { etat.precalcule = sorte; $('c-' + sorte).checked = true; } });   // ?regions : un film précalculé au départ (captures)
   ['triangulation', 'diagramme'].forEach((f) => { if (new URLSearchParams(location.search).has(f)) { etat.film = f; $('film').value = f; } });   // ?triangulation, ?diagramme (captures)
+  if (new URLSearchParams(location.search).has('envers')) { etat.film = 'triangulation_envers'; $('film').value = 'triangulation_envers'; }   // ?envers : le film de la triangulation à l'envers
   if (new URLSearchParams(location.search).has('nondetendu')) { etat.detendu = false; $('c-detendu').checked = false; }   // ?nondetendu : le film à maillage seul (captures)
   SEULEMENT_CONFORME.concat(HORS_PUR, SEULEMENT_PUR).forEach((id) => { const l = $(id).closest('label'); l.dataset.titre = l.title || ''; });   // le titre d'origine, rendu quand on revient aux lacets conformes
   metsAJourOptions();

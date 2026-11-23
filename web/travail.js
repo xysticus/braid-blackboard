@@ -227,6 +227,31 @@ function filmPurDetenduParImages(mot) {
   rend();
 }
 
+// Le film de la triangulation « à l'envers » (banc d'essai, mode triangulation_envers) : on part de l'image n (le méandre complet), on tire
+// sur les brins pour atteindre l'image clé n − 1, et ainsi de suite jusqu'aux brins du début. OCaml calcule le film du mot suivi de son
+// inverse et rend seulement la seconde moitié (le retour) ; on la joue à l'envers.
+function filmEnvers(mot) {
+  const fixe = self.ardoise.statique('triangulation', mot);
+  if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
+  const image = enFloat32(fixe);
+  postMessage({ type: 'statique', image }, tampons(image));
+  const images = [];
+  let chapitres = null;
+  const message = self.ardoise.film('triangulation_envers', mot, (im, k) => {
+    if (k === 0) chapitres = Array.from(im.chapitres);
+    images[k] = im;
+  });
+  if (!chapitres) { postMessage({ type: 'fini', message: message || 'film indisponible', erreur: true }); return; }
+  const retour = images.slice().reverse();
+  const total = retour.length, dernier = total - 1;
+  retour[0].chapitres = chapitres.map((c) => dernier - c).reverse();   // les débuts de lettre, comptés depuis la fin
+  retour.forEach((im, k) => {
+    const f = enFloat32(im);
+    postMessage({ type: 'image', image: f, k, total }, tampons(f));
+  });
+  postMessage({ type: 'fini', message: message || '', erreur: false });
+}
+
 onmessage = (e) => {
   const d = e.data;
   if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme
@@ -251,6 +276,7 @@ onmessage = (e) => {
   }
   const { mode, mot } = d;
   if (/^conforme(_detendu)?(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmReparti(mode, mot); return; }
+  if (mode === 'triangulation_envers') { filmEnvers(mot); return; }
   if (mode === 'conforme_pur_detendu' && typeof Worker !== 'undefined') { filmPurDetenduParImages(mot); return; }
   if (/^(triangulation|diagramme)_detendu$/.test(mode) && typeof Worker !== 'undefined') { filmDetenduParImages(mode.replace('_detendu', ''), mot); return; }
   const fixe = self.ardoise.statique(mode, mot);

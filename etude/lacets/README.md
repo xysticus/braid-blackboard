@@ -61,6 +61,15 @@ entre brins et trous (12 px) garde les écarts et empêche les croisements ; ell
 ECART=6 RAYON_TROU=12 …`. La détente est portée en OCaml (`ocaml/lib/detente.ml`, les mêmes points à 1e-6 près) : la case
 « détendu » du banc la fait calculer par la page (mode `conforme_detendu`), pour n'importe quel mot.
 
+## Le film de la triangulation « à l'envers »
+
+Option « triangulation à l'envers » du sélecteur « film » (ou `?envers`) : on part du méandre complet (l'image n), on tire sur les brins
+(les trous reculent d'une lettre, les brins se tendent sur le maillage) jusqu'aux brins du début, puis on **joue ce film à l'envers** : les
+lacets font des chemins qui contournent des trous qui n'existent pas encore. OCaml (`triangulation_envers` dans `ocaml/web/ardoise_web.ml`)
+calcule le film du mot suivi de son inverse (le méandre se construit, puis se défait ; `Film.cree` a besoin du mot entier) et ne rend que
+le retour ; `filmEnvers` dans `web/travail.js` le renverse. La limite (6 brins, 14 lettres) porte sur le mot, pas sur le mot doublé. Calcul
+très rapide : pas de détente (1 061 images pour la tresse chargée en 2,5 s).
+
 ## Le film de la triangulation
 
 Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page), la triangulation (vue 3, `?triangulation`) et le

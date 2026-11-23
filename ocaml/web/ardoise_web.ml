@@ -240,6 +240,21 @@ let film_tresse mode mot rendu =
             if k = 0 then avec_chapitres debuts im;
             appelle im k (total + 1));
         Js.string ""
+    | "triangulation_envers" ->
+        (* le film du mot suivi de son inverse (le méandre complet se construit, puis se défait lettre par lettre) ; seule la seconde moitié
+           est rendue, dans l'ordre du calcul : la page la rejoue à l'envers. La limite porte sur le mot, pas sur le mot doublé. *)
+        verifie_limites ~conforme:true tresse;
+        let inverse = List.rev_map (fun (l : _ Tresses.lettre) -> { l with Tresses.signe = (match l.signe with Tresses.Plus -> Tresses.Moins | Tresses.Moins -> Tresses.Plus) }) tresse in
+        let double = tresse @ inverse in
+        let sous_pas, total, _, debuts = prepare_triangulation double in
+        let debut = debuts.(List.length tresse) in   (* l'image où commence le retour : le méandre complet *)
+        joue_triangulation double ~sous_pas ~rendu:(fun f e k ->
+            if k >= debut then begin
+              let im = image_triangulation f e in
+              if k = debut then ignore (avec_chapitres (Array.init (List.length tresse + 1) (fun j -> debuts.(List.length tresse + j) - debut)) im);
+              appelle im (k - debut) (total + 1 - debut)
+            end);
+        Js.string ""
     | ("conforme" | "conforme_libre" | "conforme_sans_maillage" | "conforme_satellites" | "conforme_detendu" | "conforme_pur" | "conforme_pur_detendu") as mode ->
         (* conforme_libre : les arcs ne passent plus par les points « fantômes » (les pieds sur la plus claire des deux lignes de
            construction pendant le raccord) ; sert au banc d'essai etude/lacets, pas à la page publique *)
