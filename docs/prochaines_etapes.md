@@ -21,3 +21,9 @@ et entraîne les lacets.
    ellipses). Reste éventuellement : passer les `assert` en tests pytest.
 6. ~~**Film des lacets sans défauts au raccord.**~~ Fait (2026-11-21, tag v1.2) : le film conforme détendu pendant le raccord
    (`ocaml/lib/detente.ml`, `pistes_film_conforme.md`), réparti par lettres sur plusieurs workers dans la page.
+7. **La rétractation, à proposer dans la page publique (idée de l'utilisateur, version simple dans le banc, 2026-11-24).** Le méandre de
+   l'image n reste en place ; on tire sur les lacets l'un après l'autre, en effaçant leur bout jusqu'à leur arrivée sur l'axe, le trou
+   étant le centre du demi-cercle qui referme le lacet (`etude/lacets/README.md`, `filmRetraction` dans `web/travail.js`). Pour la
+   proposer dans la page, il faut **générer le mot associé** : quand un trou bouge seul, il passe devant et derrière les autres, immobiles ;
+   ces passages donnent des lettres, et le mot obtenu doit être équivalent au mot d'origine. L'égalité des mots est difficile chez les
+   tresses (formes normales : *Le calcul des tresses*) ; on peut comparer par l'action sur F_n, qui est fidèle.
