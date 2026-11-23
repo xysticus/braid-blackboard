@@ -99,6 +99,14 @@ est le point le plus proche, pris de façon monotone), et **le trou est le centr
 d'autre ne bouge ; on ne retrouve pas les lettres du mot (la version qui les retrouverait est à repenser). 240 images, lecture à l'envers : le
 méandre se révèle lacet après lacet et les trous avancent dans leurs lacets.
 
+**Le mot écrit par les trous (2026-11-24).** Au départ du film joué, les trous sont alignés et dans l'ordre (vérifié : écart de hauteur de 0,04 à
+0,09 px, trous des lacets 1 à n dans l'ordre croissant, sur six mots). Chaque fois que deux trous voisins échangent leur ordre selon l'axe, une
+lettre s'écrit : σᵢ si le trou qui va vers la droite passe au-dessus (comme le demi-tour horaire de σᵢ dans le reste de la page), σᵢ⁻¹ s'il passe
+au-dessous (positions interpolées entre deux images). Les lettres s'écrivent sous le film, de gauche à droite, à mesure qu'on le joue. À la fin
+(`filmRetraction`), l'action du mot obtenu sur F_n (`ardoise.analyse`) est comparée à celle du mot d'origine : message « les méandres sont
+égaux ». Mesuré : égaux sur 13 mots (dont `1 -2 1 -2 1 -2 3 -1 2`, 41 lettres, et `4 3 -1 -1 2 -4 1`) ; le mot obtenu n'est pas le mot
+d'origine (`1 -2 1 -2` donne `2 1 2 2 -1 -1 -2 -2`) mais lui est équivalent. Reste à faire : dessiner à côté, par la méthode conforme, le méandre du mot obtenu.
+
 ## Le film de la triangulation
 
 Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page), la triangulation (vue 3, `?triangulation`) et le

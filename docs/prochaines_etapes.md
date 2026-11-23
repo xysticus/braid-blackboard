@@ -26,4 +26,11 @@ et entraîne les lacets.
    étant le centre du demi-cercle qui referme le lacet (`etude/lacets/README.md`, `filmRetraction` dans `web/travail.js`). Pour la
    proposer dans la page, il faut **générer le mot associé** : quand un trou bouge seul, il passe devant et derrière les autres, immobiles ;
    ces passages donnent des lettres, et le mot obtenu doit être équivalent au mot d'origine. L'égalité des mots est difficile chez les
-   tresses (formes normales : *Le calcul des tresses*) ; on peut comparer par l'action sur F_n, qui est fidèle.
+   tresses (formes normales : *Le calcul des tresses*) ; on compare par l'action sur F_n, qui est fidèle : avec le mot généré, on **redessine le méandre
+   par la méthode conforme, à côté, et on vérifie à la fin que les deux méandres sont égaux** (facile à implémenter, et pédagogique). Points à régler :
+   le signe d'une lettre (quel trou passe devant à l'échange d'ordre selon l'axe), et la configuration de départ de la rétractation (trous aux
+   bouchons, pas alignés) qui demande un chemin de référence jusqu'à la ligne droite standard.
+   **Fait dans le banc (2026-11-24)** : le mot s'écrit sous le film, à mesure, et ses méandres sont comparés à ceux du mot d'origine (égaux sur
+   13 mots essayés) ; les trous sont bien alignés et dans l'ordre au départ. **Idée suivante (utilisateur)** : un *méandre témoin* à côté, dessiné par
+   la méthode conforme avec le mot obtenu, **avec le même timing** : la lettre écrite à l'image k du film de rétractation est jouée dans le film
+   conforme à ce moment-là.

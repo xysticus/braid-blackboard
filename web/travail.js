@@ -370,16 +370,51 @@ function filmRetraction(mot) {
       lacets.push(r.pts.slice(0, ia + 1).concat(arc, r.pts.slice(ib)).flat());
       nouveaux[r.p] = M;   // le trou est le centre du bouchon
     });
-    images.push({ lacets, trous: nouveaux.flat(), clou: Array.from(fixe.clou), brin: 3.5, ecart: 0 });
+    images.push({ lacets, trous: nouveaux.flat(), clou: Array.from(fixe.clou), brin: 3.5, ecart: 0, _trousLacets: rubans.map((r) => nouveaux[r.p]) });
   }
   const retour = images.reverse();
   const nb = retour.length, L = mot.length;
   retour[0].chapitres = Array.from({ length: L + 1 }, (_, j) => Math.round(j * (nb - 1) / L));
+  // Le mot de tresse que les trous écrivent : au départ ils sont alignés dans l'ordre ; chaque fois que deux trous voisins échangent leur ordre
+  // selon l'axe, c'est une lettre σ_i (le trou qui va vers la droite passe au-dessus : demi-tour horaire à l'écran, comme σ_i du reste de la page)
+  // ou σ_i⁻¹ (il passe au-dessous). Les lettres sont lues dans le sens de lecture du film ; entre deux images, les positions sont interpolées.
+  const lettres = [];   // [indice de l'image où la lettre s'écrit, lettre]
+  const n = rubans.length;
+  let ordre = Array.from({ length: n }, (_, i) => i).sort((a, b) => retour[0]._trousLacets[a][0] - retour[0]._trousLacets[b][0]);
+  for (let k = 1; k < nb; k++) {
+    const A = retour[k - 1]._trousLacets, B = retour[k]._trousLacets;
+    for (let sub = 1; sub <= 12; sub++) {
+      const t = sub / 12;
+      const P = A.map((a, i) => [a[0] + t * (B[i][0] - a[0]), a[1] + t * (B[i][1] - a[1])]);
+      const nouvel = Array.from({ length: n }, (_, i) => i).sort((a, b) => P[a][0] - P[b][0]);
+      let encore = true;
+      while (encore) {
+        encore = false;
+        for (let j = 0; j + 1 < n; j++) {
+          const g = ordre[j], d = ordre[j + 1];
+          if (nouvel.indexOf(g) > nouvel.indexOf(d)) {   // g passe à droite de d
+            lettres.push([k, P[g][1] < P[d][1] ? j + 1 : -(j + 1)]);
+            ordre[j] = d; ordre[j + 1] = g; encore = true; break;
+          }
+        }
+      }
+    }
+  }
+  const motGenere = lettres.map((x) => x[1]);
+  retour[0].lettres = lettres.flat();   // pour le banc : le mot s'écrit sous le film, à mesure
+  let message = `mot obtenu (${motGenere.length} lettres)`;
+  if (motGenere.length && n >= 2) {
+    const egal = (m1, m2) => { const a = self.ardoise.analyse(m1), b = self.ardoise.analyse(m2); if (a.erreur || b.erreur) return null; const fa = Array.from(a.fn).map((w) => Array.from(w).join(' ')), fb = Array.from(b.fn).map((w) => Array.from(w).join(' ')); return a.n === b.n && fa.join('|') === fb.join('|'); };
+    const e1 = egal(mot, motGenere);
+    message += e1 === null ? ' : comparaison impossible (limites de la page)' : e1 ? ' : les méandres sont égaux' : ' : les méandres diffèrent';
+    if (e1 === false) message += egal(mot, motGenere.map((x) => -x)) ? ' (égaux avec les signes inversés)' : '';
+  }
   retour.forEach((im, k) => {
+    delete im._trousLacets;
     const f = enFloat32(im);
     postMessage({ type: 'image', image: f, k, total: nb }, tampons(f));
   });
-  postMessage({ type: 'fini', message: '', erreur: false });
+  postMessage({ type: 'fini', message, erreur: false });
 }
 
 onmessage = (e) => {

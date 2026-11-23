@@ -450,6 +450,15 @@ function va(k) {
   $('numero').value = String(k + 1);
   const tPur = etat.pur && etat.film === 'conforme' ? ` · t = ${(k === 0 ? 0 : lisse((((k - 1) % IMAGES_PAR_LETTRE) + 1) / IMAGES_PAR_LETTRE)).toFixed(3)}` : '';   // le paramètre de la transformation (0 : état k, 1 : état k+1)
   $('position').textContent = `image ${k + 1} / ${etat.total} · ${descriptionImage(k)}${tPur}`;
+  // le mot que les trous écrivent (film « rétractation ») : les lettres s'écrivent de gauche à droite, à mesure que le film est joué
+  const lettres = etat.images[0] && etat.images[0].lettres;
+  const zone = $('mot-genere');
+  if (lettres && lettres.length) {
+    const mots = [];
+    for (let j = 0; j + 1 < lettres.length && lettres[j] <= k; j += 2) mots.push(nomLettre(lettres[j + 1]));
+    zone.hidden = false;
+    zone.textContent = 'mot écrit par les trous : ' + (mots.join(' ') || '(rien encore)');
+  } else zone.hidden = true;
 }
 
 function arrete() {
