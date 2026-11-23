@@ -60,11 +60,14 @@ workflow `pages.yml` et de `web/deploie.sh` : en ajouter un autre oblige à les 
 `etude_exploitation_des_images.md`.
 
 **Le film MP4 AV1 (2026-11-23).** `exporteFilm` (`web/exports.js`) dessine chaque image du film à l'échelle voulue (`dessineExport`), la confie au
-`VideoEncoder` du navigateur (AV1, `latencyMode: 'quality'`, image clé toutes les 50 images, 3 Mb/s pour 800 × 800) et `construitMP4` (`web/mp4.js`)
-emballe les morceaux : `moov` avant `mdat`, durées en millisecondes (0,5 s sur la première image, 1,5 s sur la dernière ; 12,5 images par seconde pour
-les iris), un seul bloc d'échantillons. Firefox ne donne pas la description `av1C` : on la fabrique (profil 0, 4:2:0 à 8 bits, niveau tiré de la taille
+`VideoEncoder` du navigateur (AV1, `latencyMode: 'realtime'`, image clé toutes les 50 images, 3 Mb/s pour 800 × 800) et `construitMP4` (`web/mp4.js`)
+emballe les morceaux : `moov` avant `mdat`, un seul bloc d'échantillons, **cadence constante** (25 images par seconde, 12,5 pour les iris). Les
+pauses (0,5 s sur la première image, 1,5 s sur la dernière, 2 s de générique) sont des **images répétées**, pas un échantillon long : VLC ne respecte
+pas la durée du dernier échantillon et coupait le film avant la fin (vu le 2026-11-23). Le mode `'quality'` de Firefox donnait un flux compliqué
+(plusieurs images cachées par unité, des unités de 3 octets `show_existing_frame`) ; `'realtime'` donne une image affichée par unité. Firefox ne donne pas la description `av1C` : on la fabrique (profil 0, 4:2:0 à 8 bits, niveau tiré de la taille
 de l'image) et on y met l'OBU « sequence header » de la première image clé ; les OBU « temporal delimiter » sont retirées des échantillons. Pour l'escargot et les
 iris : un générique de fin de 2 s (une image de plus) et les mentions `cprt` (norme ISO) et `©cpy` (forme QuickTime, la seule que `ffprobe` lise) ; pour un mot,
 seulement un commentaire « Créé avec Ardoise à tresse ». Vérification : `ffprobe` (codec `av1`, nombre d'images, durée, étiquettes), `ffmpeg -i f.mp4 -f null -`
 (décodage sans erreur) et le PSNR d'images décodées contre les PNG exportés (35 à 39 dB). Pas de transparence dans l'AV1 : le fond est plein.
-**Essayé seulement dans Firefox** (Chrome et Edge doivent marcher, Safari ne sait pas faire d'AV1) et lu seulement par `ffmpeg`, pas dans un lecteur vidéo.
+**Essayé seulement dans Firefox** (Chrome et Edge doivent marcher, Safari ne sait pas faire d'AV1). Lu par `ffmpeg` et par VLC (Windows) : les trois films
+vont jusqu'au bout. Windows Media Player ne l'ouvre pas : il lui faut le décodeur AV1 de Windows (« Extension vidéo AV1 », du Microsoft Store).

@@ -78,7 +78,7 @@ factice hors du cadre, qui les faisait reculer à tort (diagramme et rubans). É
 - `exports.js` : le menu « ⤓ » de la barre de chaque lecteur : image en cours en PNG (1×, 2× ou 4×, fond transparent en option), SVG (polylignes
   simplifiées à 0,15 px, lignes de construction comprises) et données JSON, et, pour les vues d'un mot, un zip des images clés (une par début de
   lettre, plus la dernière : `cle-0.png`…) et le film MP4 AV1 (fabriqué image par image par l'encodeur vidéo du navigateur, WebCodecs : Firefox ou
-  Chrome ; l'entrée est grisée ailleurs ; progression et bouton Annuler ; `Échap` annule) ;
+  Chrome ; l'entrée est grisée ailleurs ; progression et bouton Annuler ; `Échap` annule ; les pauses sont des images répétées) ;
 - `mp4.js` : l'emballeur MP4 du film (un flux AV1, la boîte `av1C` fabriquée à partir du nom du codec et de l'en-tête de séquence, mentions de droits) ; l'escargot et les iris n'ont que le PNG et le JSON, et leurs fichiers
   portent la licence CC BY 4.0 et le nom de l'auteur (`LICENCES.md`). Tout se fait dans le navigateur ;
 - `travail.js` : le Web Worker (image fixe, puis images du film envoyées une à une) ;

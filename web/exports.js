@@ -221,7 +221,8 @@ function dessineGenerique(c) {
 }
 
 // Le film MP4 AV1 : chaque image du film est dessinée à l'échelle voulue, encodée par le VideoEncoder du navigateur, puis emballée (mp4.js).
-// 25 images par seconde (12,5 pour les iris), 0,5 s sur la première image et 1,5 s sur la dernière ; une image clé toutes les 50 images.
+// 25 images par seconde (12,5 pour les iris) à cadence constante, 0,5 s sur la première image et 1,5 s sur la dernière (des images répétées) ;
+// une image clé toutes les 50 images.
 // Pour l'escargot et les iris, un générique de fin (2 s) suit la dernière image. `progres(i, n)` est appelé avant chaque image ;
 // `signal` (AbortSignal) interrompt le travail : l'encodeur est fermé, rien ne reste.
 async function exporteFilm(film, echelle, progres, signal) {
@@ -231,16 +232,23 @@ async function exporteFilm(film, echelle, progres, signal) {
   const niveau = niveauAV1(largeur, hauteur);
   const config = {
     codec: `av01.0.${String(niveau).padStart(2, '0')}M.08`, width: largeur, height: hauteur,
-    bitrate: Math.max(1e6, Math.round(3e6 * largeur * hauteur / 640000)), framerate: film.ips, latencyMode: 'quality',
+    bitrate: Math.max(1e6, Math.round(3e6 * largeur * hauteur / 640000)), framerate: film.ips, latencyMode: 'realtime',
   };
   const verdict = await VideoEncoder.isConfigSupported(config);
   if (!verdict.supported) throw new Error('ce navigateur ne sait pas fabriquer de l\'AV1 à cette taille');
 
-  // le programme du film : (image, durée en ms, avec générique ?)
+  // le programme du film : une entrée par image du FILM, toutes de la même durée (cadence constante). Les pauses (0,5 s sur la première image,
+  // 1,5 s sur la dernière, 2 s de générique pour l'escargot et les iris) sont des images répétées, pas un échantillon long : les lecteurs
+  // (VLC) ne respectent pas la durée du dernier échantillon et coupaient le film avant la fin ; une image répétée ne coûte que quelques octets.
   const n = film.images.length;
   const image = Math.round(1000 / film.ips);
-  const programme = film.images.map((_, i) => ({ i, duree: i === 0 ? 500 : i === n - 1 && !libre ? 1500 : image, generique: false }));
-  if (libre) programme.push({ i: n - 1, duree: 2000, generique: true });
+  const repete = (ms) => Math.max(0, Math.round(ms / image) - 1);   // images en plus de l'image elle-même
+  const programme = [];
+  film.images.forEach((_, i) => {
+    const fois = 1 + (i === 0 ? repete(500) : i === n - 1 && !libre ? repete(1500) : 0);
+    for (let r = 0; r < fois; r++) programme.push({ i, duree: image, generique: false });
+  });
+  if (libre) for (let r = 0; r < 1 + repete(2000); r++) programme.push({ i: n - 1, duree: image, generique: true });
 
   const morceaux = [];
   let erreurEncodeur = null;
@@ -260,9 +268,11 @@ async function exporteFilm(film, echelle, progres, signal) {
       interrompu();
       if (erreurEncodeur) throw erreurEncodeur;
       progres(k + 1, programme.length);
-      const p = programme[k];
-      dessineExport(c, film, echelle, false, p.i);   // pas de transparence dans l'AV1 : le fond est plein
-      if (p.generique) dessineGenerique(c);
+      const p = programme[k], avant = programme[k - 1];
+      if (!avant || avant.i !== p.i || avant.generique !== p.generique) {   // une image répétée n'est pas redessinée
+        dessineExport(c, film, echelle, false, p.i);   // pas de transparence dans l'AV1 : le fond est plein
+        if (p.generique) dessineGenerique(c);
+      }
       const cadre = new VideoFrame(c, { timestamp: temps, duration: p.duree * 1000 });
       encodeur.encode(cadre, { keyFrame: k % 50 === 0 });
       cadre.close();
