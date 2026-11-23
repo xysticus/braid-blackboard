@@ -9,6 +9,9 @@ const URL_PROJET = 'https://github.com/xysticus/braid-blackboard';
 const URL_LICENCES = URL_PROJET + '/blob/master/LICENCES.md';
 const URL_CC_BY = 'https://creativecommons.org/licenses/by/4.0/';
 const CITATION = `Ardoise à tresse (braid-blackboard), xysticus, ${URL_PROJET}, licence CC BY 4.0 (contenus) / MIT (code)`;
+// L'icône du bouton d'export : une flèche vers un plateau, en trait épais (le caractère « ⤓ » est trop fin dans la plupart des polices).
+const ICONE_EXPORT = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" ' +
+  'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v12M6.5 10.5L12 16l5.5-5.5M4.5 20.5h15"/></svg>';
 const MODES_LIBRES = new Set(['escargot', 'bouquet']);
 const NOMS_DE_VUE = { conforme: 'lacets', diagramme: 'diagramme', rubans: 'rubans', triangulation: 'triangulation', escargot: 'escargot', bouquet: 'iris' };
 
@@ -416,7 +419,7 @@ function menuExport(lecteur) {
   zone.className = 'export';
   const tailles = [1, 2, 4].map((e) => `<option value="${e}"${e === 2 ? ' selected' : ''}>${lecteur.canvas.width * e} × ${lecteur.canvas.height * e}</option>`).join('');
   zone.innerHTML =
-    `<button type="button" class="bouton-export" aria-haspopup="true" aria-expanded="false" aria-controls="${id}" title="Exporter l'image en cours" aria-label="Exporter l'image en cours">⤓</button>` +
+    `<button type="button" class="bouton-export" aria-haspopup="true" aria-expanded="false" aria-controls="${id}" title="Exporter l'image en cours" aria-label="Exporter l'image en cours">${ICONE_EXPORT}</button>` +
     `<div class="menu-export" id="${id}" role="group" aria-label="Exporter l'image en cours" hidden>` +
     `<label>Taille des images <select class="taille">${tailles}</select></label>` +
     (libre ? '' : `<label><input type="checkbox" class="transparent"> fond transparent</label>`) +

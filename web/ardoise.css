@@ -211,7 +211,8 @@ main > *, .deux-colonnes > *, .quatre > *, .libres > * { min-width: 0; }   /* un
 
 /* le menu « ⤓ » des exports : un bouton qui ouvre, au clic, une petite fenêtre sous la barre (exports.js) */
 .etat .export { position: relative; }
-.etat .bouton-export { width: 34px; }
+.etat .bouton-export { width: 34px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.etat .bouton-export svg { display: block; }
 .etat .menu-export {
   position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 20; min-width: 220px; padding: 10px 12px;
   display: flex; flex-direction: column; gap: 8px; background: var(--carte); color: var(--encre);
