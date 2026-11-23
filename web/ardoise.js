@@ -224,9 +224,11 @@ const COQUILLE = [rgb(0.47, 0.29, 0.14), rgb(0.86, 0.75, 0.56), rgb(0.33, 0.19, 
 const CHAIR = rgb(0.74, 0.65, 0.52);
 const CERNE = rgb(0.24, 0.15, 0.08);
 
-function dessineEscargot(canvas, im) {
+// `echelle` : 1 pour un canvas de la taille du film ; 2, 4… pour une image plus grande (export) : le dessin est le même, agrandi.
+function dessineEscargot(canvas, im, echelle = 1) {
   const ctx = canvas.getContext('2d');
-  const l = canvas.width, h = canvas.height;
+  ctx.setTransform(echelle, 0, 0, echelle, 0, 0);
+  const l = canvas.width / echelle, h = canvas.height / echelle;
   const fond = ctx.createLinearGradient(0, 0, 0, h);
   fond.addColorStop(0, rgb(0.66, 0.80, 0.52));
   fond.addColorStop(1, rgb(0.38, 0.58, 0.30));
@@ -302,9 +304,10 @@ function traceFerme(ctx, p, motif, largeur) {
   ctx.stroke();
 }
 
-function dessineBouquet(canvas, im) {
+function dessineBouquet(canvas, im, echelle = 1) {
   const ctx = canvas.getContext('2d');
-  const l = canvas.width, h = canvas.height, e = im.e;
+  ctx.setTransform(echelle, 0, 0, echelle, 0, 0);
+  const l = canvas.width / echelle, h = canvas.height / echelle, e = im.e;
   const fond = ctx.createLinearGradient(0, 0, 0, h);
   fond.addColorStop(0, rgb(0.62, 0.80, 0.95));
   fond.addColorStop(1, rgb(0.82, 0.91, 0.98));
@@ -657,6 +660,7 @@ class Lecteur {
     this.bouton.onclick = () => (this.lecture ? this.arrete() : this.joue());
     this.bouton.title = 'lecture / pause (relance le film s\'il est fini)';
     this.curseur.oninput = () => { this.arrete(); this.t = Number(this.curseur.value); this.montre(); };
+    this.numero.after(menuExport(this));   // le menu « ⤓ » des exports (exports.js)
     this.prepareChapitres();
   }
 
@@ -710,7 +714,8 @@ class Lecteur {
     this.vaA(cible);
   }
 
-  duree() { return this.pauseDebut + (this.images.length - 1); }
+  // le nombre de positions de t, de 0 à duree() - 1 : la pause du début sur l'image 0, puis une position par image ; la dernière position est la dernière image
+  duree() { return this.pauseDebut + this.images.length; }
 
   // Le numéro (à partir de 0) de l'image du film montrée à l'instant t : t compte aussi la pause du début.
   indice() {

@@ -51,3 +51,10 @@ vient d'envoyer, est introuvable). Rien à corriger dans le dépôt : `gh run re
 **Tresses personnalisées (2026-11-22).** Le bloc « les tresses mémorisées » de `web/ardoise.js` (mémoire, cartes, pastilles, export et
 import JSON) est décrit dans `web/README.md` ; décisions et raisons : `etude_tresses_personnalisees.md`. La palette et le fond sont
 des variables globales (`PALETTE`, `FOND`, `fondDe`) lues au dessin : changer une couleur redessine (`recolore`), sans calcul.
+
+**Lecteurs : chapitres et exports (2026-11-23).** `dessineImage` est coupée en `listeDeTrace` (quoi tracer, avec la palette et le fond courants) et
+`dessineListe` (le dessin, à l'échelle voulue) : le canvas, le PNG et le SVG lisent la même liste. OCaml met un champ `chapitres` sur l'image 0 de
+chaque film d'un mot (les numéros d'image où commence chaque lettre, puis la dernière image : `avec_chapitres` dans `ocaml/web/ardoise_web.ml`) ;
+pour la triangulation, ils sont relevés pendant l'essai silencieux (`prepare_triangulation`). `web/exports.js` est dans les listes de fichiers du
+workflow `pages.yml` et de `web/deploie.sh` : en ajouter un autre oblige à les mettre à jour toutes les deux. Détail et suite des étapes :
+`etude_exploitation_des_images.md`.

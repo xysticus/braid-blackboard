@@ -16,7 +16,7 @@ fi
 # seulement les fichiers de la page, dans un dossier à part : --delete retire du serveur ce qui n'y est plus
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-cp index.html ardoise.css ardoise.js travail.js ardoise_lib.js favicon.svg "$STAGE/"
+cp index.html ardoise.css ardoise.js exports.js travail.js ardoise_lib.js favicon.svg "$STAGE/"
 mkdir "$STAGE/schemas" && cp schemas/*.svg "$STAGE/schemas/"
 
 HOTE="${CIBLE%%:*}"

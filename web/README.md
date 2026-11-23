@@ -75,6 +75,9 @@ factice hors du cadre, qui les faisait reculer à tort (diagramme et rubans). É
 
 - `index.html`, `ardoise.css`, `favicon.svg` (un croisement du diagramme de tresse) : la page ;
 - `ardoise.js` : lecture du mot (`1 -2 3`, `σ1 σ2^-1`, `σ₁σ₂⁻¹`, `s1^3`), MathML, diagramme classique, lecteurs de films ;
+- `exports.js` : le menu « ⤓ » de la barre de chaque lecteur : image en cours en PNG (1×, 2× ou 4×, fond transparent en option), SVG (polylignes
+  simplifiées à 0,15 px, lignes de construction comprises) et données JSON ; l'escargot et les iris n'ont que le PNG et le JSON, et leurs fichiers
+  portent la licence CC BY 4.0 et le nom de l'auteur (`LICENCES.md`). Tout se fait dans le navigateur ;
 - `travail.js` : le Web Worker (image fixe, puis images du film envoyées une à une) ;
 - `ardoise_lib.js` : produit par `construit.sh`, suivi par git (quelque 167 Ko) ;
 - `schemas/*.svg` : les schémas des infobulles (un « ? » près de chaque titre, au survol ou au clavier), copies de `imgs/schemas/` ; `?aide=triangulation` ouvre une bulle sans survol (captures).
