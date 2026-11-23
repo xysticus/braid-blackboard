@@ -88,6 +88,15 @@ chevilles à 30 itérations par image : la garde contre les trous de `Detente` n
 nombres d'enroulement n'ont été vérifiés que sur `1 -2 1 -2` et `2 3 1 4 3 2`. Les cordes sur chevilles (partout ou à tension locale) restent
 dans le banc comme essai ; on ne les poursuit pas pour l'instant. La tresse chargée n'a pas été mesurée avec ces réglages.
 
+## Rétractation : on tire sur les lacets (version simple)
+
+Option « rétractation (on tire sur les lacets) » (ou `?retractation`), `filmRetraction` dans `web/travail.js`. Idée de l'utilisateur, purement
+graphique : le méandre de l'image n est dessiné une fois pour toutes ; on tire **en même temps sur tous les lacets, proportionnellement à leur
+longueur** : chaque lacet est un ruban dont on efface le bout (à partir du point le plus proche du trou qu'il enlace, la lettre du milieu de son
+mot de F_n) en remontant vers le clou, et le trou recule dans le ruban en suivant ce bout (milieu des deux extrémités ouvertes). Rien d'autre ne bouge ;
+on ne retrouve pas les lettres du mot (la version qui les retrouverait est à repenser). 97 % de chaque lacet est effacé, 160 images, lecture à
+l'envers : le méandre se révèle et les trous avancent dans leurs lacets. Les lacets sont dessinés en deux morceaux de même couleur (`indices`).
+
 ## Le film de la triangulation
 
 Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page), la triangulation (vue 3, `?triangulation`) et le

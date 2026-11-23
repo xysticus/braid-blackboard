@@ -288,6 +288,70 @@ function filmCordes(mot, portee) {   // portee : la tension n'agit qu'autour des
   postMessage({ type: 'fini', message: erreurs ? `${erreurs} image(s) sans détente` : (message || ''), erreur: false });
 }
 
+// Le film « rétractation » (banc d'essai, mode retractation) : un dessin fixe, le méandre de l'image n ; on tire en même temps sur tous les
+// lacets, proportionnellement à leur longueur : chaque lacet est un ruban dont on efface le bout (à partir du trou qu'il enlace, au milieu de son
+// chemin) en remontant vers le clou, et le trou recule dans le ruban en suivant ce bout. Rien d'autre ne bouge : les trous dansent là où le lacet
+// les emmène, on ne retrouve pas les lettres du mot. On rend les images à l'envers : le méandre se révèle, les trous avancent dans leurs lacets.
+const IMAGES_RETRACTION = 160, RESTE_RETRACTION = 0.97;   // on efface au plus 97 % de chaque lacet
+function filmRetraction(mot) {
+  const fixe = self.ardoise.statique('conforme', mot);
+  if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
+  const image = enFloat32(fixe);
+  postMessage({ type: 'statique', image }, tampons(image));
+  const mots = Array.from(self.ardoise.analyse(mot).fn).map((w) => Array.from(w));
+  const T = Array.from(fixe.trous);
+  const trous = [];
+  for (let i = 0; i + 1 < T.length; i += 2) trous.push([T[i], T[i + 1]]);
+  const parX = trous.map((t, p) => p).sort((a, b) => trous[a][0] - trous[b][0]);   // le trou j (de 1) : le j-ième de gauche à droite
+  // pour chaque lacet : ses points, ses longueurs cumulées, le trou qu'il enlace (la lettre du milieu de son mot) et le point du lacet le plus proche de ce trou (le bout du ruban)
+  const rubans = Array.from(fixe.lacets).map((l, i) => {
+    const pts = [];
+    for (let k = 0; k + 1 < l.length; k += 2) pts.push([l[k], l[k + 1]]);
+    const cum = [0];
+    for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+    const w = mots[i] || [];
+    const j = w.length ? Math.abs(w[(w.length - 1) >> 1]) : i + 1;
+    const p = parX[Math.min(trous.length, Math.max(1, j)) - 1];
+    let bout = 0, dmin = Infinity;
+    pts.forEach((q, k) => { const d = Math.hypot(q[0] - trous[p][0], q[1] - trous[p][1]); if (d < dmin) { dmin = d; bout = k; } });
+    return { pts, cum, p, bout, L: cum[cum.length - 1] };
+  });
+  const point = (r, s) => {   // le point du lacet à l'abscisse curviligne s
+    let k = 1;
+    while (k < r.cum.length - 1 && r.cum[k] < s) k++;
+    const u = r.cum[k] === r.cum[k - 1] ? 0 : (s - r.cum[k - 1]) / (r.cum[k] - r.cum[k - 1]);
+    return [r.pts[k - 1][0] + u * (r.pts[k][0] - r.pts[k - 1][0]), r.pts[k - 1][1] + u * (r.pts[k][1] - r.pts[k - 1][1])];
+  };
+  const images = [];
+  for (let n = 0; n < IMAGES_RETRACTION; n++) {
+    const t = n / (IMAGES_RETRACTION - 1), u = RESTE_RETRACTION * t * t * (3 - 2 * t);
+    const lacets = [], indices = [], nouveaux = trous.map((q) => q.slice());
+    rubans.forEach((r, i) => {
+      const sBout = r.cum[r.bout];
+      const a = sBout * (1 - u), b = sBout + (r.L - sBout) * u;   // le bout efface de a à b
+      const debut = [], fin = [];
+      for (let k = 0; k < r.pts.length; k++) {
+        if (r.cum[k] <= a) debut.push(r.pts[k]);
+        if (r.cum[k] >= b) fin.push(r.pts[k]);
+      }
+      const pa = point(r, a), pb = point(r, b);
+      debut.push(pa); fin.unshift(pb);
+      lacets.push(debut.flat()); indices.push(i);
+      lacets.push(fin.flat()); indices.push(i);
+      nouveaux[r.p] = [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2];   // le trou suit le bout du ruban
+    });
+    images.push({ lacets, trous: nouveaux.flat(), clou: Array.from(fixe.clou), indices, brin: 3.5, ecart: 0 });
+  }
+  const retour = images.reverse();
+  const total = retour.length, L = mot.length;
+  retour[0].chapitres = Array.from({ length: L + 1 }, (_, j) => Math.round(j * (total - 1) / L));
+  retour.forEach((im, k) => {
+    const f = enFloat32(im);
+    postMessage({ type: 'image', image: f, k, total }, tampons(f));
+  });
+  postMessage({ type: 'fini', message: '', erreur: false });
+}
+
 onmessage = (e) => {
   const d = e.data;
   if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme
@@ -313,6 +377,7 @@ onmessage = (e) => {
   const { mode, mot } = d;
   if (/^conforme(_detendu)?(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmReparti(mode, mot); return; }
   if (mode === 'triangulation_envers') { filmEnvers(mot); return; }
+  if (mode === 'retractation') { filmRetraction(mot); return; }
   if (mode === 'triangulation_cordes') { filmCordes(mot); return; }
   if (mode === 'triangulation_cordes_locale') { filmCordes(mot, 100); return; }
   if (mode === 'conforme_pur_detendu' && typeof Worker !== 'undefined') { filmPurDetenduParImages(mot); return; }

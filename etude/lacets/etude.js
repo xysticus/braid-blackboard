@@ -378,7 +378,7 @@ function dessine(k) {
   const deux = image.lacets_bis && image.lacets_bis.length;   // mode pur : deux dessins, au choix
   const morph = deux && etat.morph && image.lacets_morph && image.lacets_morph.length;   // mode pur : la transformation en couleur, le plein et le pointillé estompés
   if (morph) ctx.globalAlpha = 0.35;
-  if (etat.plein || !deux) image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = etat.film !== 'conforme' && image.brin ? image.brin : (morph ? 2 : 3.5); trace(ctx, p); });   // la triangulation et le diagramme affinent le trait quand les brins sont serrés
+  if (etat.plein || !deux) image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[(image.indices ? image.indices[i] : i) % PALETTE.length]; ctx.lineWidth = etat.film !== 'conforme' && image.brin ? image.brin : (morph ? 2 : 3.5); trace(ctx, p); });   // la triangulation et le diagramme affinent le trait quand les brins sont serrés
   if (image.fixes && image.fixes.length) disques(ctx, image.fixes, 3, '#888');   // les points fixes du diagramme de courbes
   if (deux && etat.pointille) {   // le mode pur : le dessin de l'arrivée (état k+1 sur L–B–A–R), en pointillés, en même temps que celui du départ
     ctx.setLineDash([9, 7]);
@@ -650,7 +650,7 @@ function calcule(mot) {
       termine(d.message);
     }
   };
-  if (etat.film !== 'conforme') { w.postMessage({ mode: (etat.film === 'triangulation_envers' || etat.film.startsWith('triangulation_cordes')) ? etat.film : etat.film + (etat.detendu ? '_detendu' : ''), mot }); return; }   // triangulation, diagramme
+  if (etat.film !== 'conforme') { w.postMessage({ mode: (etat.film === 'triangulation_envers' || etat.film.startsWith('triangulation_cordes') || etat.film === 'retractation') ? etat.film : etat.film + (etat.detendu ? '_detendu' : ''), mot }); return; }   // triangulation, diagramme
   w.postMessage({ mode: (etat.pur ? (etat.detendu ? 'conforme_pur_detendu' : 'conforme_pur') : etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude && !etat.pur ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
@@ -692,6 +692,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('envers')) { etat.film = 'triangulation_envers'; $('film').value = 'triangulation_envers'; }   // ?envers : le film de la triangulation à l'envers
   if (new URLSearchParams(location.search).has('cordes')) { etat.film = 'triangulation_cordes'; $('film').value = 'triangulation_cordes'; }   // ?cordes : le film des cordes sur chevilles
   if (new URLSearchParams(location.search).has('cordeslocales')) { etat.film = 'triangulation_cordes_locale'; $('film').value = 'triangulation_cordes_locale'; }   // ?cordeslocales : tension locale
+  if (new URLSearchParams(location.search).has('retractation')) { etat.film = 'retractation'; $('film').value = 'retractation'; }   // ?retractation : on tire sur les lacets
   if (new URLSearchParams(location.search).has('nondetendu')) { etat.detendu = false; $('c-detendu').checked = false; }   // ?nondetendu : le film à maillage seul (captures)
   SEULEMENT_CONFORME.concat(HORS_PUR, SEULEMENT_PUR).forEach((id) => { const l = $(id).closest('label'); l.dataset.titre = l.title || ''; });   // le titre d'origine, rendu quand on revient aux lacets conformes
   metsAJourOptions();
