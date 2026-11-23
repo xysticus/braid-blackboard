@@ -691,8 +691,25 @@ let dessin_morph l ~reduction s w =
             let arc = arc_signe ~c:c_ancien ~aplati prev.depart next.depart in
             let pere_est_prev = norme (e.depart -: prev.depart) <= norme (e.depart -: next.depart) in
             let arc = if pere_est_prev then arc else Array.of_list (List.rev (Array.to_list arc)) in
-            let sur_l_arc = let g = debut_de_chemin arc (0.3 *. w *. longueur_de_chemin arc) in g.(Array.length g - 1) in
-            let nu = w *. w *. (3. -. (2. *. w)) in
+            (* il s'avance sur l'arc jusqu'à la frontière du disque que décrivent les deux trous qui tournent (de centre leur milieu, de
+               rayon la moitié de leur écart : le trou « creuse » l'anse), au rythme de la lettre *)
+            let a_ = ecran_de l ~reduction (trou l (l.i - 1) s) s and b_ = ecran_de l ~reduction (trou l l.i s) s in
+            let centre = 0.5 *: (a_ +: b_) and rayon = 0.5 *. norme (a_ -: b_) in
+            let dedans q = let u = (q.x -. centre.x) /. Float.max 1e-9 rayon and v = (q.y -. centre.y) /. Float.max 1e-9 (rayon *. aplati) in (u *. u) +. (v *. v) <= 1. in
+            let jusqu_a_la_frontiere =
+              let n = Array.length arc in
+              let cumul = ref 0. and trouve = ref None in
+              let j = ref 1 in
+              while !trouve = None && !j < n do
+                cumul := !cumul +. norme (arc.(!j) -: arc.(!j - 1));
+                if not (dedans arc.(!j)) then trouve := Some !cumul;
+                incr j
+              done;
+              match !trouve with Some x -> x | None -> longueur_de_chemin arc
+            in
+            let lisse_w = w *. w *. (3. -. (2. *. w)) in
+            let sur_l_arc = let g = debut_de_chemin arc (jusqu_a_la_frontiere *. lisse_w) in g.(Array.length g - 1) in
+            let nu = lisse_w in
             pos.(i) <- ((1. -. nu) *: sur_l_arc) +: (nu *: pos.(i))
           end)
         es;
