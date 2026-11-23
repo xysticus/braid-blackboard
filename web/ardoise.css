@@ -198,3 +198,13 @@ main > *, .deux-colonnes > *, .quatre > *, .libres > * { min-width: 0; }   /* un
 
 /* le numéro de l'image du film, à côté de la glissière (lu poliment par les lecteurs d'écran) */
 .etat .numero-image { white-space: nowrap; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+/* les chapitres : une rangée de boutons (une lettre du mot chacun) sous la glissière, et des repères sur la glissière */
+.etat { flex-wrap: wrap; }
+.etat .glissiere { position: relative; display: flex; flex: 1; min-width: 120px; padding-bottom: 7px; }
+.etat .glissiere input[type=range] { width: 100%; margin: 0; }
+.etat .repere { position: absolute; bottom: 0; width: 1.5px; height: 6px; margin-left: -0.75px; background: var(--doux); pointer-events: none; }
+.etat .chapitres { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px; }
+.etat .chapitres button { width: auto; min-width: 34px; height: 28px; padding: 0 7px; font-size: 0.85rem; white-space: nowrap; }
+.etat .chapitres button.courante { border-color: var(--accent); background: var(--accent); color: var(--carte); }
+@media (max-width: 640px), (pointer: coarse) { .etat .chapitres button { width: auto; min-width: 40px; height: 36px; } }

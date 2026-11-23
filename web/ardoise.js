@@ -501,6 +501,8 @@ class Lecteur {
     this.canvas = panneau.querySelector('canvas');
     this.etat = panneau.querySelector('.etat');
     this.images = [];
+    this.lettres = [];                               // le mot de la tresse (entiers) : une lettre par chapitre ; vide pour l'escargot et les iris
+    this.chapitres = null;                           // les indices d'image où commence chaque lettre, puis la dernière image (L + 1 nombres), reçus avec l'image 0
     this.fixe = null;
     this.vue = null;
     this.lecture = false;
@@ -529,6 +531,7 @@ class Lecteur {
   recommence() {
     this.arrete();
     this.images = [];
+    this.chapitres = null;
     this.fixe = null;
     this.vue = null;
     this.t = 0;
@@ -587,6 +590,7 @@ class Lecteur {
 
   recoitImage(image, k, total) {
     this.images.push(image);
+    if (k === 0 && image.chapitres) this.chapitres = Array.from(image.chapitres, Math.round);   // le contrat : OCaml donne le début de chaque lettre
     const barre = this.etat.querySelector('progress');
     if (barre) {
       barre.value = (k + 1) / total;
@@ -612,15 +616,16 @@ class Lecteur {
 
   prepareLecteur(message) {
     const duree = this.duree();
-    this.etat.innerHTML = `<button type="button" class="avant" title="image précédente (←)" aria-label="image précédente">◀</button>` +
+    this.etat.innerHTML = `<button type="button" class="avant" title="image précédente (←)" aria-label="image précédente">|◀</button>` +
       `<button type="button" class="lecture" title="lecture / pause">⏸</button>` +
-      `<button type="button" class="apres" title="image suivante (→)" aria-label="image suivante">▶</button>` +
-      `<input type="range" min="0" max="${duree - 1}" step="1" value="0" aria-label="position dans le film">` +
+      `<button type="button" class="apres" title="image suivante (→)" aria-label="image suivante">▶|</button>` +
+      `<span class="glissiere"><input type="range" min="0" max="${duree - 1}" step="1" value="0" aria-label="position dans le film"></span>` +
       (MODES_AVEC_CONSTRUCTION.has(this.mode)
         ? `<label><input type="checkbox" class="construction"${this.construction ? ' checked' : ''}> construction</label><span class="emplacement-aide"></span>`
         : '') +
       `<span class="numero-image" aria-live="polite"></span>` +
-      (message ? `<span class="ko" title="${message}">⚠</span>` : '');
+      (message ? `<span class="ko" title="${message}">⚠</span>` : '') +
+      (this.aDesChapitres() ? `<div class="chapitres" role="group" aria-label="Chapitres : une lettre du mot par bouton"></div>` : '');
     this.bouton = this.etat.querySelector('button.lecture');
     this.numero = this.etat.querySelector('.numero-image');
     // ◀ et ▶ : une image du film, en pause, sans boucler ; l'appui prolongé répète
@@ -639,7 +644,8 @@ class Lecteur {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
         this.arrete();
-        this.vaA(this.indice() + (e.key === 'ArrowRight' ? 1 : -1));
+        const sens = e.key === 'ArrowRight' ? 1 : -1;
+        if (e.shiftKey) this.vaAuChapitre(sens); else this.vaA(this.indice() + sens);
       }
     };
     this.curseur = this.etat.querySelector('input[type=range]');
@@ -651,6 +657,57 @@ class Lecteur {
     this.bouton.onclick = () => (this.lecture ? this.arrete() : this.joue());
     this.bouton.title = 'lecture / pause (relance le film s\'il est fini)';
     this.curseur.oninput = () => { this.arrete(); this.t = Number(this.curseur.value); this.montre(); };
+    this.prepareChapitres();
+  }
+
+  // Les chapitres sont utilisables si le mot a des lettres et que le film en a donné les débuts (L + 1 nombres, dans le film).
+  aDesChapitres() {
+    const c = this.chapitres, L = this.lettres.length;
+    return L > 0 && !!c && c.length === L + 1 && c[L] <= this.images.length - 1;
+  }
+
+  // La rangée de boutons (un par lettre) et les repères sur la glissière.
+  prepareChapitres() {
+    this.rangee = this.etat.querySelector('.chapitres');
+    if (!this.rangee) return;
+    const c = this.chapitres, L = this.lettres.length;
+    const max = this.duree() - 1;
+    this.boutonsLettres = this.lettres.map((lettre, j) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = nomLettre(lettre);
+      b.title = `lettre ${j + 1} sur ${L} : ${nomLettre(lettre)} (image ${c[j] + 1})`;
+      b.setAttribute('aria-label', `lettre ${j + 1} : ${nomLettre(lettre)}, à l'image ${c[j] + 1}`);
+      b.onclick = () => { this.arrete(); this.vaA(c[j]); };
+      this.rangee.appendChild(b);
+      return b;
+    });
+    const glissiere = this.etat.querySelector('.glissiere');
+    for (let j = 0; j <= L; j++) {   // un repère à chaque début de lettre, et un à la fin
+      const p = 100 * (c[j] === 0 ? 0 : this.pauseDebut + c[j]) / max;
+      const repere = document.createElement('span');
+      repere.className = 'repere';
+      repere.style.left = `calc(${p}% + ${8 - 0.16 * p}px)`;   // la poignée (16 px) ne va pas jusqu'aux bouts de la glissière
+      glissiere.appendChild(repere);
+    }
+  }
+
+  // Le chapitre (la lettre) de l'image k : le dernier dont le début est atteint ; sur la dernière image, la dernière lettre.
+  chapitreDe(k) {
+    const c = this.chapitres, L = this.lettres.length;
+    let j = 0;
+    while (j + 1 < L && c[j + 1] <= k) j++;
+    return j;
+  }
+
+  // Maj + ← / → : de lettre en lettre. ← revient d'abord au début de la lettre en cours, puis à la lettre d'avant.
+  vaAuChapitre(sens) {
+    if (!this.aDesChapitres()) return;
+    const c = this.chapitres, k = this.indice(), j = this.chapitreDe(k), L = this.lettres.length;
+    let cible;
+    if (sens > 0) cible = k >= c[L] ? c[L] : c[j + 1];
+    else cible = k > c[j] ? c[j] : c[Math.max(0, j - 1)];
+    this.vaA(cible);
   }
 
   duree() { return this.pauseDebut + (this.images.length - 1); }
@@ -672,6 +729,13 @@ class Lecteur {
     dessineImage(this.canvas, this.images[k], this.mode, this.vue, this.construction);
     if (this.curseur) this.curseur.value = String(Math.floor(this.t));
     if (this.numero) this.numero.textContent = `image ${k + 1} / ${this.images.length}`;
+    if (this.boutonsLettres) {
+      const j = this.chapitreDe(k);
+      this.boutonsLettres.forEach((b, i) => {
+        b.classList.toggle('courante', i === j);
+        if (i === j) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+      });
+    }
   }
 
   joue() {
@@ -836,7 +900,7 @@ function demarreFixe(mode, mot, lecteur) {
 function lanceCalculs(mot) {
   arreteTravailleurs();
   const generation = ++generationCalculs;
-  lecteurs.forEach((l) => l.recommence());
+  lecteurs.forEach((l) => { l.recommence(); l.lettres = mot; });
   const brins = nbBrins(mot), lettres = mot.length;
   const trop = [];
   if (brins > MAX_BRINS_CONFORME) trop.push(`${brins} brins (limite : ${MAX_BRINS_CONFORME})`);

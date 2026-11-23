@@ -155,24 +155,29 @@ let image_triangulation (film : Film.t) ecart =
   image ~brin ~construction:(aretes_a_plat film.maillage) (Film.polylignes film) (Film.positions_des_trous film) pos.(film.clou)
 
 (* Joue le film en appelant [rendu film ecart numéro] à chaque image (le départ : numéro 0). *)
-let joue_triangulation tresse ~sous_pas ~rendu =
+let joue_triangulation ?(debut_de_lettre = fun (_ : int) -> ()) tresse ~sous_pas ~rendu =
   let film = Film.cree ~hauteur:cote ~largeur:cote ~grossier:true tresse in
   rendu film film.dispositions.(0).ecart 0;
   let k = ref 0 in
-  ignore
-    (List.fold_left
-       (fun film sigma -> fst (Film.lettre ~sous_pas ~rendu:(fun f e -> incr k; rendu f e !k) film sigma))
-       film tresse)
+  let film =
+    List.fold_left
+      (fun film sigma ->
+        debut_de_lettre !k;   (* le numéro de l'image de départ de cette lettre (celle d'avant son demi-tour) *)
+        fst (Film.lettre ~sous_pas ~rendu:(fun f e -> incr k; rendu f e !k) film sigma))
+      film tresse
+  in
+  debut_de_lettre !k;   (* et la dernière image du film *)
+  ignore film
 
 (* Il reste, rarement (de 1 à 3 mots sur 100 à 6 brins et 14 lettres), un triangle plat que la rotation d'une paire retourne :
    un autre pas de temps l'évite le plus souvent. On essaie donc 2, 4 puis 8 sous-pas par image, sans rien dessiner, ce qui
    donne aussi le nombre d'images et la dernière image (l'image fixe). Reste moins d'un mot sur cent qui ne passe pas. *)
 let prepare_triangulation tresse =
   let essai sous_pas =
-    let derniere = ref None and n = ref 0 in
+    let derniere = ref None and n = ref 0 and debuts = ref [] in
     try
-      joue_triangulation tresse ~sous_pas ~rendu:(fun f e k -> n := k; derniere := Some (f, e));
-      Option.map (fun d -> (sous_pas, !n, d)) !derniere
+      joue_triangulation ~debut_de_lettre:(fun k -> debuts := k :: !debuts) tresse ~sous_pas ~rendu:(fun f e k -> n := k; derniere := Some (f, e));
+      Option.map (fun d -> (sous_pas, !n, d, Array.of_list (List.rev !debuts))) !derniere
     with Failure _ -> None
   in
   match List.find_map essai [ 2; 4; 8 ] with
@@ -182,6 +187,16 @@ let prepare_triangulation tresse =
 let nombre_images_arcs = 60
 let nombre_images_conforme = 48
 
+(* Les chapitres d'un film : les numéros des images où commence chaque lettre du mot (la première : 0), puis le numéro de la dernière
+   image du film. Un mot de L lettres donne L + 1 nombres. Ils sont portés par l'image 0 du film (champ « chapitres ») : la page
+   les lit à la réception de cette image. *)
+let avec_chapitres debuts im =
+  Js.Unsafe.set im "chapitres" (Js.array (Array.map float_of_int debuts));
+  im
+
+(* Quand chaque lettre compte le même nombre d'images (lacets, diagramme, rubans) *)
+let chapitres_reguliers ~par_lettre lettres = Array.init (lettres + 1) (fun j -> j * par_lettre)
+
 let statique_tresse mode mot =
   try
     let tresse = tresse_de_js mot in
@@ -190,7 +205,7 @@ let statique_tresse mode mot =
     match nom with
     | "triangulation" ->
         verifie_limites ~conforme:true tresse;
-        let _, _, (film, ecart) = prepare_triangulation tresse in
+        let _, _, (film, ecart), _ = prepare_triangulation tresse in
         image_triangulation film ecart
     | "conforme" | "conforme_libre" | "conforme_sans_maillage" | "conforme_satellites" | "conforme_detendu" ->
         verifie_limites tresse;
@@ -213,8 +228,11 @@ let film_tresse mode mot rendu =
     (match nom with
     | "triangulation" ->
         verifie_limites ~conforme:true tresse;
-        let sous_pas, total, _ = prepare_triangulation tresse in
-        joue_triangulation tresse ~sous_pas ~rendu:(fun f e k -> appelle (image_triangulation f e) k (total + 1));
+        let sous_pas, total, _, debuts = prepare_triangulation tresse in
+        joue_triangulation tresse ~sous_pas ~rendu:(fun f e k ->
+            let im = image_triangulation f e in
+            if k = 0 then avec_chapitres debuts im;
+            appelle im k (total + 1));
         Js.string ""
     | ("conforme" | "conforme_libre" | "conforme_sans_maillage" | "conforme_satellites" | "conforme_detendu") as mode ->
         (* conforme_libre : les arcs ne passent plus par les points « fantômes » (les pieds sur la plus claire des deux lignes de
@@ -224,7 +242,11 @@ let film_tresse mode mot rendu =
         let k = ref 0 in
         let anomalies =
           Film_conforme.film ~verifie:true ~sans_fantomes:(mode = "conforme_libre") ~libre:(mode = "conforme_libre") ~sans_maillage:(mode = "conforme_sans_maillage") ~satellites:(if mode = "conforme_satellites" then 8 else 0) ~detente:(mode = "conforme_detendu") ~etude ~hauteur:cote ~largeur:cote ~marge
-            ~rendu:(fun im -> appelle (image_conforme { x = marge; y = marge } im) !k total; incr k)
+            ~rendu:(fun im ->
+              let image = image_conforme { x = marge; y = marge } im in
+              if !k = 0 then ignore (avec_chapitres (chapitres_reguliers ~par_lettre:nombre_images_conforme (List.length tresse)) image);
+              appelle image !k total;
+              incr k)
             tresse
         in
         if anomalies <> [] then
@@ -235,7 +257,12 @@ let film_tresse mode mot rendu =
         let cree, rubans = methode_arcs m in
         let total = 1 + (nombre_images_arcs * List.length tresse) in
         let k = ref 0 in
-        let rendu f = appelle (image_arcs rubans f) !k total; incr k in
+        let rendu f =
+          let image = image_arcs rubans f in
+          if !k = 0 then ignore (avec_chapitres (chapitres_reguliers ~par_lettre:nombre_images_arcs (List.length tresse)) image);
+          appelle image !k total;
+          incr k
+        in
         let depart = cree tresse in
         rendu depart;
         ignore (List.fold_left (fun f s -> Arcs.lettre ~images:nombre_images_arcs ~rendu f s) depart tresse);
@@ -357,7 +384,9 @@ let film_lettres mode mot (lettres : float Js.js_array Js.t) (premiere : bool Js
           match !numeros with
           | k :: reste ->
               numeros := reste;
-              ignore (Js.Unsafe.fun_call rendu [| Js.Unsafe.inject (image_conforme { x = marge; y = marge } im); Js.Unsafe.inject k; Js.Unsafe.inject total |])
+              let image = image_conforme { x = marge; y = marge } im in
+              if k = 0 then ignore (avec_chapitres (chapitres_reguliers ~par_lettre:nombre_images_conforme (List.length tresse)) image);
+              ignore (Js.Unsafe.fun_call rendu [| Js.Unsafe.inject image; Js.Unsafe.inject k; Js.Unsafe.inject total |])
           | [] -> failwith "film_lettres : une image de trop")
         tresse
     in
