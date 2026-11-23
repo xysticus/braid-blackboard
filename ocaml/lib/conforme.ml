@@ -682,6 +682,20 @@ let dessin_morph l ~reduction s w =
     (fun es ->
       let k = Array.length es in
       let pos = Array.map (fun e -> ((1. -. w) *: e.depart) +: (w *: e.arrivee)) es in
+      (* un point né voyage d'abord le long du lacet : sur l'arc ancien qu'il découpe, en partant de son père, puis rejoint son arrivée *)
+      Array.iteri
+        (fun i e ->
+          if e.est_ne && i > 0 && i < k - 1 && (e.role = 2 || e.role = 3) then begin
+            let prev = es.(i - 1) and next = es.(i + 1) in
+            let c_ancien = cote_vers prev.depart next.depart (haut e.arc *: (prev.nd +: next.nd)) in
+            let arc = arc_signe ~c:c_ancien ~aplati prev.depart next.depart in
+            let pere_est_prev = norme (e.depart -: prev.depart) <= norme (e.depart -: next.depart) in
+            let arc = if pere_est_prev then arc else Array.of_list (List.rev (Array.to_list arc)) in
+            let sur_l_arc = let g = debut_de_chemin arc (0.3 *. w *. longueur_de_chemin arc) in g.(Array.length g - 1) in
+            let nu = w *. w *. (3. -. (2. *. w)) in
+            pos.(i) <- ((1. -. nu) *: sur_l_arc) +: (nu *: pos.(i))
+          end)
+        es;
       let pt i = if i < 0 || i >= k then l.clou else pos.(i) in
       let piece i =
         if i < 0 || i >= k - 1 then [| pt i; pt (i + 1) |]
