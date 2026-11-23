@@ -503,7 +503,11 @@ function brancheCommandes() {
   $('c-marqueurs').onchange = (e) => { etat.marqueurs = e.target.checked; redessine(); };
   $('c-plein').onchange = (e) => { etat.plein = e.target.checked; redessine(); };
   $('c-pointille').onchange = (e) => { etat.pointille = e.target.checked; redessine(); };
-  $('c-pur').onchange = (e) => { etat.pur = e.target.checked; metsAJourOptions(); etat.reprise = etat.k; lance(etat.mot); };   // essai : la projection conforme seule
+  $('c-pur').onchange = (e) => {
+    etat.pur = e.target.checked;
+    if (etat.pur) ['tangentes', 'points', 'fantomes'].forEach((n) => { etat[n] = false; $('c-' + n).checked = false; });   // sans objet pour de simples arcs de cercle ; on peut les recocher
+    metsAJourOptions(); etat.reprise = etat.k; lance(etat.mot);
+  };   // essai : la projection conforme seule
   $('c-satellites').onchange = (e) => { etat.satellites = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : 8 sommets de plus autour de chacun des deux trous qui tournent
   $('film').onchange = (e) => { etat.film = e.target.value; etat.reprise = null; if (etat.precalcule) { $('c-' + etat.precalcule).checked = false; etat.precalcule = null; } metsAJourOptions(); lance(etat.mot); };   // lacets conformes ou triangulation
   $('c-detendu').onchange = (e) => { etat.detendu = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // la détente du raccord (Detente), calculée par la page
@@ -545,9 +549,8 @@ const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 // du raccord) : grisées quand le film affiché est la triangulation ou le diagramme de courbes.
 const SEULEMENT_CONFORME = ['c-pur', 'c-morph', 'c-marqueurs', 'c-plein', 'c-pointille', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
 
-// Les cases qui ne jouent pas dans l'essai « pur » (pas de maillage, de raccord ni de détente ; les arcs sont de simples arcs de
-// cercle, sans tangentes ni points fantômes) ; et celles qui ne jouent que dans l'essai « pur ».
-const HORS_PUR = ['c-tangentes', 'c-points', 'c-fantomes', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-detendu'];
+// Les cases qui ne jouent pas dans l'essai « pur » (pas de maillage, de raccord ni de détente) ; et celles qui ne jouent que dans l'essai « pur ».
+const HORS_PUR = ['c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-detendu'];
 const SEULEMENT_PUR = ['c-plein', 'c-pointille', 'c-morph', 'c-marqueurs'];
 
 function metsAJourOptions() {
@@ -680,7 +683,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   if (new URLSearchParams(location.search).has('maillage')) { etat.maillage = true; $('c-maillage').checked = true; }   // ?maillage : arêtes du maillage au départ (captures)
   if (new URLSearchParams(location.search).has('sansmaillage')) { etat.sansMaillage = true; $('c-sans-maillage').checked = true; }   // ?sansmaillage (captures)
-  if (new URLSearchParams(location.search).has('pur')) { etat.pur = true; $('c-pur').checked = true; }   // ?pur (captures)
+  if (new URLSearchParams(location.search).has('pur')) { etat.pur = true; $('c-pur').checked = true; ['tangentes', 'points', 'fantomes'].forEach((n) => { etat[n] = false; $('c-' + n).checked = false; }); }   // ?pur (captures)
   if (new URLSearchParams(location.search).has('satellites')) { etat.satellites = true; $('c-satellites').checked = true; }   // ?satellites (captures)
   if (new URLSearchParams(location.search).has('sansprojection')) { etat.etude = false; $('c-etude').checked = false; }   // ?sansprojection (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)

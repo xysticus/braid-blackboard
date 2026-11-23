@@ -587,7 +587,8 @@ let dessin_pur l ~reduction e s =
    arrivée (son pied dans l'état k+1, ou le milieu des départs des deux points qui s'annulent), son rôle (0 il glisse avec son trou,
    1 il tourne avec le bloc, 2 il est né sur un arc, 3 il s'annule : bigone) et l'indice, dans l'état k, de l'arc qui le suit dans le
    lacet (celui qu'il découpe, s'il est né). *)
-type entree = { depart : point; arrivee : point; role : int; arc : int; nd : point; na : point }
+type entree = { depart : point; arrivee : point; role : int; arc : int; nd : point; na : point; ancre : int; parte : int; est_ne : bool }
+(* ancre : pour un point de la queue (ou de la tête) du lacet qui s'annule, son voisin survivant ; parte : son partenaire d'annulation ; -1 sinon *)
 
 let entrees l ~reduction s =
   let d = pieds_normales l ~reduction 0 s and a = pieds_normales l ~reduction 1 s in
@@ -598,14 +599,33 @@ let entrees l ~reduction s =
       let dl = List.nth d lacet and al = List.nth a lacet in
       let borne t k = t.(max 0 (min (Array.length t - 1) k)) in
       let depart k = match origines.(k) with Tresses.Glisse j | Tresses.Tourne j | Tresses.Ne (j, _) -> borne dl j in
-      Array.init (Array.length origines) (fun k ->
+      let n = Array.length origines in
+      let arc_de k = match origines.(k) with Tresses.Glisse j | Tresses.Tourne j | Tresses.Ne (_, j) -> j in
+      let survivant = Array.init n (fun k -> rang.(k) >= 0) in
+      let arrivee_des_survivants = Array.init n (fun k -> if survivant.(k) then Some (borne al rang.(k)) else None) in
+      let ne i = match origines.(i) with Tresses.Ne _ -> true | _ -> false in
+      let cherche sens k = let rec va i = if i < 0 || i >= n then None else if survivant.(i) then Some i else va (i + sens) in va (k + sens) in
+      Array.init n (fun k ->
           let p, nd = depart k in
-          let arc = match origines.(k) with Tresses.Glisse j | Tresses.Tourne j | Tresses.Ne (_, j) -> j in
-          if rang.(k) >= 0 then
-            let q, na = borne al rang.(k) in
-            { depart = p; arrivee = q; arc; nd; na;
-              role = (match origines.(k) with Tresses.Glisse _ -> 0 | Tresses.Tourne _ -> 1 | Tresses.Ne _ -> 2) }
-          else { depart = p; arrivee = 0.5 *: (p +: fst (depart partenaire.(k))); arc; role = 3; nd; na = nd }))
+          match arrivee_des_survivants.(k) with
+          | Some (q, na) ->
+              { depart = p; arrivee = q; arc = arc_de k; nd; na; ancre = -1; parte = -1; est_ne = ne k;
+                role = (match origines.(k) with Tresses.Glisse _ -> 0 | Tresses.Tourne _ -> 1 | Tresses.Ne _ -> 2) }
+          | None ->
+              (* il s'annule avec son partenaire. En queue (ou en tête) de lacet, la queue se rétracte le long du lacet : le point rejoint
+                 son voisin survivant, et le dessin rejoint celui de l'état réduit sans détour. Entre deux survivants : un point né qui
+                 rejoint un point ancien se fond dans lui (l'ancien reste où il est, il glisse ou tourne avec son trou) ; sinon les deux se
+                 rejoignent au milieu de leurs départs. *)
+              let q = partenaire.(k) in
+              let ancre = match (cherche (-1) k, cherche 1 k) with Some g, None -> g | None, Some d -> d | _ -> -1 in
+              let arrivee =
+                match (cherche (-1) k, cherche 1 k) with
+                | Some g, None -> fst (Option.get arrivee_des_survivants.(g))
+                | None, Some d -> fst (Option.get arrivee_des_survivants.(d))
+                | _ ->
+                    if ne k && not (ne q) then fst (depart q) else if ne q && not (ne k) then p else 0.5 *: (p +: fst (depart q))
+              in
+              { depart = p; arrivee; arc = arc_de k; role = 3; nd; na = nd; ancre; parte = q; est_ne = ne k }))
     (List.combine origines bigs)
 
 (* Les trajets des points de la lettre au temps s : (départ, arrivée, rôle). *)
@@ -628,6 +648,26 @@ let reechantillonne_cumul pl n =
         let f = if seg < 1e-12 then 0. else (t -. cum.(!j)) /. seg in
         pl.(!j) +: (f *: (pl.(!j + 1) -: pl.(!j))))
   end
+
+(* Le début d'un chemin sur la longueur donnée (rien de plus que le chemin entier). *)
+let debut_de_chemin pl longueur =
+  let n = Array.length pl in
+  let sortie = ref [ pl.(0) ] and reste = ref longueur and i = ref 0 and fini = ref false in
+  while (not !fini) && !i < n - 1 do
+    let d = norme (pl.(!i + 1) -: pl.(!i)) in
+    if d <= !reste then begin sortie := pl.(!i + 1) :: !sortie; reste := !reste -. d; incr i end
+    else begin
+      let f = if d < 1e-12 then 0. else !reste /. d in
+      sortie := (pl.(!i) +: (f *: (pl.(!i + 1) -: pl.(!i)))) :: !sortie;
+      fini := true
+    end
+  done;
+  Array.of_list (List.rev !sortie)
+
+let longueur_de_chemin pl =
+  let t = ref 0. in
+  for i = 0 to Array.length pl - 2 do t := !t +. norme (pl.(i + 1) -: pl.(i)) done;
+  !t
 
 (* Les lacets en train de se transformer : à l'avancement w (0 : l'état k, 1 : l'état k+1), chaque point est entre son départ et son
    arrivée, et deux points consécutifs sont reliés par un arc de cercle dont le côté (à gauche ou à droite de la marche) passe de
@@ -661,6 +701,24 @@ let dessin_morph l ~reduction s w =
         | a :: (b :: _ as reste) ->
             let c =
               if b = a + 1 then piece a
+              else if (a >= 0 && b = k) || (a < 0 && b < k) then begin
+                (* une queue (ou une tête) de lacet qui s'annule : elle reste dans le dessin de l'état k, qui suit son survivant, et se
+                   rétracte vers lui en s'aplatissant (les points se rapprochent du survivant, les arcs retombent sur l'axe), puis le lacet
+                   descend au clou en droite ligne depuis son nouveau bout *)
+                let rho = let u = Float.min 1. (w /. 0.8) in u *. u *. (3. -. (2. *. u)) in
+                let surv = if a >= 0 then a else b in
+                let d = pos.(surv) -: es.(surv).depart in
+                let p0 i = if i = surv then pos.(i) else es.(i).depart +: d in
+                let p i = pos.(surv) +: ((1. -. rho) *: (p0 i -: pos.(surv))) in
+                let arc_de i j =   (* de l'entrée i à l'entrée j = i ± 1, dans le dessin de l'état k *)
+                  let lo, hi = (min i j, max i j) in
+                  let c0 = cote_vers (p0 lo) (p0 hi) (haut es.(lo).arc *: (es.(lo).nd +: es.(hi).nd)) in
+                  let t = arc_signe ~c:((1. -. rho) *. c0) ~aplati (p lo) (p hi) in
+                  if i < j then t else Array.of_list (List.rev (Array.to_list t))
+                in
+                if a >= 0 then Array.append (Array.concat (List.init (k - 1 - a) (fun d -> arc_de (a + d) (a + d + 1)))) [| l.clou |]
+                else Array.append [| l.clou |] (Array.concat (List.init b (fun d -> arc_de (b - d - 1) (b - d))))
+              end
               else begin
                 let u = Array.concat (List.init (b - a) (fun d -> piece (a + d))) in
                 if beta <= 0. then u
