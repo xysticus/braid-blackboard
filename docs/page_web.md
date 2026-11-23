@@ -71,3 +71,14 @@ seulement un commentaire « Créé avec Ardoise à tresse ». Vérification : `f
 (décodage sans erreur) et le PSNR d'images décodées contre les PNG exportés (35 à 39 dB). Pas de transparence dans l'AV1 : le fond est plein.
 **Essayé seulement dans Firefox** (Chrome et Edge doivent marcher, Safari ne sait pas faire d'AV1). Lu par `ffmpeg` et par VLC (Windows) : les trois films
 vont jusqu'au bout. Windows Media Player ne l'ouvre pas : il lui faut le décodeur AV1 de Windows (« Extension vidéo AV1 », du Microsoft Store).
+
+**La page en cartes, et le tag v1.7 (2026-11-23).** Le haut de la page est une seule carte, « Mot courant » : le champ de saisie, le mot en notation
+mathématique, l'état du mot (`metsAJourEtatMot` : exemple fourni, enregistré, pas enregistré), la note de la tresse enregistrée, les couleurs, et deux
+boutons, « Tresses ▾ » (la liste des exemples et des tresses enregistrées, qui s'ouvre en menu sous deux titres) et « Enregistrer » (`enregistreCourant`).
+**Rien n'est enregistré sans ce bouton** (le mot tapé ne crée plus d'entrée) ; les couleurs ne se changent que sur une tresse enregistrée. L'aide d'écriture
+et les limites sont dans un `<details>` ; les explications des méandres et de « Un peu de poésie » sont dans des « Les coulisses » repliées ; l'avertissement
+des limites (`etatLimites`) n'apparaît que si le mot les dépasse. Le diagramme de tresse porte, à droite, la colonne des générateurs (σ₁, σ₂⁻¹…).
+Les exemples sont au nombre de dix (voir `etude_page_web.md`, §7) ; l'exemple de départ est désigné par son mot (`1 -2`), pas par son numéro.
+Le tag `v1.7` marque cet état (lecteurs, exports, cartes, exemples) : c'est la version à déployer sur un serveur personnel (`git checkout v1.7`, puis
+`web/deploie.sh`).
+

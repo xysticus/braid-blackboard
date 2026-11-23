@@ -178,6 +178,11 @@ en action sur le disque percé.
 | 11 | σ₄σ₃σ₁⁻¹σ₁⁻¹σ₂σ₄⁻¹σ₁ | 5 | 7 | 21 | une tresse à enroulements décroissants |
 | 12 | σ₁σ₂⁻¹σ₁σ₂⁻¹σ₁σ₂⁻¹σ₃σ₁⁻¹σ₂ | 4 | 9 | 94 | une tresse à nombreux enroulements |
 
+**Révision du 2026-11-23 : dix exemples.** On ne visualise qu'une tresse à la fois : les lignes 6 et 7 (« même tresse que… », deux mots pour une même
+tresse) sont retirées. La ligne 10 (la rotation σ₁σ₂σ₃σ₄) est remplacée par une **tresse simple** à 5 brins, σ₂σ₃σ₁σ₄σ₃σ₂ (5 brins, 6 lettres, longueur 17
+dans F_n) : six croisements, chaque paire de brins au plus une fois, donc une tresse qui ne dépend que d'une permutation, ici (1 3)(2 5) (le brin 4 reste en
+place). La même liste est dans `web/ardoise.js`, `etude/lacets/etude.js` et `python/Interface.py` (le notebook) : les garder alignées.
+
 Sur « des tresses courtes mais avec une action sur le disque complexe » : j'ai compris « courtes, mais dont l'action sur
 le disque (percé) est compliquée », d'où 8 et 9 (et 12). Si tu pensais à autre chose (les trous dans le plan complexe,
 la représentation de Burau…), dis-le avant que je fige la liste.

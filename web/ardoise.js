@@ -11,8 +11,6 @@ const EXEMPLES = [
   { nom: 'Δ₅⁻¹', mot: [-1, -2, -1, -3, -2, -1, -4, -3, -2, -1], legende: 'demi-tour négatif à 5 brins' },
   { nom: '(σ₁σ₂)³', mot: [1, 2, 1, 2, 1, 2], legende: 'tour complet à 3 brins : conjugaison par x₁x₂x₃' },
   { nom: 'σ₁σ₂σ₁σ₂⁻¹σ₁⁻¹σ₂⁻¹', mot: [1, 2, 1, -2, -1, -2], legende: 'un mot qui vaut la tresse nulle' },
-  { nom: 'σ₂σ₁σ₂⁻¹', mot: [2, 1, -2], legende: 'même tresse que la suivante' },
-  { nom: 'σ₁⁻¹σ₂σ₁', mot: [-1, 2, 1], legende: 'même tresse que la précédente' },
   { nom: 'σ₁σ₂⁻¹', mot: [1, -2], legende: 'courte, mais pseudo-Anosov' },
   { nom: '(σ₁σ₂⁻¹)³', mot: [1, -2, 1, -2, 1, -2], legende: '6 lettres, 51 dans F₃ : croissance exponentielle' },
   { nom: 'σ₂σ₃σ₁σ₄σ₃σ₂', mot: [2, 3, 1, 4, 3, 2], legende: 'tresse simple à 5 brins : la permutation (1 3)(2 5)' },
@@ -1567,7 +1565,7 @@ async function demarre() {
     depart = motEnTexte(sauvee.mot);
     entree = sauvee;
   } else {
-    depart = motEnTexte(EXEMPLES[7].mot);
+    depart = '1 -2';   // σ₁σ₂⁻¹ : courte, avec des films qui montrent bien ce que fait une tresse
   }
   champ.value = depart;
   choisis(entree);

@@ -1,7 +1,7 @@
 # Construire des tresses personnalisées
 
 Étude (rien d'implémenté) : permettre à la personne qui utilise la page `web/` de garder ses propres tresses à la suite des
-douze tresses d'exemple, de les annoter, d'en choisir les couleurs et la couleur du fond. Elle complète `etude_page_web.md`.
+dix tresses d'exemple (douze à l'origine : voir `etude_page_web.md`, §7), de les annoter, d'en choisir les couleurs et la couleur du fond. Elle complète `etude_page_web.md`.
 
 ## Ce qu'on veut
 

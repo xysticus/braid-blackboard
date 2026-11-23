@@ -1,6 +1,6 @@
 # Ardoise à tresse : la page web
 
-Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse (ou on en choisit un dans le menu « Tresses » : douze exemples, puis les tresses gardées par la personne) ; tout le haut de la
+Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse (ou on en choisit un dans le menu « Tresses » : dix exemples, puis les tresses gardées par la personne) ; tout le haut de la
 page est une seule carte, **« Mot courant »** : le champ de saisie, le mot en notation mathématique, les couleurs, l'état du mot (exemple fourni, enregistré dans
 ses tresses, pas enregistré), la note de la tresse enregistrée, et les boutons « Tresses ▾ » (la liste, qui s'ouvre en menu, sous deux titres : « Exemples » et « Mes tresses ») et « Enregistrer ». Sous « Les méandres », le texte d'explication est
 replié dans « Les coulisses ». La page montre :
@@ -121,7 +121,7 @@ Décisions et raisons : `../etude_exploitation_des_images.md` ; détail techniqu
 
 ## Tresses mémorisées et personnalisées
 
-Les 12 exemples sont suivis des tresses de la personne (étude : `etude_tresses_personnalisees.md`), gardées dans le navigateur
+Les 10 exemples sont suivis des tresses de la personne (étude : `etude_tresses_personnalisees.md`), gardées dans le navigateur
 (`localStorage`, clé `ardoise.tresses`, version 1 ; tout accès est protégé par un `try/catch`, la page marche sans). **Rien n'est enregistré
 sans un clic sur « Enregistrer »** (carte « Mot courant ») : taper un mot ou appuyer sur Entrée ne fait que le montrer. Le bouton est grisé quand le mot est
 déjà enregistré. Un exemple fourni enregistré apporte sa légende comme note. Un clic sur une carte du menu « Tresses » ne fait que la sélectionner ; ⧉ duplique
@@ -139,7 +139,7 @@ de HTML. Les couleurs ne demandent aucun recalcul : les films sont déjà des po
 rapide, mais jusqu'à 1 300 images et 30 Mo en mémoire) sont limités à 6 brins et 14 lettres. Le film de la triangulation
 essaie 2, 4 puis 8 sous-pas par image (un triangle plat peut se retourner à 2) et, si tout échoue, le dit dans le panneau :
 moins d'un mot aléatoire sur cent dans les limites ne passe pas (0 sur 900 dans un essai, 2 sur 300 dans un autre), aucun des
-12 exemples. Ces limites sont dans `ardoise.js` et `ocaml/web/ardoise_web.ml`.
+10 exemples. Ces limites sont dans `ardoise.js` et `ocaml/web/ardoise_web.ml`.
 
 Sous JavaScript la pile est petite : pas de récursion non terminale sur des listes de la taille d'une polyligne
 (`List.concat` dans `lit_mot` l'a fait déborder ; remplacé par `List.concat_map`).

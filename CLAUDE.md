@@ -62,7 +62,10 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   publication : `docs/page_web.md`). Le calcul est celui de `ocaml/lib/` compilé par js_of_ocaml : `web/construit.sh` →
   `web/ardoise_lib.js`, **suivi par git** : le hook `.githooks/pre-push` (à activer par `git config core.hooksPath .githooks`)
   le reconstruit avant chaque push et refuse de pousser s'il a changé (le commiter, puis repousser). Un push qui touche `web/`
-  met à jour GitHub Pages.
+  met à jour GitHub Pages. Le lecteur et ses exports sont dans `web/exports.js` et `web/mp4.js` (un fichier de plus à déployer = à ajouter à
+  `.github/workflows/pages.yml` **et** à `web/deploie.sh`). Les exemples de tresses sont dans trois listes à garder alignées : `web/ardoise.js`,
+  `etude/lacets/etude.js`, `python/Interface.py`. Les versions déployables sont des tags annotés `v1.N` (le dernier : voir `git tag`), poussés
+  seulement quand l'utilisateur le demande.
 - `etude/lacets/` : **banc d'essai** (document de travail, non déployé) du film des lacets : une page, un film en 1600 × 1600, lecteur pas à pas, lignes de construction et tangentes
   des arcs (`etude/lacets/README.md`). Il réutilise `web/travail.js` et `web/ardoise_lib.js` sans les modifier. Essais en
   Python : `essai_lissage.py` (la détente, retenue), `essai_regions.py` (raccord par régions, écarté).

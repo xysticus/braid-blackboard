@@ -26,11 +26,9 @@ EXEMPLES = [
     ('Δ₅⁻¹', [-1, -2, -1, -3, -2, -1, -4, -3, -2, -1], 'demi-tour négatif à 5 brins'),
     ('(σ₁σ₂)³', [1, 2, 1, 2, 1, 2], 'tour complet à 3 brins : conjugaison par x₁x₂x₃'),
     ('σ₁σ₂σ₁σ₂⁻¹σ₁⁻¹σ₂⁻¹', [1, 2, 1, -2, -1, -2], 'un mot qui vaut la tresse nulle'),
-    ('σ₂σ₁σ₂⁻¹', [2, 1, -2], 'même tresse que la suivante'),
-    ('σ₁⁻¹σ₂σ₁', [-1, 2, 1], 'même tresse que la précédente'),
     ('σ₁σ₂⁻¹', [1, -2], 'courte, mais pseudo-Anosov'),
     ('(σ₁σ₂⁻¹)³', [1, -2, 1, -2, 1, -2], '6 lettres, 51 dans F₃ : croissance exponentielle'),
-    ('σ₁σ₂σ₃σ₄', [1, 2, 3, 4], 'la rotation de 5 trous'),
+    ('σ₂σ₃σ₁σ₄σ₃σ₂', [2, 3, 1, 4, 3, 2], 'tresse simple à 5 brins : la permutation (1 3)(2 5)'),
     ('σ₄σ₃σ₁⁻²σ₂σ₄⁻¹σ₁', [4, 3, -1, -1, 2, -4, 1], 'une tresse à enroulements décroissants'),
     ('σ₁σ₂⁻¹σ₁σ₂⁻¹σ₁σ₂⁻¹σ₃σ₁⁻¹σ₂', [1, -2, 1, -2, 1, -2, 3, -1, 2], 'une tresse à nombreux enroulements'),
 ]
