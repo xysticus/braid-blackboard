@@ -75,8 +75,8 @@ très rapide : pas de détente (1 061 images pour la tresse chargée en 2,5 s).
 Option « cordes sur chevilles (rétractation) » du sélecteur « film » (ou `?cordes`) : même départ (le méandre complet du retour de « faire et
 défaire »), mais les brins ne sont plus posés sur un maillage. Les lacets sont des **cordes** et les trous des **chevilles** : à chaque image
 les trous reculent comme dans le film maillé, poussent les cordes (garde radiale de `Detente`), et la tension seule les rétracte le long
-de leur propre chemin (`Detente.detend`, chaque image part de la précédente : calcul séquentiel, `filmCordes` dans `web/travail.js`, 36 s pour
-459 images). Les voisins ne remplissent pas expressément la place laissée : tous les lacets se tendent et laissent un vide. Mesuré sur `1 -2 1 -2` :
+de leur propre chemin (`Detente.detend`, chaque image part de la précédente : calcul séquentiel, `filmCordes` dans `web/travail.js`, 11 s pour
+459 images avec 30 itérations par image ; 36 s avec les 150 de la détente de la page, qui ne sont pas nécessaires ici). Les voisins ne remplissent pas expressément la place laissée : tous les lacets se tendent et laissent un vide. Mesuré sur `1 -2 1 -2` :
 mêmes nombres d'enroulement que le film maillé sur 115 images échantillonnées sur 115 (une sur quatre), aucune erreur de détente. On joue le tout à l'envers.
 
 Variante « cordes, tension locale » (`?cordeslocales`, réglage `portee` de `Detente`, exposé par `ardoise.detend_local`) : la tension

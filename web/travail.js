@@ -272,9 +272,9 @@ function filmCordes(mot, portee) {   // portee : la tension n'agit qu'autour des
   let lacets = images[0].lacets;
   let erreurs = 0;
   for (let k = 1; k < images.length; k++) {
-    const r = portee
-      ? self.ardoise.detend_local(lacets, Array.from(images[k].trous), images[k].clou, 1, images[k].ecart || 0, portee)
-      : self.ardoise.detend(lacets, Array.from(images[k].trous), images[k].clou, 1, images[k].ecart || 0);
+    // 30 itérations par image suffisent (chaque image part de la précédente, déjà presque à l'équilibre) : 150 par défaut, cinq fois plus
+    // long pour le même résultat topologique ; 20 itérations ou un pas de 6 px laissent des lacets traverser les trous
+    const r = self.ardoise.detend_local(lacets, Array.from(images[k].trous), images[k].clou, 1, images[k].ecart || 0, portee || 1e12, 30, 0);
     if (r.erreur) erreurs++; else lacets = r.lacets;
     images[k].lacets = lacets;
   }
