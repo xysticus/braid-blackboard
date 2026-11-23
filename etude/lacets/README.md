@@ -83,6 +83,11 @@ Variante « cordes, tension locale » (`?cordeslocales`, réglage `portee` de `D
 n'agit qu'à moins de 100 px d'un trou (elle s'éteint jusqu'à 200 px) ; le lacet **se referme derrière le trou** et garde sa forme ailleurs :
 du vide seulement le long du passage des trous. Mêmes nombres d'enroulement que le film maillé (115 images sur 115), 40 s.
 
+**Limite connue, voie laissée de côté (2026-11-24).** Sur `4 3 -1 -1 2 -4 1` (observé par l'utilisateur), **un trou traverse un lacet** avec les cordes sur
+chevilles à 30 itérations par image : la garde contre les trous de `Detente` ne suffit pas quand un trou pousse plusieurs brins à la fois. Les
+nombres d'enroulement n'ont été vérifiés que sur `1 -2 1 -2` et `2 3 1 4 3 2`. Les cordes sur chevilles (partout ou à tension locale) restent
+dans le banc comme essai ; on ne les poursuit pas pour l'instant. La tresse chargée n'a pas été mesurée avec ces réglages.
+
 ## Le film de la triangulation
 
 Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page), la triangulation (vue 3, `?triangulation`) et le
