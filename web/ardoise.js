@@ -586,13 +586,36 @@ class Lecteur {
 
   prepareLecteur(message) {
     const duree = this.duree();
-    this.etat.innerHTML = `<button type="button" title="lecture / pause">⏸</button>` +
+    this.etat.innerHTML = `<button type="button" class="avant" title="image précédente (←)" aria-label="image précédente">◀</button>` +
+      `<button type="button" class="lecture" title="lecture / pause">⏸</button>` +
+      `<button type="button" class="apres" title="image suivante (→)" aria-label="image suivante">▶</button>` +
       `<input type="range" min="0" max="${duree - 1}" step="1" value="0" aria-label="position dans le film">` +
       (MODES_AVEC_CONSTRUCTION.has(this.mode)
         ? `<label><input type="checkbox" class="construction"${this.construction ? ' checked' : ''}> construction</label><span class="emplacement-aide"></span>`
         : '') +
+      `<span class="numero-image" aria-live="polite"></span>` +
       (message ? `<span class="ko" title="${message}">⚠</span>` : '');
-    this.bouton = this.etat.querySelector('button');
+    this.bouton = this.etat.querySelector('button.lecture');
+    this.numero = this.etat.querySelector('.numero-image');
+    // ◀ et ▶ : une image du film, en pause, sans boucler ; l'appui prolongé répète
+    const pasAPas = (bouton, sens) => {
+      let delai = null, repete = null;
+      const stoppe = () => { clearTimeout(delai); clearInterval(repete); };
+      const un = () => { this.arrete(); this.vaA(this.indice() + sens); };
+      bouton.onpointerdown = (e) => { if (e.button) return; un(); delai = setTimeout(() => { repete = setInterval(un, 40); }, 400); };
+      for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) bouton.addEventListener(ev, stoppe);
+      bouton.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); un(); } };
+    };
+    pasAPas(this.etat.querySelector('button.avant'), -1);
+    pasAPas(this.etat.querySelector('button.apres'), +1);
+    this.canvas.tabIndex = 0;   // ← / → image par image quand le cadre a le focus
+    this.canvas.onkeydown = (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        this.arrete();
+        this.vaA(this.indice() + (e.key === 'ArrowRight' ? 1 : -1));
+      }
+    };
     this.curseur = this.etat.querySelector('input[type=range]');
     const case_ = this.etat.querySelector('input.construction');
     if (case_) case_.onchange = () => { this.construction = case_.checked; this.montre(); };
@@ -606,11 +629,23 @@ class Lecteur {
 
   duree() { return this.pauseDebut + (this.images.length - 1); }
 
+  // Le numéro (à partir de 0) de l'image du film montrée à l'instant t : t compte aussi la pause du début.
+  indice() {
+    return this.t < this.pauseDebut ? 0 : Math.min(this.images.length - 1, Math.floor(this.t - this.pauseDebut));
+  }
+
+  // Va à l'image k (bornée : pas de bouclage) ; l'image 0 est aussi la pause du début.
+  vaA(k) {
+    k = Math.max(0, Math.min(this.images.length - 1, k));
+    this.t = k === 0 ? 0 : this.pauseDebut + k;
+    this.montre();
+  }
+
   montre() {
-    const n = this.images.length;
-    const k = this.t < this.pauseDebut ? 0 : Math.min(n - 1, Math.floor(this.t - this.pauseDebut));
+    const k = this.indice();
     dessineImage(this.canvas, this.images[k], this.mode, this.vue, this.construction);
     if (this.curseur) this.curseur.value = String(Math.floor(this.t));
+    if (this.numero) this.numero.textContent = `image ${k + 1} / ${this.images.length}`;
   }
 
   joue() {

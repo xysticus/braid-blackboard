@@ -195,3 +195,6 @@ main > *, .deux-colonnes > *, .quatre > *, .libres > * { min-width: 0; }   /* un
                                                                            paraîtrait un pixel trop bas dans le cercle */
 }
 @media (max-width: 640px), (pointer: coarse) { .etat .bouton-aide { width: 28px; height: 28px; font-size: 14px; } }
+
+/* le numéro de l'image du film, à côté de la glissière (lu poliment par les lecteurs d'écran) */
+.etat .numero-image { white-space: nowrap; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
