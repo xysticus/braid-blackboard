@@ -50,7 +50,7 @@ pause de 20 s avant le dépôt** (étape « Laisse l'archive devenir visible » 
 `gh run rerun <numéro> --failed` (il envoie une deuxième archive `github-pages` dans le même lancement, et le dépôt refuse alors deux archives) ; lancer à neuf par
 `gh workflow run "Page web" --ref master` (le workflow a `workflow_dispatch`), au besoin après quelques minutes. Le serveur personnel, lui, n'en dépend pas (`web/deploie.sh`).
 
-**Tresses personnalisées (2026-11-22).** Le bloc « les tresses mémorisées » de `web/ardoise.js` (mémoire, cartes, pastilles, export et
+**Tresses personnalisées (2026-11-22, révisées le 2026-11-23 : carte « Mot courant », bouton « Enregistrer »).** Le bloc « les tresses mémorisées » de `web/ardoise.js` (mémoire, cartes, pastilles, export et
 import JSON) est décrit dans `web/README.md` ; décisions et raisons : `etude_tresses_personnalisees.md`. La palette et le fond sont
 des variables globales (`PALETTE`, `FOND`, `fondDe`) lues au dessin : changer une couleur redessine (`recolore`), sans calcul.
 

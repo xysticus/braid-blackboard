@@ -1,6 +1,6 @@
 # Construire des tresses personnalisées
 
-Étude (rien d'implémenté) : permettre à la personne qui utilise la page `web/` de garder ses propres tresses à la suite des
+Étude, **réalisée** (2026-11-22, révisée le 2026-11-23 : voir l'encadré plus bas ; mode d'emploi dans `web/README.md`) : permettre à la personne qui utilise la page `web/` de garder ses propres tresses à la suite des
 douze tresses d'exemple (voir `etude_page_web.md`, §7 : la liste a été retouchée le 2026-11-23), de les annoter, d'en choisir les couleurs et la couleur du fond. Elle complète `etude_page_web.md`.
 
 ## Ce qu'on veut

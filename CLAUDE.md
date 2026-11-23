@@ -80,7 +80,7 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   triangulation mobile, bouquet, représentation conforme).
 - `docs/ocaml.md` : état des étapes OCaml, installation. `docs/page_web.md` : fabrication, publication et déploiement de la page.
 - `docs/prochaines_etapes.md` : objectifs et avancement du film des méandres.
-- `etude_tresses_personnalisees.md` (étude, rien d'implémenté : tresses mémorisées par la personne, texte libre, couleurs des brins
+- `etude_tresses_personnalisees.md` (**faite** le 2026-11-22/23, déployée : tresses mémorisées par la personne, texte libre, couleurs des brins
   et du fond).
 - `etude_exploitation_des_images.md` (**faite**, étapes 1 à 6 : boutons image par image, chapitres par lettre, menu ⤓ d'export de l'image en cours en
   PNG, SVG et JSON, zip des images clés, film MP4 AV1 encodé dans le navigateur par WebCodecs ; code dans `web/exports.js` et `web/mp4.js`, détail dans `docs/page_web.md` ;
