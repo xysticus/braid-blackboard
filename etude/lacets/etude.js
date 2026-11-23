@@ -447,7 +447,8 @@ function va(k) {
   metsAJourProjection(k);
   $('curseur').value = String(k);
   $('numero').value = String(k + 1);
-  $('position').textContent = `image ${k + 1} / ${etat.total} · ${descriptionImage(k)}`;
+  const tPur = etat.pur && etat.film === 'conforme' ? ` · t = ${(k === 0 ? 0 : lisse((((k - 1) % IMAGES_PAR_LETTRE) + 1) / IMAGES_PAR_LETTRE)).toFixed(3)}` : '';   // le paramètre de la transformation (0 : état k, 1 : état k+1)
+  $('position').textContent = `image ${k + 1} / ${etat.total} · ${descriptionImage(k)}${tPur}`;
 }
 
 function arrete() {

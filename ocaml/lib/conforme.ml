@@ -536,41 +536,61 @@ let arc_signe ~c ~aplati p q =
         centre +: (rayon *: ((sin phi *: e) +: (cos phi *: u))))
   end
 
-let arc_de_cercle ~haut ~aplati p q =
+(* Le côté gauche de la marche de p à q (+1) ou droit (−1) qui regarde du côté de [hint] ; +1 si la corde est nulle. *)
+let cote_vers p q hint =
   let d = q -: p in
-  let gauche_en_haut = d.x >= 0. in   (* à gauche de la marche : en haut si on va vers la droite *)
-  arc_signe ~c:(if haut = gauche_en_haut then 1. else -1.) ~aplati p q
+  let corde = norme d in
+  if corde < 1e-9 then 1. else if scalaire { x = d.y /. corde; y = -.d.x /. corde } hint >= 0. then 1. else -1.
+
+let arc_vers ~hint ~aplati p q = arc_signe ~c:(cote_vers p q hint) ~aplati p q
+
+(* Les pieds à l'écran de chaque lacet de l'état e au temps s, avec la normale à gauche de la ligne brisée (orientée de L à R) à chaque
+   pied : un arc « du haut » regarde de ce côté-là, un arc « du bas » du côté opposé. Le haut de l'écran n'est que le cas de l'axe. *)
+let pieds_normales l ~reduction e s =
+  let v = ligne l e s in
+  let ecr z = ecran_de l ~reduction z s in
+  List.map
+    (fun lacet ->
+      Array.map
+        (fun x ->
+          let pd = pied l e x s v in
+          let tangente =
+            if pd.morceau >= 1 && pd.morceau <= 3 then
+              let d = ecr v.(pd.morceau) -: ecr v.(pd.morceau - 1) in
+              let n = norme d in
+              if n < 1e-9 then { x = 1.; y = 0. } else (1. /. n) *: d
+            else { x = 1.; y = 0. }
+          in
+          (ecr pd.position, { x = tangente.y; y = -.tangente.x }))
+        lacet)
+    l.etats.(e).Tresses.lacets
 
 (* Les lacets de l'état e au temps s, et les pieds (à l'écran) de tous les lacets. *)
 let dessin_pur l ~reduction e s =
-  let v = ligne l e s in
   let aplati = aplati l ~reduction s in
-  let pieds =
-    List.map (fun lacet -> Array.map (fun x -> ecran_de l ~reduction (pied l e x s v).position s) lacet) l.etats.(e).Tresses.lacets
-  in
+  let pieds = pieds_normales l ~reduction e s in
   let lignes =
     List.map
       (fun pl ->
         let k = Array.length pl in
-        let arcs = List.init (max 0 (k - 1)) (fun j -> arc_de_cercle ~haut:(j mod 2 = 0) ~aplati pl.(j) pl.(j + 1)) in
-        Array.concat (([| l.clou; pl.(0) |] :: arcs) @ [ [| pl.(k - 1); l.clou |] ]))
+        let arcs =
+          List.init (max 0 (k - 1)) (fun j ->
+              let hint = (if j mod 2 = 0 then 1. else -1.) *: (snd pl.(j) +: snd pl.(j + 1)) in
+              arc_vers ~hint ~aplati (fst pl.(j)) (fst pl.(j + 1)))
+        in
+        Array.concat (([| l.clou; fst pl.(0) |] :: arcs) @ [ [| fst pl.(k - 1); l.clou |] ]))
       pieds
   in
-  (lignes, List.concat_map Array.to_list pieds)
-
-(* Les pieds à l'écran de chaque lacet de l'état e au temps s. *)
-let pieds_ecran l ~reduction e s =
-  let v = ligne l e s in
-  List.map (fun lacet -> Array.map (fun x -> ecran_de l ~reduction (pied l e x s v).position s) lacet) l.etats.(e).Tresses.lacets
+  (lignes, List.concat_map (fun pl -> List.map fst (Array.to_list pl)) pieds)
 
 (* Un point de l'état non réduit après σ, au temps s : son départ (le pied du point ancien, ou celui de son père s'il est né), son
    arrivée (son pied dans l'état k+1, ou le milieu des départs des deux points qui s'annulent), son rôle (0 il glisse avec son trou,
    1 il tourne avec le bloc, 2 il est né sur un arc, 3 il s'annule : bigone) et l'indice, dans l'état k, de l'arc qui le suit dans le
    lacet (celui qu'il découpe, s'il est né). *)
-type entree = { depart : point; arrivee : point; role : int; arc : int }
+type entree = { depart : point; arrivee : point; role : int; arc : int; nd : point; na : point }
 
 let entrees l ~reduction s =
-  let d = pieds_ecran l ~reduction 0 s and a = pieds_ecran l ~reduction 1 s in
+  let d = pieds_normales l ~reduction 0 s and a = pieds_normales l ~reduction 1 s in
   let non_reduit, origines = Tresses.agit_origines l.etats.(0) l.sigma in
   let bigs = Tresses.bigones non_reduit in
   List.mapi
@@ -579,12 +599,13 @@ let entrees l ~reduction s =
       let borne t k = t.(max 0 (min (Array.length t - 1) k)) in
       let depart k = match origines.(k) with Tresses.Glisse j | Tresses.Tourne j | Tresses.Ne (j, _) -> borne dl j in
       Array.init (Array.length origines) (fun k ->
-          let p = depart k in
+          let p, nd = depart k in
           let arc = match origines.(k) with Tresses.Glisse j | Tresses.Tourne j | Tresses.Ne (_, j) -> j in
           if rang.(k) >= 0 then
-            { depart = p; arrivee = borne al rang.(k); arc;
+            let q, na = borne al rang.(k) in
+            { depart = p; arrivee = q; arc; nd; na;
               role = (match origines.(k) with Tresses.Glisse _ -> 0 | Tresses.Tourne _ -> 1 | Tresses.Ne _ -> 2) }
-          else { depart = p; arrivee = 0.5 *: (p +: depart partenaire.(k)); arc; role = 3 }))
+          else { depart = p; arrivee = 0.5 *: (p +: fst (depart partenaire.(k))); arc; role = 3; nd; na = nd }))
     (List.combine origines bigs)
 
 (* Les trajets des points de la lettre au temps s : (départ, arrivée, rôle). *)
@@ -615,7 +636,6 @@ let reechantillonne_cumul pl n =
    (à égale longueur) dans l'arc direct entre les deux survivants, qui est ce qu'il en reste à l'arrivée. *)
 let dessin_morph l ~reduction s w =
   let aplati = aplati l ~reduction s in
-  let sens dx = if dx >= 0. then 1. else -1. in
   let haut x = if x mod 2 = 0 then 1. else -1. in
   let beta = let u = Float.min 1. (Float.max 0. ((w -. 0.5) /. 0.5)) in u *. u *. (3. -. (2. *. u)) in
   List.map
@@ -626,10 +646,10 @@ let dessin_morph l ~reduction s w =
       let piece i =
         if i < 0 || i >= k - 1 then [| pt i; pt (i + 1) |]
         else begin
-          let c1 = haut i *. sens (es.(i + 1).arrivee.x -. es.(i).arrivee.x) in
+          let c1 = cote_vers es.(i).arrivee es.(i + 1).arrivee (haut i *: (es.(i).na +: es.(i + 1).na)) in
           let c0 =
             if norme (es.(i + 1).depart -: es.(i).depart) < 1e-6 then c1
-            else haut es.(i).arc *. sens (es.(i + 1).depart.x -. es.(i).depart.x)
+            else cote_vers es.(i).depart es.(i + 1).depart (haut es.(i).arc *: (es.(i).nd +: es.(i + 1).nd))
           in
           arc_signe ~c:(((1. -. w) *. c0) +. (w *. c1)) ~aplati pos.(i) pos.(i + 1)
         end
@@ -647,7 +667,7 @@ let dessin_morph l ~reduction s w =
                 else begin
                   let r =
                     if a < 0 || b >= k then [| pt a; pt b |]
-                    else arc_signe ~c:(haut a *. sens ((pt b).x -. (pt a).x)) ~aplati (pt a) (pt b)
+                    else arc_vers ~hint:(haut a *: (es.(a).na +: es.(b).na)) ~aplati (pt a) (pt b)
                   in
                   let u = reechantillonne_cumul u 120 and r = reechantillonne_cumul r 120 in
                   Array.init 120 (fun j -> ((1. -. beta) *: u.(j)) +: (beta *: r.(j)))
