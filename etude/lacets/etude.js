@@ -81,7 +81,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, pur: false, plein: true, pointille: true, marqueurs: true, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, pur: false, plein: true, pointille: true, marqueurs: true, morph: true, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -375,14 +375,18 @@ function dessine(k) {
   }
   if (etat.construction && image.construction) segments(ctx, image.construction, image.opacites, etat.etude && image.etude ? stylesDeConstruction(image) : null);
   const deux = image.lacets_bis && image.lacets_bis.length;   // mode pur : deux dessins, au choix
-  if (etat.plein || !deux) image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = etat.film !== 'conforme' && image.brin ? image.brin : 3.5; trace(ctx, p); });   // la triangulation et le diagramme affinent le trait quand les brins sont serrés
+  const morph = deux && etat.morph && image.lacets_morph && image.lacets_morph.length;   // mode pur : la transformation en couleur, le plein et le pointillé estompés
+  if (morph) ctx.globalAlpha = 0.35;
+  if (etat.plein || !deux) image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = etat.film !== 'conforme' && image.brin ? image.brin : (morph ? 2 : 3.5); trace(ctx, p); });   // la triangulation et le diagramme affinent le trait quand les brins sont serrés
   if (image.fixes && image.fixes.length) disques(ctx, image.fixes, 3, '#888');   // les points fixes du diagramme de courbes
   if (deux && etat.pointille) {   // le mode pur : le dessin de l'arrivée (état k+1 sur L–B–A–R), en pointillés, en même temps que celui du départ
     ctx.setLineDash([9, 7]);
-    image.lacets_bis.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3; trace(ctx, p); });
+    image.lacets_bis.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = morph ? 2 : 3; trace(ctx, p); });
     ctx.setLineDash([]);
     if (!(etat.marqueurs && image.trajets && image.trajets.length)) disques(ctx, image.reperes_bis, 4, '#ff8c00');
   }
+  ctx.globalAlpha = 1;
+  if (morph) image.lacets_morph.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3.5; trace(ctx, p); });
   if (etat.marqueurs && image.trajets && image.trajets.length) {   // le mode pur : de chaque point du départ à son arrivée, selon son rôle
     const COULEURS = ['#d62728', '#ff8c00', '#2ca02c', '#000000'];
     const t = image.trajets;
@@ -493,6 +497,7 @@ function brancheCommandes() {
   $('c-maillage').onchange = (e) => { etat.maillage = e.target.checked; redessine(); };
   $('c-etude').onchange = (e) => { etat.etude = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // le journal et les plans w : recalcule le film
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
+  $('c-morph').onchange = (e) => { etat.morph = e.target.checked; redessine(); };
   $('c-marqueurs').onchange = (e) => { etat.marqueurs = e.target.checked; redessine(); };
   $('c-plein').onchange = (e) => { etat.plein = e.target.checked; redessine(); };
   $('c-pointille').onchange = (e) => { etat.pointille = e.target.checked; redessine(); };
@@ -536,7 +541,7 @@ const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 
 // Les cases qui n'ont de sens que pour les lacets conformes (essais du raccord, projection, fantômes des lignes estompées, maillage
 // du raccord) : grisées quand le film affiché est la triangulation ou le diagramme de courbes.
-const SEULEMENT_CONFORME = ['c-pur', 'c-marqueurs', 'c-plein', 'c-pointille', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
+const SEULEMENT_CONFORME = ['c-pur', 'c-morph', 'c-marqueurs', 'c-plein', 'c-pointille', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
 
 function metsAJourOptions() {
   const tri = etat.film !== 'conforme';

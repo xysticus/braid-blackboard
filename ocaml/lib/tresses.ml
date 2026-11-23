@@ -293,7 +293,7 @@ let normalise etat =
 (* σ_i fait tourner d'un demi-tour le bloc (trous i, i+1 et ce qui est entre eux) : les points du bloc sont
    réfléchis, chaque arc qui sort du bloc reçoit un point nouveau (à droite du bloc pour un arc du haut et σ
    positif, à gauche sinon ; l'inverse pour σ⁻¹), dans l'ordre des extrémités intérieures de ces arcs. *)
-type origine = Glisse of int | Tourne of int | Ne of int
+type origine = Glisse of int | Tourne of int | Ne of int * int
 
 let agit_origines etat (sigma : sigma lettre) =
   let i = sigma.indice in
@@ -340,7 +340,7 @@ let agit_origines etat (sigma : sigma lettre) =
                let j = k - 1 in
                (if j >= 0 then [ (if dedans (Some lacet.(j)) then ((2. *. centre) -. lacet.(j), Tourne j) else (lacet.(j), Glisse j)) ] else [])
                @ match Hashtbl.find_opt nouveau (l, j) with
-                 | Some x -> [ (x, Ne (if j >= 0 && dedans (Some lacet.(j)) then j else j + 1)) ]
+                 | Some x -> [ (x, Ne ((if j >= 0 && dedans (Some lacet.(j)) then j else j + 1), j)) ]
                  | None -> []))
         |> Array.of_list)
       etat.lacets

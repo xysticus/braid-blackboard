@@ -179,10 +179,9 @@ val agit : etat -> sigma lettre -> etat
 (** L'état non réduit après le demi-tour du bloc des trous i et i + 1 (le [detail] du Python n'est pas traduit).
     Ne pas confondre avec [conjugaison_locale], l'action d'Artin sur les mots. *)
 
-type origine = Glisse of int | Tourne of int | Ne of int
+type origine = Glisse of int | Tourne of int | Ne of int * int
 (** L'origine d'un point de l'état non réduit : un point ancien hors du bloc qui tourne (il glisse avec son trou), un point ancien
-    dans le bloc (il tourne), ou un point né sur un arc qui entre dans le bloc ou en sort (l'entier est l'indice de son point père,
-    l'extrémité intérieure de l'arc). *)
+    dans le bloc (il tourne), ou un point né sur un arc qui entre dans le bloc ou en sort (indice de son point père, l'extrémité intérieure de l'arc, puis indice de l'arc). *)
 
 val agit_origines : etat -> sigma lettre -> etat * origine array list
 (** Comme [agit], avec pour chaque lacet l'origine de chacun de ses points. *)
