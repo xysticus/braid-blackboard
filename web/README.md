@@ -65,9 +65,9 @@ d'arrivée sont les références entre lesquelles on raccorde ; `image.opacites`
 Pendant le raccord, le dessin des lacets est aussi **détendu** (`ocaml/lib/detente.ml`, mode de calcul `conforme_detendu`, `MODE_DE_CALCUL` dans
 `web/ardoise.js`) : un court flot de courbure contraint arrondit les brins autour des trous qui tournent et efface les zigzags, une
 répulsion garde leurs écarts ; l'intensité est nulle aux bords de la fenêtre (images clés inchangées). `web/travail.js` répartit cette
-détente sur des workers auxiliaires, un par cœur (8 au plus), et rend les images dans l'ordre. La vue « triangulation » est elle aussi
-détendue (mode `triangulation_detendu`), sur toutes ses images et son image fixe, avec l'écart de ses brins et une répulsion plus forte
-(les boucles y sont serrées autour des trous) ; ce film se calcule image après image, seule sa détente est répartie.
+détente sur des workers auxiliaires, un par cœur (8 au plus), et rend les images dans l'ordre. La vue « triangulation » n'est plus détendue depuis
+le 2026-11-23 : c'est la méthode « faire et défaire » : le film de la triangulation joué à l'envers (mode `triangulation_envers` : on part du méandre complet et on défait
+les lettres une à une), très rapide et presque aussi propre ; l'ancienne version détendue (`triangulation_detendu`) reste dans le banc.
 La vue « diagramme de courbes » l'est de même (mode `diagramme_detendu`), ses points fixes comptés comme des trous ; les bouts
 des arcs restent sur leur trou. Les rubans ne le sont pas : la page n'en reçoit que les bords, qu'il faudrait reconstruire
 après avoir détendu les arcs du centre. Les films du **diagramme de courbes** et des **rubans** ont aussi la case : elle trace les arêtes du maillage

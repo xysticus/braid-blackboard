@@ -46,8 +46,9 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 - `python/Conforme.py` : film par représentation conforme (point 13 de `docs/algorithmes_python.md`), `film_conforme` ;
   `python/Raccord.py` : son raccord par triangulation mobile. Le film des lacets de la page est ce film **détendu pendant le
   raccord** (flot de courbure contraint : prototype `etude/lacets/essai_lissage.py`, version de la page `ocaml/lib/detente.ml`,
-  mode `conforme_detendu`, tag v1.2). Les vues « triangulation » et « diagramme de courbes » de la page sont elles aussi détendues
-  (modes `triangulation_detendu`, tag v1.3, et `diagramme_detendu`, tag v1.4) ; les rubans ne le sont pas. La détente garantit l'absence de croisement et de trou sauté (retour en arrière, voir `docs/ocaml.md`) ; vérifier
+  mode `conforme_detendu`, tag v1.2). La vue « diagramme de courbes » de la page est elle aussi détendue
+  (mode `diagramme_detendu`, tag v1.4) ; la vue « triangulation » joue depuis le 2026-11-23 la méthode **« faire et défaire »**, le film à l'envers (mode `triangulation_envers` :
+  le méandre complet se défait lettre par lettre, sans détente ; avant, `triangulation_detendu`, tag v1.3) ; les rubans ne sont pas détendus. La détente garantit l'absence de croisement et de trou sauté (retour en arrière, voir `docs/ocaml.md`) ; vérifier
   une modification avec les nombres d'enroulement de chaque lacet autour de chaque trou, pas seulement les croisements.
 - `python/Arcs.py` : essai sans clou, des arcs entre trous fixes et trous voyageurs (piste 1 ter de
   `pistes_film_conforme.md`), `film_arcs` ; `DiagrammeCourbes` : le diagramme de courbes ; `hyperbolique=True`

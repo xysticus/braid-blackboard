@@ -401,7 +401,7 @@ function vueDe(canvas, images, mode) {
 // Pour chaque film, une phrase dit ce que sont ces lignes : elle s'ouvre dans la bulle du « ? » à côté de la case « construction »
 // (au survol, au clavier ou à l'appui).
 const MODES_AVEC_CONSTRUCTION = new Map([
-  ['triangulation', 'Le maillage (une triangulation) sur lequel les brins sont posés : il se déplace avec les trous, et les brins le suivent et se tendent ; le dessin est ensuite détendu (les brins s\'arrondissent).'],
+  ['triangulation', 'Le maillage (une triangulation) sur lequel les brins sont posés : il se déplace avec les trous, et les brins le suivent et se tendent.'],
   ['diagramme', 'Le maillage (une triangulation) sur lequel les arcs sont posés et tendus : il se déplace avec les trous ; le dessin est ensuite détendu (les arcs s\'arrondissent).'],
   ['rubans', 'Le maillage (une triangulation) sur lequel les arcs, au centre des rubans, sont posés et tendus : il se déplace avec les trous.'],
   ['conforme', 'L\'axe et la ligne brisée L–A–B–R sur lesquels le dessin est construit. Pendant le demi-tour, la ligne de départ et celle d\'arrivée s\'estompent l\'une dans l\'autre, et le dessin passe alors par une triangulation mobile, puis se détend : les brins s\'arrondissent et s\'espacent.'],
@@ -789,7 +789,7 @@ const SCHEMAS = {
   fn: ['Action sur le groupe libre', 'Les lacets x₁ et x₂ avant et après σ₁ : x₁ ↦ x₁x₂x₁⁻¹ et x₂ ↦ x₁.'],
   diagramme: ['Diagramme de courbes', 'Un point fixe à gauche ; les arcs sont les segments de l\'axe, que le demi-tour de deux trous emporte. La case « lignes de construction » trace le maillage en gris.'],
   lacets: ['Lacets conformes', 'Le dessin est l\'image de demi-cercles du demi-plan par la transformation conforme : des arcs à angle droit autour des sommets de la ligne brisée L–A–B–R. Pendant le demi-tour, il passe par une triangulation mobile et se détend : les brins s\'arrondissent et s\'espacent. La case « lignes de construction » trace l\'axe et cette ligne brisée, qui s\'estompent pendant le demi-tour.'],
-  triangulation: ['Triangulation mobile', 'Un maillage et des points sur ses arêtes ; quand les trous tournent, les brins suivent et se tendent. La case « lignes de construction » trace le maillage en gris.'],
+  triangulation: ['Triangulation mobile', 'Un maillage et des points sur ses arêtes ; quand les trous tournent, les brins suivent et se tendent. Le film est calculé par la méthode « faire et défaire » : on construit le méandre complet, on défait les lettres une à une, puis on joue ce film dans l\'autre sens. La case « lignes de construction » trace le maillage en gris.'],
   rubans: ['Rubans', 'Un ruban par trou voyageur, du trou fixe (la queue) au trou voyageur ; après le demi-tour, les rubans s\'enroulent.'],
 };
 
@@ -870,9 +870,9 @@ function arreteTravailleurs() {
 }
 
 // Le mode de calcul d'une vue, quand il diffère de son nom : les lacets sont le film conforme détendu pendant le raccord, la
-// triangulation et le diagramme de courbes sont détendus sur toutes leurs images (Detente ; travail.js répartit la détente sur
-// plusieurs workers).
-const MODE_DE_CALCUL = { conforme: 'conforme_detendu', triangulation: 'triangulation_detendu', diagramme: 'diagramme_detendu' };
+// diagramme de courbes est détendu sur toutes ses images (Detente ; travail.js répartit la détente sur plusieurs workers) ; la
+// triangulation est le film joué à l'envers (on part du méandre complet et on défait les lettres une à une : travail.js, filmEnvers).
+const MODE_DE_CALCUL = { conforme: 'conforme_detendu', triangulation: 'triangulation_envers', diagramme: 'diagramme_detendu' };
 
 // Un Web Worker pour un mode et un lecteur ; rend le worker (ou null si le navigateur refuse, par exemple en file://).
 // `suite` est appelée une fois, quand le film est fini (ou que le calcul a échoué) : c'est elle qui lance la vue suivante.

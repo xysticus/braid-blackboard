@@ -24,7 +24,7 @@ en double précision pour être détendue à son tour par un auxiliaire (`ardois
 départ et rend les images dans l'ordre. Mêmes images qu'en un seul worker ; sur 12 cœurs, (σ₁σ₂⁻¹)³ en moins de 24 s et la tresse
 chargée en moins de 70 s (au lieu de 80 s et 4 min 45 en un seul worker).
 
-**La triangulation détendue (2026-11-22, tag v1.3).** La vue « triangulation » demande `triangulation_detendu` : le film de la
+**La triangulation détendue (2026-11-22, tag v1.3) — remplacée le 2026-11-23 par le film à l'envers (voir ci-dessous).** La vue « triangulation » demandait `triangulation_detendu` : le film de la
 triangulation (calculé image après image, il dépend de son histoire) dont chaque image, et l'image fixe, est détendue avec l'écart de
 ses brins (`ardoise.detend`, 5ᵉ argument), répartie sur les workers auxiliaires. Plus long que la triangulation brute : environ une
 minute pour (σ₁σ₂⁻¹)³, plusieurs minutes pour la tresse chargée ; l'image fixe détendue s'affiche dès le début. Les scripts des workers
@@ -84,3 +84,12 @@ Les exemples sont au nombre de douze (voir `etude_page_web.md`, §7) ; l'exemple
 Le tag `v1.7` marque cet état (lecteurs, exports, cartes, exemples) : c'est la version à déployer sur un serveur personnel (`git checkout v1.7`, puis
 `web/deploie.sh`).
 
+**La triangulation « faire et défaire » (2026-11-23).** La méthode s'appelle « faire et défaire » : la vue « triangulation » (vue 4) demande maintenant `triangulation_envers` (`web/travail.js`,
+`filmEnvers` ; `ocaml/web/ardoise_web.ml`) : OCaml calcule le film de la triangulation du mot suivi de son inverse (le méandre se
+construit, puis se défait lettre par lettre, les trous reculant et les brins se tendant sur le maillage) et ne rend que le retour, que le
+worker renverse ; l'image fixe est le méandre complet, non détendu. **Sans détente** : environ 1 à 2,5 s pour un mot de 4 à 9 lettres, au
+lieu d'une minute et plus pour la version détendue. Mesures d'essai (`etude/lacets/README.md`, banc : « triangulation à l'envers ») sur
+`1 -2 1 -2`, `1 -2 1 -2 1 -2` et la tresse chargée : aucun croisement, autant de coins vifs que le film détendu, nombres d'enroulement
+identiques à toutes les images clés ; un seul défaut vu, un tassement des brins près du trou de gauche à la lettre 7 de la tresse chargée.
+La limite (6 brins, 14 lettres) porte sur le mot, pas sur le mot doublé. Les chapitres (boutons de lettres) sont recalculés à partir de
+la fin. Le mode `triangulation_detendu` reste disponible dans le banc d'essai.

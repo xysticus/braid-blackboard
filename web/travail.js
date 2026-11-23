@@ -125,6 +125,7 @@ const obstacles = (im) => Array.from(im.trous).concat(Array.from(im.fixes || [])
 
 // L'image fixe d'un mode (l'image d'arrivée) ; pour les films détendus sur toutes leurs images, l'image fixe l'est aussi.
 function imageFixe(mode, mot) {
+  if (mode === 'triangulation_envers') mode = 'triangulation';   // l'image fixe du film à l'envers est le méandre complet, non détendu
   const detendu = /^(triangulation|diagramme)_detendu$/.test(mode);
   const fixe = self.ardoise.statique(detendu ? mode.replace('_detendu', '') : mode, mot);
   if (!fixe.erreur && detendu) {
