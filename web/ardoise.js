@@ -1030,7 +1030,6 @@ const CLE_MEMOIRE = 'ardoise.tresses';
 const MAX_TRESSES = 30, MAX_TEXTE = 100;
 const memoire = { courant: null, tresses: [], disponible: true };   // courant : l'id de l'entrée sélectionnée, ou null
 let motEntiers = [];          // le mot affiché
-let modifie = false;          // la personne a tapé dans le champ depuis la dernière validation
 
 const COULEUR_VALIDE = /^#[0-9a-fA-F]{6}$/;
 const couleursParDefaut = (n) => PALETTE_DEFAUT.slice(0, n);
@@ -1133,25 +1132,43 @@ function choisis(entree) {
   afficheCouleurs();
 }
 
-// Ce qu'est le mot courant : une tresse gardée, un exemple fourni, ou un mot tapé que la personne n'a pas encore gardé.
+// Ce qu'est le mot courant : une tresse enregistrée, un exemple fourni, ou un mot tapé qui n'est pas enregistré. Le bouton « Enregistrer »
+// n'est actif que pour un mot qui ne l'est pas encore ; la note (modifiable) n'existe que pour une tresse enregistrée.
 function metsAJourEtatMot() {
   const zone = document.getElementById('etat-mot');
   if (!zone) return;
-  const dupliquer = document.getElementById('dupliquer-mot');
-  if (!motCourant) { zone.textContent = ''; if (dupliquer) dupliquer.disabled = true; return; }
-  if (dupliquer) dupliquer.disabled = motEntiers.length === 0;
-  if (entreeCourante()) zone.textContent = '· gardé dans tes tresses';
-  else if (EXEMPLES.some((e) => motEnTexte(e.mot) === motCourant)) zone.textContent = '· exemple fourni';
-  else zone.textContent = '· pas encore gardé (Entrée pour le garder)';
+  const bouton = document.getElementById('enregistrer-mot');
+  const ligne = document.getElementById('ligne-note'), note = document.getElementById('note-mot');
+  const entree = entreeCourante();
+  const fournie = EXEMPLES.find((e) => motEnTexte(e.mot) === motCourant);
+  if (!motCourant) zone.textContent = '';
+  else if (entree) zone.textContent = '· enregistré dans tes tresses';
+  else if (fournie) zone.textContent = '· exemple fourni : ' + fournie.legende;
+  else zone.textContent = '· pas enregistré';
+  bouton.disabled = !motCourant || !!entree;
+  bouton.title = entree ? 'Ce mot est déjà enregistré dans tes tresses' : 'Enregistrer ce mot dans tes tresses (pour le colorer, le noter, le retrouver)';
+  ligne.hidden = !entree;
+  if (entree && document.activeElement !== note) note.value = entree.texte;
 }
 
-// Garde une copie du mot courant dans les tresses de la personne (avec ses couleurs et sa note si elle est déjà gardée).
-function dupliqueCourant() {
-  if (motEntiers.length === 0) return;
-  const entree = entreeCourante();
-  if (entree) { dupliqueEntree(entree); return; }
+// Enregistre le mot courant dans les tresses de la personne (un exemple apporte sa légende comme note), puis envoie le focus sur la note.
+function enregistreCourant() {
+  if (motEntiers.length === 0 || entreeCourante()) return;
   const fournie = EXEMPLES.find((e) => motEnTexte(e.mot) === motEnTexte(motEntiers));
-  dupliqueEntree({ mot: motEntiers, texte: fournie ? fournie.legende : '', couleurs: null, fond: null });
+  const n = creeEntree({ mot: motEntiers, texte: fournie ? fournie.legende : '' });
+  if (!n) return;
+  ajouteCarte(n);
+  choisis(n);
+  annonce(`Tresse ${nomMot(n.mot)} enregistrée dans tes tresses.`);
+  const note = document.getElementById('note-mot');
+  if (note) note.focus();
+}
+
+// La note de la tresse enregistrée, modifiée dans la carte « Mot courant » (Entrée valide, Échap annule) ; la liste la montre sous le nom.
+function metsAJourLegende(entree) {
+  const carte = document.querySelector(`#exemples .perso[data-id="${entree.id}"]`);
+  const l = carte && carte.querySelector('.legende');
+  if (l) { l.textContent = entree.texte; l.hidden = !entree.texte; }
 }
 
 // ---- le menu « Tresses » : la liste des exemples et des tresses gardées s'ouvre sous le bouton, au clic
@@ -1201,7 +1218,6 @@ function creeEntree({ mot, texte = '', couleurs, fond }) {
 function selectionneMot(mot, entree) {
   const champ = document.getElementById('mot');
   champ.value = motEnTexte(mot);
-  modifie = false;
   choisis(entree);
   mise_a_jour(champ.value, { immediat: true });
 }
@@ -1269,26 +1285,16 @@ function cartePerso(entree) {
   span.className = 'nom';
   span.textContent = coupable(nom);
   b.appendChild(span);
+  const legende = document.createElement('span');
+  legende.className = 'legende';
+  legende.textContent = entree.texte;
+  legende.hidden = !entree.texte;
+  b.appendChild(legende);
   b.onclick = () => { selectionneMot(entree.mot, entree); fermeMenuTresses(true); };
   const outils = document.createElement('span');
   outils.className = 'outils';
   carte.append(b, outils);
   rendsOutils(carte, entree);
-  const texte = document.createElement('input');
-  texte.type = 'text';
-  texte.className = 'texte';
-  texte.maxLength = MAX_TEXTE;
-  texte.placeholder = 'ajouter une note';
-  texte.autocomplete = 'off';
-  texte.spellcheck = false;
-  texte.value = entree.texte;
-  texte.setAttribute('aria-label', `Note de la tresse ${nom}`);
-  texte.onchange = () => { entree.texte = texte.value.trim().slice(0, MAX_TEXTE); texte.value = entree.texte; ecrisMemoire(); };
-  texte.onkeydown = (ev) => {
-    if (ev.key === 'Enter') { ev.preventDefault(); texte.blur(); }
-    else if (ev.key === 'Escape') { texte.value = entree.texte; texte.blur(); }
-  };
-  carte.appendChild(texte);
   carte.appendChild(apercuCouleurs(entree));
   return carte;
 }
@@ -1346,21 +1352,6 @@ function dupliqueEntree(source) {
   carte.scrollIntoView({ block: 'nearest' });
   carte.querySelector('.principal').focus();
   annonce(`Tresse ${nomMot(n.mot)} dupliquée dans tes tresses.`);
-}
-
-// Une saisie validée (Entrée, ou sortie du champ après avoir tapé) crée toujours une entrée, même si le mot existe déjà.
-function valideSaisie() {
-  if (!modifie) return;
-  modifie = false;
-  const champ = document.getElementById('mot');
-  const r = lisMot(champ.value);
-  if (r.erreur || r.mot.length === 0) return;
-  const n = creeEntree({ mot: r.mot });
-  if (!n) return;
-  ajouteCarte(n);
-  choisis(n);
-  mise_a_jour(champ.value, { immediat: true });
-  annonce(`Tresse ${nomMot(n.mot)} gardée dans tes tresses.`);
 }
 
 // ---- les pastilles de couleur (dans la carte « Le mot ») : une par brin, puis le carré du fond
@@ -1438,8 +1429,8 @@ function afficheCouleurs() {
   fond.title = 'Couleur du fond';
   regle(fond, (c) => { FOND = c; });
   pastilles.appendChild(fond);
-  document.getElementById('dupliquer-courante').hidden = actif;
-  document.getElementById('couleurs-aide').textContent = actif ? '' : 'Pour changer les couleurs, duplique d\'abord cette tresse dans tes tresses.';
+  document.getElementById('enregistrer-courante').hidden = actif;
+  document.getElementById('couleurs-aide').textContent = actif ? '' : 'Pour changer les couleurs, enregistre d\'abord cette tresse dans tes tresses.';
   metsAJourAlertes();
 }
 
@@ -1505,14 +1496,26 @@ async function demarre() {
   lanceLibres();
   let minuterie = null;
   champ.addEventListener('input', () => {
-    modifie = true;
     clearTimeout(minuterie);
     minuterie = setTimeout(() => mise_a_jour(champ.value), 400);
   });
-  champ.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); valideSaisie(); } });
-  champ.addEventListener('blur', valideSaisie);
-  document.getElementById('dupliquer-courante').onclick = dupliqueCourant;
-  document.getElementById('dupliquer-mot').onclick = dupliqueCourant;
+  champ.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); clearTimeout(minuterie); mise_a_jour(champ.value, { immediat: true }); } });
+  document.getElementById('enregistrer-courante').onclick = enregistreCourant;
+  document.getElementById('enregistrer-mot').onclick = enregistreCourant;
+  const noteMot = document.getElementById('note-mot');
+  noteMot.onchange = () => {
+    const entree = entreeCourante();
+    if (!entree) return;
+    entree.texte = noteMot.value.trim().slice(0, MAX_TEXTE);
+    noteMot.value = entree.texte;
+    ecrisMemoire();
+    metsAJourLegende(entree);
+  };
+  noteMot.onkeydown = (ev) => {
+    const entree = entreeCourante();
+    if (ev.key === 'Enter') { ev.preventDefault(); noteMot.blur(); }
+    else if (ev.key === 'Escape' && entree) { noteMot.value = entree.texte; noteMot.blur(); }
+  };
   const boutonTresses = document.getElementById('bouton-tresses');
   boutonTresses.onclick = () => (document.getElementById('menu-tresses').hidden ? ouvreMenuTresses() : fermeMenuTresses(true));
   document.getElementById('exporter-tresses').onclick = exporteTresses;

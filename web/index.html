@@ -22,7 +22,7 @@
       <div class="actions-mot">
         <button type="button" id="bouton-tresses" class="outil-texte" aria-haspopup="true" aria-expanded="false" aria-controls="menu-tresses"
                 title="Choisir une autre tresse : les exemples et tes tresses">Tresses ▾</button>
-        <button type="button" id="dupliquer-mot" class="outil-texte" title="Garder une copie de ce mot dans tes tresses (pour la colorer, la noter)">Dupliquer</button>
+        <button type="button" id="enregistrer-mot" class="outil-texte" title="Enregistrer ce mot dans tes tresses (pour le colorer, le noter, le retrouver)">Enregistrer</button>
       </div>
       <div id="menu-tresses" class="menu-tresses" role="group" aria-label="Choisir une tresse" hidden>
         <div id="exemples" role="group" aria-label="Tresses d'exemple et tresses mémorisées"></div>
@@ -41,10 +41,14 @@
     <div id="mot-math" class="math-ligne"></div>
     <p id="mot-info" class="info"></p>
     <p class="aide" id="etat-limites" aria-live="polite"></p>
+    <div id="ligne-note" class="ligne-note" hidden>
+      <label for="note-mot">Note</label>
+      <input id="note-mot" type="text" maxlength="100" autocomplete="off" spellcheck="false" placeholder="ajouter une note (100 caractères au plus)">
+    </div>
     <div id="couleurs" class="couleurs" hidden>
       <span class="couleurs-titre" id="couleurs-titre">Couleurs</span>
       <span id="pastilles" class="pastilles" role="group" aria-labelledby="couleurs-titre"></span>
-      <button type="button" id="dupliquer-courante" class="outil-texte" hidden>Dupliquer pour la colorer</button>
+      <button type="button" id="enregistrer-courante" class="outil-texte" hidden>Enregistrer pour la colorer</button>
       <span id="couleurs-aide" class="info"></span>
     </div>
     <details class="aide-saisie">
@@ -90,13 +94,16 @@
 
   <section id="hors-tresses">
     <h2>Un peu de poésie</h2>
-    <p class="info">Des films où les trous suivent une chorégraphie libre au lieu de demi-tours sur l'axe : les lacets sont emportés
-       par la même triangulation mobile, sans jamais se croiser.</p>
-    <p class="info"><b>L'escargot</b> : des rubans (arcs entre des trous fixes, la queue, et des trous voyageurs, sans clou) sur la
-       triangulation mobile ; quatre trous en anneau montent et tournent trois tours (la coquille), un trou fait la tête, deux autres
-       les yeux. <b>Les iris</b> : des lacets qui partent du clou, sur la triangulation mobile ; 35 trous (trois fleurs de 5 sépales et
-       4 pétales, quatre feuilles de 2 trous) montent d'une graine ; les pétales tournent d'un tour dans la cage des sépales,
-       puis en sortent : la fleur éclot.</p>
+    <details class="coulisses">
+      <summary>Les coulisses</summary>
+      <p class="info">Des films où les trous suivent une chorégraphie libre au lieu de demi-tours sur l'axe : les lacets sont emportés
+         par la même triangulation mobile, sans jamais se croiser.</p>
+      <p class="info"><b>L'escargot</b> : des rubans (arcs entre des trous fixes, la queue, et des trous voyageurs, sans clou) sur la
+         triangulation mobile ; quatre trous en anneau montent et tournent trois tours (la coquille), un trou fait la tête, deux autres
+         les yeux. <b>Les iris</b> : des lacets qui partent du clou, sur la triangulation mobile ; 35 trous (trois fleurs de 5 sépales et
+         4 pétales, quatre feuilles de 2 trous) montent d'une graine ; les pétales tournent d'un tour dans la cage des sépales,
+         puis en sortent : la fleur éclot.</p>
+    </details>
     <p class="info">Les images, les films et les exports de l'escargot et des iris sont sous licence <a href="https://creativecommons.org/licenses/by/4.0/deed.fr">CC BY 4.0</a> :
        tu peux les réutiliser en citant xysticus et le projet (le nom et la licence sont écrits dans chaque fichier, et le film se termine par un générique).
        Les images faites à partir de ton propre mot sont à toi.</p>

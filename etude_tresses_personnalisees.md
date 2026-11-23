@@ -14,6 +14,12 @@ douze tresses d'exemple, de les annoter, d'en choisir les couleurs et la couleur
 
 ## Les règles (décidées le 2026-11-22)
 
+> **Révisé le 2026-11-23.** Un bouton **« Enregistrer »** explicite (carte « Mot courant ») remplace l'enregistrement automatique à la saisie (Entrée ou
+> sortie du champ) : taper un mot ne crée plus d'entrée. Les couleurs ne se changent que sur une tresse **enregistrée** (le bouton à côté des pastilles
+> s'appelle maintenant « Enregistrer pour la colorer »). La note se lit dans la liste (menu « Tresses ») mais se modifie dans la carte « Mot courant ».
+> Le reste des règles ci-dessous (⧉, ✕, plafonds, export/import) est inchangé ; là où elles parlent de « saisie validée » et de « champ de note sur la
+> carte », lire ce qui précède.
+
 - **Une saisie validée crée toujours une entrée.** Valider = Entrée ou sortie du champ, après avoir *tapé* dans le champ, avec un mot
   valide. Même si le mot existe déjà (parmi les exemples ou parmi les tresses mémorisées) : l'entrée est nouvelle, avec ses couleurs
   par défaut, son texte vide. Pas de doublon « interdit ».

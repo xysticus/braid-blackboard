@@ -51,7 +51,7 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
   display: block; width: 100%; box-sizing: border-box; padding: 0 54px 0 0; text-align: left; font: inherit; cursor: pointer;
   border: 0; background: none; color: inherit;
 }
-.exemple .principal:focus-visible, .outil:focus-visible, .outil-texte:focus-visible, .texte:focus-visible, .pastille:focus-visible {
+.exemple .principal:focus-visible, .outil:focus-visible, .outil-texte:focus-visible, .texte:focus-visible, .pastille:focus-visible, #note-mot:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px;
 }
 .exemple .nom { display: block; font-size: 1.05rem; overflow-wrap: break-word; }
@@ -64,12 +64,6 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 .outil:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--encre); }
 .outil.effacer:hover, .outil.oui:hover { color: var(--erreur); }
 .confirme { font-size: 0.85rem; white-space: nowrap; }
-.exemple .texte {
-  display: block; width: 100%; margin-top: 4px; padding: 2px 0; font: inherit; font-size: 0.8rem; color: var(--doux);
-  border: 0; border-bottom: 1px dashed var(--trait); border-radius: 0; background: none;
-}
-.exemple .texte:focus { color: var(--encre); border-bottom-color: var(--accent); outline: none; }
-.exemple .texte::placeholder { color: color-mix(in srgb, var(--doux) 70%, transparent); font-style: italic; }
 .apercu { display: flex; gap: 3px; margin-top: 6px; }
 .apercu i { display: block; width: 10px; height: 10px; border-radius: 50%; }
 .apercu i.carre { width: 10px; border-radius: 2px; margin-left: 3px; border: 1px solid var(--trait); }
@@ -246,3 +240,13 @@ main > *, .deux-colonnes > *, .quatre > *, .libres > * { min-width: 0; }   /* un
 .coulisses[open] { padding: 8px 12px; border: 1px dashed var(--trait); border-radius: 8px; }
 .coulisses[open] > summary { margin-bottom: 4px; }
 @media (max-width: 640px) { .entete-carte > .info { order: 3; flex: 1 1 100%; } .actions-mot { margin-left: auto; } }
+.ligne-note { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.ligne-note[hidden] { display: none; }
+#mot-courant .ligne-note label { display: inline; margin: 0; font-weight: 400; font-size: 0.92rem; color: var(--doux); }
+#note-mot {
+  flex: 1; min-width: 0; font: inherit; font-size: 0.95rem; padding: 5px 10px; border-radius: 6px;
+  border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
+}
+#note-mot::placeholder { color: color-mix(in srgb, var(--doux) 70%, transparent); font-style: italic; }
+.outil-texte:disabled { opacity: 0.55; cursor: default; }
+.outil-texte:disabled:hover { border-color: var(--trait); }

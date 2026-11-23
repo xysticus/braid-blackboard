@@ -1,8 +1,8 @@
 # Ardoise à tresse : la page web
 
 Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse (ou on en choisit un dans le menu « Tresses » : douze exemples, puis les tresses gardées par la personne) ; tout le haut de la
-page est une seule carte, **« Mot courant »** : le champ de saisie, le mot en notation mathématique, les couleurs, l'état du mot (exemple fourni, gardé dans
-ses tresses, pas encore gardé), et les boutons « Tresses ▾ » (la liste, qui s'ouvre en menu) et « Dupliquer ». Sous « Les méandres », le texte d'explication est
+page est une seule carte, **« Mot courant »** : le champ de saisie, le mot en notation mathématique, les couleurs, l'état du mot (exemple fourni, enregistré dans
+ses tresses, pas enregistré), la note de la tresse enregistrée, et les boutons « Tresses ▾ » (la liste, qui s'ouvre en menu) et « Enregistrer ». Sous « Les méandres », le texte d'explication est
 replié dans « Les coulisses ». La page montre :
 
 1. le mot en notation mathématique, tel qu'il est écrit (MathML) ;
@@ -122,11 +122,13 @@ Décisions et raisons : `../etude_exploitation_des_images.md` ; détail techniqu
 ## Tresses mémorisées et personnalisées
 
 Les 12 exemples sont suivis des tresses de la personne (étude : `etude_tresses_personnalisees.md`), gardées dans le navigateur
-(`localStorage`, clé `ardoise.tresses`, version 1 ; tout accès est protégé par un `try/catch`, la page marche sans). Un mot tapé puis
-validé (Entrée ou sortie du champ) crée toujours une entrée ; un clic sur une carte ne fait que la sélectionner ; ⧉ duplique n'importe
-quelle carte ; ✕ efface une carte personnelle après confirmation en ligne. Chaque carte personnelle porte une note libre (100 signes) à la
-place de la légende. Les pastilles de la carte « Le mot » (une par brin, plus un carré pour le fond) changent les couleurs de l'entrée
-sélectionnée, sans jamais en créer une ; sur un exemple ou un mot non mémorisé, elles sont grisées (« Dupliquer pour la colorer »).
+(`localStorage`, clé `ardoise.tresses`, version 1 ; tout accès est protégé par un `try/catch`, la page marche sans). **Rien n'est enregistré
+sans un clic sur « Enregistrer »** (carte « Mot courant ») : taper un mot ou appuyer sur Entrée ne fait que le montrer. Le bouton est grisé quand le mot est
+déjà enregistré. Un exemple fourni enregistré apporte sa légende comme note. Un clic sur une carte du menu « Tresses » ne fait que la sélectionner ; ⧉ duplique
+n'importe quelle carte ; ✕ efface une carte personnelle après confirmation en ligne. La **note** libre (100 signes) d'une tresse enregistrée se lit sous son
+nom dans la liste et se modifie dans la carte « Mot courant » (Entrée valide, Échap annule). Les pastilles de cette carte (une par brin, plus un carré pour le fond)
+changent les couleurs de la tresse **enregistrée** seulement, sans jamais en créer une ; sur un exemple ou un mot non enregistré, elles sont grisées
+(« Enregistrer pour la colorer »).
 Un avertissement ⚠ signale un brin trop proche du fond. 30 entrées au plus. « Exporter mes tresses » / « Importer… » : un fichier JSON
 (version 1), entièrement validé avant d'être pris (sinon refusé avec la raison), identifiants régénérés, doublons exacts sautés, jamais
 de HTML. Les couleurs ne demandent aucun recalcul : les films sont déjà des polylignes, que `dessineImage` redessine.
