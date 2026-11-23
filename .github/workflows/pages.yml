@@ -32,7 +32,7 @@ jobs:
       - name: Assemble le site
         run: |
           mkdir _site
-          cp web/index.html web/ardoise.css web/ardoise.js web/exports.js web/travail.js web/ardoise_lib.js web/favicon.svg _site/
+          cp web/index.html web/ardoise.css web/ardoise.js web/exports.js web/mp4.js web/travail.js web/ardoise_lib.js web/favicon.svg _site/
           mkdir _site/schemas && cp web/schemas/*.svg _site/schemas/
 
       - uses: actions/configure-pages@v5

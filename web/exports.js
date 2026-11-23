@@ -104,10 +104,7 @@ function canvasEnBlob(canvas, type = 'image/png') {
 
 // Dessine l'image en cours du lecteur sur un canvas hors écran, `echelle` fois plus grand ; fond transparent en option
 // (sauf pour l'escargot et les iris, dont le fond fait partie du dessin).
-function canvasDExport(lecteur, echelle, transparent, indice = lecteur.indice()) {
-  const c = document.createElement('canvas');
-  c.width = Math.round(lecteur.canvas.width * echelle);
-  c.height = Math.round(lecteur.canvas.height * echelle);
+function dessineExport(c, lecteur, echelle, transparent, indice) {
   const image = lecteur.images[indice];
   if (lecteur.mode === 'escargot') dessineEscargot(c, image, echelle);
   else if (lecteur.mode === 'bouquet') dessineBouquet(c, image, echelle);
@@ -116,6 +113,13 @@ function canvasDExport(lecteur, echelle, transparent, indice = lecteur.indice())
     if (transparent) liste.fond = null;
     dessineListe(c, liste, echelle * lecteur.canvas.width / TAILLE_REFERENCE);
   }
+}
+
+function canvasDExport(lecteur, echelle, transparent, indice = lecteur.indice()) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(lecteur.canvas.width * echelle);
+  c.height = Math.round(lecteur.canvas.height * echelle);
+  dessineExport(c, lecteur, echelle, transparent, indice);
   return c;
 }
 
@@ -182,6 +186,107 @@ async function exporteZipCles(lecteur, echelle, transparent, progres) {
     fichiers.push({ nom: `cle-${String(j).padStart(chiffres, '0')}.png`, octets: await octetsPNG(lecteur, echelle, transparent, cles[j]) });
   }
   telecharge(construitZip(fichiers), nomDeFichier(lecteur, 'zip', 'images-cles'));
+}
+
+// ---------------------------------------------------------------- film MP4 AV1
+
+// Le navigateur sait-il fabriquer de l'AV1 ? On le lui demande une fois ; sinon l'entrée du menu est grisée (tous les autres exports restent).
+const SAIT_FAIRE_DE_L_AV1 = (async () => {
+  try {
+    if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') return false;
+    const s = await VideoEncoder.isConfigSupported({ codec: 'av01.0.04M.08', width: 800, height: 800, bitrate: 3e6, framerate: 25 });
+    return !!s.supported;
+  } catch (e) { return false; }
+})();
+
+// seq_level_idx du plus petit niveau AV1 dont la taille d'image maximale contient l'image (2.0, 2.1, 3.0, 3.1, 4.0, 5.0, 6.0).
+function niveauAV1(largeur, hauteur) {
+  const surface = largeur * hauteur;
+  for (const [max, niveau] of [[147456, 0], [278784, 1], [665856, 4], [1065024, 5], [2359296, 8], [8912896, 12]]) if (surface <= max) return niveau;
+  return 16;
+}
+
+// Le bandeau de fin de l'escargot et des iris : « Ardoise à tresse — xysticus — CC BY 4.0 » (une vidéo se sépare facilement de ses métadonnées).
+function dessineGenerique(c) {
+  const ctx = c.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const taille = c.width / 30, haut = 2.4 * taille;
+  ctx.fillStyle = 'rgba(20, 24, 32, 0.78)';
+  ctx.fillRect(0, c.height - haut, c.width, haut);
+  ctx.fillStyle = '#fff';
+  ctx.font = `600 ${taille}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Ardoise à tresse — xysticus — CC BY 4.0', c.width / 2, c.height - haut / 2);
+}
+
+// Le film MP4 AV1 : chaque image du film est dessinée à l'échelle voulue, encodée par le VideoEncoder du navigateur, puis emballée (mp4.js).
+// 25 images par seconde (12,5 pour les iris), 0,5 s sur la première image et 1,5 s sur la dernière ; une image clé toutes les 50 images.
+// Pour l'escargot et les iris, un générique de fin (2 s) suit la dernière image. `progres(i, n)` est appelé avant chaque image ;
+// `signal` (AbortSignal) interrompt le travail : l'encodeur est fermé, rien ne reste.
+async function exporteFilm(film, echelle, progres, signal) {
+  const libre = MODES_LIBRES.has(film.mode);
+  const largeur = Math.round(film.canvas.width * echelle), hauteur = Math.round(film.canvas.height * echelle);
+  if (largeur % 2 || hauteur % 2) throw new Error('la taille du film doit être paire');
+  const niveau = niveauAV1(largeur, hauteur);
+  const config = {
+    codec: `av01.0.${String(niveau).padStart(2, '0')}M.08`, width: largeur, height: hauteur,
+    bitrate: Math.max(1e6, Math.round(3e6 * largeur * hauteur / 640000)), framerate: film.ips, latencyMode: 'quality',
+  };
+  const verdict = await VideoEncoder.isConfigSupported(config);
+  if (!verdict.supported) throw new Error('ce navigateur ne sait pas fabriquer de l\'AV1 à cette taille');
+
+  // le programme du film : (image, durée en ms, avec générique ?)
+  const n = film.images.length;
+  const image = Math.round(1000 / film.ips);
+  const programme = film.images.map((_, i) => ({ i, duree: i === 0 ? 500 : i === n - 1 && !libre ? 1500 : image, generique: false }));
+  if (libre) programme.push({ i: n - 1, duree: 2000, generique: true });
+
+  const morceaux = [];
+  let erreurEncodeur = null;
+  const encodeur = new VideoEncoder({
+    output: (m) => { const octets = new Uint8Array(m.byteLength); m.copyTo(octets); morceaux.push({ octets, cle: m.type === 'key', ts: m.timestamp }); },
+    error: (e) => { erreurEncodeur = e; },
+  });
+  const ferme = () => { try { if (encodeur.state !== 'closed') encodeur.close(); } catch (e) { /* déjà fermé */ } };
+  const interrompu = () => { if (signal && signal.aborted) { ferme(); throw new DOMException('Export annulé', 'AbortError'); } };
+  try {
+    encodeur.configure(config);
+    const c = document.createElement('canvas');
+    c.width = largeur;
+    c.height = hauteur;
+    let temps = 0;   // en microsecondes
+    for (let k = 0; k < programme.length; k++) {
+      interrompu();
+      if (erreurEncodeur) throw erreurEncodeur;
+      progres(k + 1, programme.length);
+      const p = programme[k];
+      dessineExport(c, film, echelle, false, p.i);   // pas de transparence dans l'AV1 : le fond est plein
+      if (p.generique) dessineGenerique(c);
+      const cadre = new VideoFrame(c, { timestamp: temps, duration: p.duree * 1000 });
+      encodeur.encode(cadre, { keyFrame: k % 50 === 0 });
+      cadre.close();
+      temps += p.duree * 1000;
+      // on rend la main au navigateur (page vivante, annulation possible) et on ne laisse pas l'encodeur s'engorger
+      do { await new Promise((ok) => setTimeout(ok, 0)); interrompu(); } while (encodeur.encodeQueueSize > 6);
+    }
+    await encodeur.flush();
+    interrompu();
+    if (erreurEncodeur) throw erreurEncodeur;
+  } finally {
+    ferme();
+  }
+  if (morceaux.length !== programme.length) throw new Error(`l'encodeur a rendu ${morceaux.length} images au lieu de ${programme.length}`);
+  morceaux.sort((a, b) => a.ts - b.ts);
+  const m = mentions(film, n - 1);
+  const mentionsMP4 = libre
+    ? { droits: `© xysticus, ${m.licence}`, titre: m.titre, commentaire: CITATION }
+    : { commentaire: m.description };
+  return construitMP4({
+    largeur, hauteur, niveau,
+    echantillons: morceaux.map((x, k) => ({ octets: x.octets, cle: x.cle, duree: programme[k].duree })),
+    mentions: mentionsMP4,
+  });
 }
 
 // ---------------------------------------------------------------- SVG
@@ -308,16 +413,34 @@ function menuExport(lecteur) {
     `<button type="button" data-export="png">Image PNG</button>` +
     (libre ? '' : `<button type="button" data-export="svg">Image SVG</button>`) +
     `<button type="button" data-export="json">Données JSON</button>` +
+    `<label>Taille du film <select class="taille-film">${[1, 2].map((e) => `<option value="${e}"${e === 1 ? ' selected' : ''}>${lecteur.canvas.width * e} × ${lecteur.canvas.height * e}</option>`).join('')}</select></label>` +
+    `<button type="button" data-export="film" title="Un film MP4 (AV1), fabriqué par ton navigateur : rien n'est envoyé nulle part">Film MP4 AV1</button>` +
+    `<p class="av1-export" hidden></p>` +
     (lecteur.aDesChapitres() ? `<button type="button" data-export="zip" title="Une image PNG par image clé : l'état de départ, puis l'état après chaque lettre">Images clés (zip, ${lecteur.chapitres.length} images)</button>` : '') +
     (libre ? `<p class="licence-export">Ces images sont sous licence <a href="${URL_CC_BY}" target="_blank" rel="noopener">CC BY 4.0</a> : cite xysticus et le projet (<a href="${URL_LICENCES}" target="_blank" rel="noopener">licences</a>).</p>` : '') +
     `<p class="progression-export" role="status" hidden></p>` +
+    `<progress class="barre-export" hidden></progress>` +
+    `<button type="button" class="annuler-export" hidden>Annuler</button>` +
     `<p class="erreur-export" role="alert" hidden></p>` +
     `</div>`;
   const bouton = zone.querySelector('.bouton-export');
   const menu = zone.querySelector('.menu-export');
   const erreur = zone.querySelector('.erreur-export');
   const progression = zone.querySelector('.progression-export');
+  const barre = zone.querySelector('.barre-export');
+  const annuler = zone.querySelector('.annuler-export');
+  const boutonFilm = zone.querySelector('button[data-export=film]');
+  const phraseAV1 = zone.querySelector('.av1-export');
+  let controle = null;   // l'AbortController de l'export en cours (le menu ne se ferme pas pendant ce temps ; Échap l'annule)
+  SAIT_FAIRE_DE_L_AV1.then((oui) => {
+    if (oui) return;
+    boutonFilm.disabled = true;
+    boutonFilm.dataset.indisponible = '1';
+    phraseAV1.textContent = 'Ton navigateur ne sait pas fabriquer de l\'AV1 : essaie Firefox ou Chrome. Les autres exports restent disponibles.';
+    phraseAV1.hidden = false;
+  });
   const ferme = (rendFocus) => {
+    if (controle) return;   // un export est en cours : on l'annule (Échap, bouton), on ne ferme pas
     menu.hidden = true;
     bouton.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', dehors, true);
@@ -325,7 +448,7 @@ function menuExport(lecteur) {
     if (rendFocus) bouton.focus();
   };
   const dehors = (e) => { if (!zone.contains(e.target)) ferme(false); };
-  const touche = (e) => { if (e.key === 'Escape') { e.stopPropagation(); ferme(true); } };
+  const touche = (e) => { if (e.key === 'Escape') { e.stopPropagation(); if (controle) controle.abort(); else ferme(true); } };
   const ouvre = () => {
     lecteur.arrete();   // on exporte l'image qu'on voit
     erreur.hidden = true;
@@ -345,20 +468,38 @@ function menuExport(lecteur) {
       const boutons = menu.querySelectorAll('button[data-export]');
       boutons.forEach((x) => { x.disabled = true; });
       erreur.hidden = true;
+      controle = new AbortController();
+      annuler.hidden = false;
+      annuler.onclick = () => controle.abort();
       try {
-        if (b.dataset.export === 'png') await exportePNG(lecteur, echelle, transparent);
+        if (b.dataset.export === 'film') {
+          // une photo du film : un nouveau mot pendant l'export ne le mélange pas
+          const photo = { mode: lecteur.mode, images: lecteur.images, vue: lecteur.vue, construction: lecteur.construction, lettres: lecteur.lettres.slice(), canvas: lecteur.canvas, ips: lecteur.ips };
+          barre.hidden = false;
+          const blob = await exporteFilm(photo, Number(menu.querySelector('.taille-film').value), (j, n) => {
+            progression.textContent = `image ${j} sur ${n}…`;
+            progression.hidden = false;
+            barre.max = n;
+            barre.value = j;
+          }, controle.signal);
+          telecharge(blob, nomDeFichier(lecteur, 'mp4', 'film'));
+        } else if (b.dataset.export === 'png') await exportePNG(lecteur, echelle, transparent);
         else if (b.dataset.export === 'zip') {
           await exporteZipCles(lecteur, echelle, transparent, (j, n) => { progression.textContent = `image clé ${j} sur ${n}…`; progression.hidden = false; });
         }
         else if (b.dataset.export === 'svg') exporteSVG(lecteur, transparent);
         else exporteJSON(lecteur);
+        controle = null;
         ferme(true);
       } catch (e) {
-        erreur.textContent = 'Export impossible : ' + e.message;
+        if (e && e.name === 'AbortError') { erreur.textContent = 'Export annulé.'; } else { erreur.textContent = 'Export impossible : ' + e.message; }
         erreur.hidden = false;
       } finally {
-        boutons.forEach((x) => { x.disabled = false; });
+        controle = null;
+        boutons.forEach((x) => { x.disabled = !!x.dataset.indisponible; });
         progression.hidden = true;
+        barre.hidden = true;
+        annuler.hidden = true;
       }
     };
   });
