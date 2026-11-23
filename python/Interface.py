@@ -22,13 +22,15 @@ COULEURS = [(1, 0, 0), (0, .7, 0), (0, 0, 1), (.7, .7, 0), (.7, 0, .7), (0, .7, 
 
 EXEMPLES = [
     ('σ₁', [1], 'le demi-tour le plus simple'),
+    ('σ₁σ₃', [1, 3], 'deux générateurs qui commutent : σ₁σ₃ = σ₃σ₁'),
     ('Δ₅', [1, 2, 3, 4, 1, 2, 3, 1, 2, 1], 'demi-tour positif à 5 brins'),
     ('Δ₅⁻¹', [-1, -2, -1, -3, -2, -1, -4, -3, -2, -1], 'demi-tour négatif à 5 brins'),
     ('(σ₁σ₂)³', [1, 2, 1, 2, 1, 2], 'tour complet à 3 brins : conjugaison par x₁x₂x₃'),
     ('σ₁σ₂σ₁σ₂⁻¹σ₁⁻¹σ₂⁻¹', [1, 2, 1, -2, -1, -2], 'un mot qui vaut la tresse nulle'),
     ('σ₁σ₂⁻¹', [1, -2], 'courte, mais pseudo-Anosov'),
-    ('(σ₁σ₂⁻¹)³', [1, -2, 1, -2, 1, -2], '6 lettres, 51 dans F₃ : croissance exponentielle'),
+    ('(σ₁σ₂⁻¹)³', [1, -2, 1, -2, 1, -2], '6 lettres, 51 dans F₃ ; sa fermeture : les anneaux de Borroméo'),
     ('σ₂σ₃σ₁σ₄σ₃σ₂', [2, 3, 1, 4, 3, 2], 'tresse simple à 5 brins : la permutation (1 3)(2 5)'),
+    ('σ₃σ₂σ₁σ₄σ₃σ₂', [3, 2, 1, 4, 3, 2], 'tresse simple à 5 brins : le 5-cycle (1 3 5 2 4)'),
     ('σ₄σ₃σ₁⁻²σ₂σ₄⁻¹σ₁', [4, 3, -1, -1, 2, -4, 1], 'une tresse à enroulements décroissants'),
     ('σ₁σ₂⁻¹σ₁σ₂⁻¹σ₁σ₂⁻¹σ₃σ₁⁻¹σ₂', [1, -2, 1, -2, 1, -2, 3, -1, 2], 'une tresse à nombreux enroulements'),
 ]

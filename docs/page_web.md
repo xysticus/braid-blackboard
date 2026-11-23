@@ -78,7 +78,7 @@ boutons, « Tresses ▾ » (la liste des exemples et des tresses enregistrées, 
 **Rien n'est enregistré sans ce bouton** (le mot tapé ne crée plus d'entrée) ; les couleurs ne se changent que sur une tresse enregistrée. L'aide d'écriture
 et les limites sont dans un `<details>` ; les explications des méandres et de « Un peu de poésie » sont dans des « Les coulisses » repliées ; l'avertissement
 des limites (`etatLimites`) n'apparaît que si le mot les dépasse. Le diagramme de tresse porte, à droite, la colonne des générateurs (σ₁, σ₂⁻¹…).
-Les exemples sont au nombre de dix (voir `etude_page_web.md`, §7) ; l'exemple de départ est désigné par son mot (`1 -2`), pas par son numéro.
+Les exemples sont au nombre de douze (voir `etude_page_web.md`, §7) ; l'exemple de départ est désigné par son mot (`1 -2`), pas par son numéro.
 Le tag `v1.7` marque cet état (lecteurs, exports, cartes, exemples) : c'est la version à déployer sur un serveur personnel (`git checkout v1.7`, puis
 `web/deploie.sh`).
 

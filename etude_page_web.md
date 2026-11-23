@@ -181,7 +181,9 @@ en action sur le disque percé.
 **Révision du 2026-11-23 : dix exemples.** On ne visualise qu'une tresse à la fois : les lignes 6 et 7 (« même tresse que… », deux mots pour une même
 tresse) sont retirées. La ligne 10 (la rotation σ₁σ₂σ₃σ₄) est remplacée par une **tresse simple** à 5 brins, σ₂σ₃σ₁σ₄σ₃σ₂ (5 brins, 6 lettres, longueur 17
 dans F_n) : six croisements, chaque paire de brins au plus une fois, donc une tresse qui ne dépend que d'une permutation, ici (1 3)(2 5) (le brin 4 reste en
-place). La même liste est dans `web/ardoise.js`, `etude/lacets/etude.js` et `python/Interface.py` (le notebook) : les garder alignées.
+place). **Deux ajouts le même jour** : σ₁σ₃ (4 brins, 2 lettres : deux générateurs qui commutent, σ₁σ₃ = σ₃σ₁) et σ₃σ₂σ₁σ₄σ₃σ₂ (5 brins, 6 lettres : la tresse simple qui est le
+5-cycle (1 3 5 2 4), un bloc de 2 brins qui traverse un bloc de 3) ; la légende de (σ₁σ₂⁻¹)³ dit que sa fermeture donne les anneaux de Borroméo. Soit douze exemples.
+La même liste est dans `web/ardoise.js`, `etude/lacets/etude.js` et `python/Interface.py` (le notebook) : les garder alignées.
 
 Sur « des tresses courtes mais avec une action sur le disque complexe » : j'ai compris « courtes, mais dont l'action sur
 le disque (percé) est compliquée », d'où 8 et 9 (et 12). Si tu pensais à autre chose (les trous dans le plan complexe,
