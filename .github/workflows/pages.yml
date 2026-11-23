@@ -39,5 +39,9 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      # Une pause avant le dépôt : l'archive vient d'être créée et l'API de GitHub ne la voit parfois pas encore (« Found 0 artifact(s) »,
+      # « No artifacts named "github-pages" »), ce qui faisait échouer le dépôt (vu presque à chaque push le 2026-11-23).
+      - name: Laisse l'archive devenir visible
+        run: sleep 20
       - id: deploiement
         uses: actions/deploy-pages@v4

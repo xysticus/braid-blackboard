@@ -43,10 +43,12 @@ nouveau worker ne part que quand le précédent a fini ; chaque film occupe déj
 vues qui attendent affichent « en attente » et leur image fixe, calculée tout de suite par un petit worker (`demarreFixe`, message
 `fixe` de `web/travail.js`, `imageFixe`). Un nouveau mot abandonne la file (`generationCalculs`).
 
-**Publication GitHub Pages : une panne passagère à connaître (2026-11-22).** Il arrive que le workflow échoue à l'étape de dépôt (`deploy-pages`)
-avec « No artifacts named "github-pages" were found for this workflow run » : c'est un incident de GitHub (l'archive du site, qu'on
-vient d'envoyer, est introuvable). Rien à corriger dans le dépôt : `gh run rerun <numéro> --failed` relance l'étape et elle réussit
-(vu deux fois). Le serveur personnel, lui, n'en dépend pas (`web/deploie.sh`).
+**Publication GitHub Pages : une panne passagère à connaître (2026-11-22, corrigée le 2026-11-23).** Il arrive que le workflow échoue à l'étape de dépôt
+(`deploy-pages`) avec « No artifacts named "github-pages" were found for this workflow run » (« Found 0 artifact(s) ») : l'archive du site vient d'être créée et
+l'API de GitHub ne la voit pas encore (course de vitesse ; aucun incident annoncé). Le 2026-11-23, cela a échoué à presque chaque push. **Le workflow fait maintenant une
+pause de 20 s avant le dépôt** (étape « Laisse l'archive devenir visible » de `.github/workflows/pages.yml`). Si l'échec revient malgré tout : ne **pas** faire
+`gh run rerun <numéro> --failed` (il envoie une deuxième archive `github-pages` dans le même lancement, et le dépôt refuse alors deux archives) ; lancer à neuf par
+`gh workflow run "Page web" --ref master` (le workflow a `workflow_dispatch`), au besoin après quelques minutes. Le serveur personnel, lui, n'en dépend pas (`web/deploie.sh`).
 
 **Tresses personnalisées (2026-11-22).** Le bloc « les tresses mémorisées » de `web/ardoise.js` (mémoire, cartes, pastilles, export et
 import JSON) est décrit dans `web/README.md` ; décisions et raisons : `etude_tresses_personnalisees.md`. La palette et le fond sont
