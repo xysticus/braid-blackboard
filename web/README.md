@@ -1,6 +1,9 @@
 # Ardoise à tresse : la page web
 
-Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse (ou on en choisit un parmi douze) ; elle montre :
+Une page statique (HTML, CSS, JavaScript, canvas). On y écrit un mot de tresse (ou on en choisit un dans le menu « Tresses » : douze exemples, puis les tresses gardées par la personne) ; tout le haut de la
+page est une seule carte, **« Mot courant »** : le champ de saisie, le mot en notation mathématique, les couleurs, l'état du mot (exemple fourni, gardé dans
+ses tresses, pas encore gardé), et les boutons « Tresses ▾ » (la liste, qui s'ouvre en menu) et « Dupliquer ». Sous « Les méandres », le texte d'explication est
+replié dans « Les coulisses ». La page montre :
 
 1. le mot en notation mathématique, tel qu'il est écrit (MathML) ;
 2. le diagramme de tresse classique, de haut en bas ;

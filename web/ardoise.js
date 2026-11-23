@@ -1133,7 +1133,51 @@ function choisis(entree) {
   afficheCouleurs();
 }
 
+// Ce qu'est le mot courant : une tresse gardée, un exemple fourni, ou un mot tapé que la personne n'a pas encore gardé.
+function metsAJourEtatMot() {
+  const zone = document.getElementById('etat-mot');
+  if (!zone) return;
+  const dupliquer = document.getElementById('dupliquer-mot');
+  if (!motCourant) { zone.textContent = ''; if (dupliquer) dupliquer.disabled = true; return; }
+  if (dupliquer) dupliquer.disabled = motEntiers.length === 0;
+  if (entreeCourante()) zone.textContent = '· gardé dans tes tresses';
+  else if (EXEMPLES.some((e) => motEnTexte(e.mot) === motCourant)) zone.textContent = '· exemple fourni';
+  else zone.textContent = '· pas encore gardé (Entrée pour le garder)';
+}
+
+// Garde une copie du mot courant dans les tresses de la personne (avec ses couleurs et sa note si elle est déjà gardée).
+function dupliqueCourant() {
+  if (motEntiers.length === 0) return;
+  const entree = entreeCourante();
+  if (entree) { dupliqueEntree(entree); return; }
+  const fournie = EXEMPLES.find((e) => motEnTexte(e.mot) === motEnTexte(motEntiers));
+  dupliqueEntree({ mot: motEntiers, texte: fournie ? fournie.legende : '', couleurs: null, fond: null });
+}
+
+// ---- le menu « Tresses » : la liste des exemples et des tresses gardées s'ouvre sous le bouton, au clic
+function fermeMenuTresses(rendFocus) {
+  const menu = document.getElementById('menu-tresses'), bouton = document.getElementById('bouton-tresses');
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  bouton.setAttribute('aria-expanded', 'false');
+  document.removeEventListener('pointerdown', clicDehorsTresses, true);
+  document.removeEventListener('keydown', toucheTresses, true);
+  if (rendFocus) bouton.focus();
+}
+const clicDehorsTresses = (e) => { if (!document.getElementById('menu-tresses').contains(e.target) && !document.getElementById('bouton-tresses').contains(e.target)) fermeMenuTresses(false); };
+const toucheTresses = (e) => { if (e.key === 'Escape') { e.stopPropagation(); fermeMenuTresses(true); } };
+function ouvreMenuTresses() {
+  const menu = document.getElementById('menu-tresses');
+  menu.hidden = false;
+  document.getElementById('bouton-tresses').setAttribute('aria-expanded', 'true');
+  document.addEventListener('pointerdown', clicDehorsTresses, true);
+  document.addEventListener('keydown', toucheTresses, true);
+  const cible = menu.querySelector('.exemple.choisie .principal') || menu.querySelector('.exemple .principal');
+  if (cible) { cible.focus({ preventScroll: true }); cible.scrollIntoView({ block: 'nearest' }); }
+}
+
 function metsAJourSelection() {
+  metsAJourEtatMot();
   document.querySelectorAll('#exemples .exemple').forEach((carte) => {
     const choisie = carte.classList.contains('perso') ? carte.dataset.id === memoire.courant : memoire.courant === null && carte.dataset.mot === (motCourant || '');
     carte.classList.toggle('choisie', choisie);
@@ -1189,7 +1233,7 @@ function carteFournie(e) {
   b.className = 'principal';
   b.title = motEnTexte(e.mot);
   b.innerHTML = `<span class="nom">${coupable(e.nom)}</span><span class="legende">${e.legende}</span>`;
-  b.onclick = () => selectionneMot(e.mot, null);
+  b.onclick = () => { selectionneMot(e.mot, null); fermeMenuTresses(true); };
   const outils = document.createElement('span');
   outils.className = 'outils';
   const d = bouton('dupliquer', '⧉', `Dupliquer la tresse ${e.nom} dans mes tresses`, 'Dupliquer dans mes tresses');
@@ -1225,7 +1269,7 @@ function cartePerso(entree) {
   span.className = 'nom';
   span.textContent = coupable(nom);
   b.appendChild(span);
-  b.onclick = () => selectionneMot(entree.mot, entree);
+  b.onclick = () => { selectionneMot(entree.mot, entree); fermeMenuTresses(true); };
   const outils = document.createElement('span');
   outils.className = 'outils';
   carte.append(b, outils);
@@ -1467,11 +1511,10 @@ async function demarre() {
   });
   champ.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); valideSaisie(); } });
   champ.addEventListener('blur', valideSaisie);
-  document.getElementById('dupliquer-courante').onclick = () => {
-    const entree = entreeCourante();
-    const fournie = EXEMPLES.find((e) => motEnTexte(e.mot) === motEnTexte(motEntiers));
-    if (!entree) dupliqueEntree({ mot: motEntiers, texte: fournie ? fournie.legende : '', couleurs: null, fond: null });
-  };
+  document.getElementById('dupliquer-courante').onclick = dupliqueCourant;
+  document.getElementById('dupliquer-mot').onclick = dupliqueCourant;
+  const boutonTresses = document.getElementById('bouton-tresses');
+  boutonTresses.onclick = () => (document.getElementById('menu-tresses').hidden ? ouvreMenuTresses() : fermeMenuTresses(true));
   document.getElementById('exporter-tresses').onclick = exporteTresses;
   const fichier = document.getElementById('importer-tresses');
   document.getElementById('importer-bouton').onclick = () => fichier.click();

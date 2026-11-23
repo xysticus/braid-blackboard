@@ -32,7 +32,7 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
 code { background: color-mix(in srgb, var(--trait) 45%, transparent); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
 main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 
-#saisie label { display: block; font-weight: 600; margin-bottom: 6px; }
+#mot-courant label { display: block; font-weight: 600; margin-bottom: 6px; }
 #mot {
   width: 100%; font: inherit; font-size: 1.15rem; padding: 10px 14px; border-radius: 8px;
   border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
@@ -40,7 +40,7 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 #mot:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
 .erreur { color: var(--erreur); margin: 6px 0 0; font-weight: 500; }
 
-#exemples { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 8px; margin-top: 12px; }
+#exemples { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 8px; }
 .exemple {
   position: relative; padding: 8px 12px; border-radius: 8px;
   border: 1.5px solid var(--trait); background: var(--carte); color: var(--encre);
@@ -126,7 +126,7 @@ main { display: grid; gap: 18px; padding-top: 20px; padding-bottom: 24px; }
 .attention { color: #a35a00; font-weight: 500; }
 @media (prefers-color-scheme: dark) { .attention { color: #f0b45a; } }
 /* mot invalide : les résultats affichés sont ceux du dernier mot valide */
-.mot-invalide #notation, .mot-invalide .deux-colonnes, .mot-invalide #meandres { opacity: 0.45; }
+.mot-invalide #mot-math, .mot-invalide #mot-info, .mot-invalide #couleurs, .mot-invalide .deux-colonnes, .mot-invalide #meandres { opacity: 0.45; }
 footer { color: var(--doux); font-size: 0.85rem; padding-bottom: 28px; }
 
 /* infobulles : un schéma par méthode de dessin, au survol de « ? » ou au clavier */
@@ -227,3 +227,22 @@ main > *, .deux-colonnes > *, .quatre > *, .libres > * { min-width: 0; }   /* un
 .etat .menu-export .barre-export { flex: none; width: 100%; height: 8px; }
 .etat .menu-export .barre-export[hidden], .etat .menu-export .annuler-export[hidden], .etat .menu-export [hidden] { display: none; }
 .etat .menu-export button:disabled { opacity: 0.55; cursor: default; }
+
+/* la carte « Mot courant » : titre, état, boutons « Tresses » et « Dupliquer » ; la liste des tresses s'ouvre en menu sous le titre */
+#mot-courant { position: relative; }
+.entete-carte { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 10px; }
+.entete-carte h2 { margin: 0; }
+.entete-carte > .info { margin: 0; flex: 1; min-width: 0; }
+.actions-mot { display: flex; gap: 8px; margin-left: auto; align-self: center; }
+.menu-tresses {
+  position: absolute; left: -8px; right: -8px; top: calc(100% + 4px); z-index: 30; max-height: 70vh; overflow: auto; padding: 12px;
+  background: var(--carte); border: 1.5px solid var(--trait); border-radius: 10px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+.menu-tresses[hidden] { display: none; }
+.aide-saisie { margin-top: 10px; }
+.aide-saisie summary, .coulisses summary { cursor: pointer; color: var(--doux); font-size: 0.9rem; }
+.aide-saisie summary:hover, .coulisses summary:hover { color: var(--encre); }
+.coulisses { margin: 4px 0 12px; }
+.coulisses[open] { padding: 8px 12px; border: 1px dashed var(--trait); border-radius: 8px; }
+.coulisses[open] > summary { margin-bottom: 4px; }
+@media (max-width: 640px) { .entete-carte > .info { order: 3; flex: 1 1 100%; } .actions-mot { margin-left: auto; } }

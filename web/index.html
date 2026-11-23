@@ -15,34 +15,44 @@
 </header>
 
 <main>
-  <section id="saisie">
+  <section id="mot-courant" class="carte" aria-labelledby="titre-mot-courant">
+    <div class="entete-carte">
+      <h2 id="titre-mot-courant">Mot courant</h2>
+      <span id="etat-mot" class="info" aria-live="polite"></span>
+      <div class="actions-mot">
+        <button type="button" id="bouton-tresses" class="outil-texte" aria-haspopup="true" aria-expanded="false" aria-controls="menu-tresses"
+                title="Choisir une autre tresse : les exemples et tes tresses">Tresses ▾</button>
+        <button type="button" id="dupliquer-mot" class="outil-texte" title="Garder une copie de ce mot dans tes tresses (pour la colorer, la noter)">Dupliquer</button>
+      </div>
+      <div id="menu-tresses" class="menu-tresses" role="group" aria-label="Choisir une tresse" hidden>
+        <div id="exemples" role="group" aria-label="Tresses d'exemple et tresses mémorisées"></div>
+        <div class="memoire-outils">
+          <button type="button" id="exporter-tresses" class="outil-texte" title="Enregistrer mes tresses dans un fichier">Exporter mes tresses</button>
+          <button type="button" id="importer-bouton" class="outil-texte" title="Ajouter les tresses d'un fichier exporté">Importer…</button>
+          <input type="file" id="importer-tresses" accept=".json,application/json" hidden>
+          <span id="memoire-info" class="info" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>
     <label for="mot">Mot de tresse</label>
     <input id="mot" type="text" spellcheck="false" autocomplete="off"
            placeholder="1 -2 3 -1 2     ou     σ1 σ2^-1 σ3     ou     s1^3 s2">
     <p id="erreur" class="erreur" hidden></p>
-    <p class="aide">Entiers non nuls séparés par des espaces : <b>k</b> pour σ<sub>k</sub>, <b>-k</b> pour σ<sub>k</sub><sup>−1</sup>.
-       Les écritures <code>σ2⁻¹</code>, <code>s2^-1</code>, <code>s1^3</code> sont acceptées.</p>
-    <p class="aide" id="limites"></p>
-    <p class="aide" id="etat-limites" aria-live="polite"></p>
-    <div id="exemples" role="group" aria-label="Tresses d'exemple et tresses mémorisées"></div>
-    <div class="memoire-outils">
-      <button type="button" id="exporter-tresses" class="outil-texte" title="Enregistrer mes tresses dans un fichier">Exporter mes tresses</button>
-      <button type="button" id="importer-bouton" class="outil-texte" title="Ajouter les tresses d'un fichier exporté">Importer…</button>
-      <input type="file" id="importer-tresses" accept=".json,application/json" hidden>
-      <span id="memoire-info" class="info" aria-live="polite"></span>
-    </div>
-  </section>
-
-  <section id="notation" class="carte">
-    <h2>Le mot</h2>
     <div id="mot-math" class="math-ligne"></div>
     <p id="mot-info" class="info"></p>
+    <p class="aide" id="etat-limites" aria-live="polite"></p>
     <div id="couleurs" class="couleurs" hidden>
       <span class="couleurs-titre" id="couleurs-titre">Couleurs</span>
       <span id="pastilles" class="pastilles" role="group" aria-labelledby="couleurs-titre"></span>
       <button type="button" id="dupliquer-courante" class="outil-texte" hidden>Dupliquer pour la colorer</button>
       <span id="couleurs-aide" class="info"></span>
     </div>
+    <details class="aide-saisie">
+      <summary>Comment écrire un mot, et les limites de la page</summary>
+      <p class="aide">Entiers non nuls séparés par des espaces : <b>k</b> pour σ<sub>k</sub>, <b>-k</b> pour σ<sub>k</sub><sup>−1</sup>.
+         Les écritures <code>σ2⁻¹</code>, <code>s2^-1</code>, <code>s1^3</code> sont acceptées.</p>
+      <p class="aide" id="limites"></p>
+    </details>
   </section>
 
   <div class="deux-colonnes">
@@ -58,20 +68,23 @@
 
   <section id="meandres">
     <h2>Les méandres</h2>
-    <p class="info">Chaque lacet est l'image d'un générateur : un lacet qui part du clou, tourne autour des trous. L'image fixe est
-       celle de l'arrivée ; le film, calculé en tâche de fond, la remplace dès qu'il est prêt et se joue une fois.</p>
-    <p class="info"><b>Lacets conformes</b> : à chaque instant, le dessin est calculé d'un coup par une transformation conforme (arcs de cercle
-       emboîtés, forme canonique ; aux images clés, les demi-cercles classiques) ; pendant le demi-tour, le dessin est détendu (les brins
-       s'arrondissent et s'espacent). <b>Diagramme de courbes</b> et <b>rubans</b> : la même action vue avec des arcs entre les
-       trous, sans clou (le diagramme est détendu lui aussi : ses arcs s'arrondissent). <b>Triangulation</b> : les lacets sont emportés
-       par la déformation d'un maillage qui suit les trous et se tendent comme des élastiques, puis le dessin est détendu (les brins
-       s'arrondissent) ; ils ne se croisent jamais, mais leur forme dépend de l'histoire du film. Les quatre films se calculent l'un
-       après l'autre, dans cet ordre.</p>
-    <p class="info"><b>Le lecteur</b> : <b>|◀</b> et <b>▶|</b> avancent d'une image ; un bouton par lettre (σ₁, σ₂⁻¹…) amène au début de cette lettre
-       (Maj + ← / → au clavier, quand le cadre a le focus). Le bouton <b>⤓</b> exporte l'image en cours (PNG, SVG, données JSON), les images clés
-       (un zip : l'état de départ, puis l'état après chaque lettre) ou le film (MP4 AV1). Tout se fabrique dans ton navigateur : rien n'est envoyé
-       nulle part. Le film demande un navigateur qui sait fabriquer de l'AV1 (Firefox, Chrome, Edge) ; pour le lire, VLC ou un navigateur
-       conviennent, certains lecteurs de Windows ont besoin de l'« extension vidéo AV1 ».</p>
+    <details class="coulisses">
+      <summary>Les coulisses</summary>
+      <p class="info">Chaque lacet est l'image d'un générateur : un lacet qui part du clou, tourne autour des trous. L'image fixe est
+         celle de l'arrivée ; le film, calculé en tâche de fond, la remplace dès qu'il est prêt et se joue une fois.</p>
+      <p class="info"><b>Lacets conformes</b> : à chaque instant, le dessin est calculé d'un coup par une transformation conforme (arcs de cercle
+         emboîtés, forme canonique ; aux images clés, les demi-cercles classiques) ; pendant le demi-tour, le dessin est détendu (les brins
+         s'arrondissent et s'espacent). <b>Diagramme de courbes</b> et <b>rubans</b> : la même action vue avec des arcs entre les
+         trous, sans clou (le diagramme est détendu lui aussi : ses arcs s'arrondissent). <b>Triangulation</b> : les lacets sont emportés
+         par la déformation d'un maillage qui suit les trous et se tendent comme des élastiques, puis le dessin est détendu (les brins
+         s'arrondissent) ; ils ne se croisent jamais, mais leur forme dépend de l'histoire du film. Les quatre films se calculent l'un
+         après l'autre, dans cet ordre.</p>
+      <p class="info"><b>Le lecteur</b> : <b>|◀</b> et <b>▶|</b> avancent d'une image ; un bouton par lettre (σ₁, σ₂⁻¹…) amène au début de cette lettre
+         (Maj + ← / → au clavier, quand le cadre a le focus). Le bouton d'export (une flèche vers le bas) exporte l'image en cours (PNG, SVG, données JSON), les images clés
+         (un zip : l'état de départ, puis l'état après chaque lettre) ou le film (MP4 AV1). Tout se fabrique dans ton navigateur : rien n'est envoyé
+         nulle part. Le film demande un navigateur qui sait fabriquer de l'AV1 (Firefox, Chrome, Edge) ; pour le lire, VLC ou un navigateur
+         conviennent, certains lecteurs de Windows ont besoin de l'« extension vidéo AV1 ».</p>
+    </details>
     <div class="quatre" id="panneaux"></div>
   </section>
 
