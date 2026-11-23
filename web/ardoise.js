@@ -1011,15 +1011,18 @@ function afficheLimites() {
     `(les autres vues le sont).`;
 }
 
-// « Ce mot : N brins, M lettres », avec l'avertissement quand une vue est limitée.
+// L'avertissement, seulement quand une vue est limitée (le nombre de lettres et de brins est dans la ligne de afficheMot).
 function etatLimites(mot) {
   const e = document.getElementById('etat-limites');
   if (!e) return;
-  if (!mot || mot.length === 0) { e.textContent = ''; return; }
+  e.textContent = '';
+  if (!mot || mot.length === 0) return;
+  // les chiffres du mot sont déjà dans la ligne « n lettres, p brins » (afficheMot) : ici, seulement l'avertissement
   const brins = nbBrins(mot), lettres = mot.length;
-  const hors = brins > MAX_BRINS_CONFORME || lettres > MAX_LETTRES_CONFORME;
-  e.innerHTML = `Ce mot : <b>${brins} brins</b>, <b>${lettres} lettre${lettres > 1 ? 's' : ''}</b>.` +
-    (hors ? ' <span class="attention">Les vues « lacets » et « triangulation » ne sont pas calculées pour ce mot.</span>' : '');
+  const trop = [];
+  if (brins > MAX_BRINS_CONFORME) trop.push(`${brins} brins (limite : ${MAX_BRINS_CONFORME})`);
+  if (lettres > MAX_LETTRES_CONFORME) trop.push(`${lettres} lettres (limite : ${MAX_LETTRES_CONFORME})`);
+  if (trop.length) e.innerHTML = `<span class="attention">Ce mot a ${trop.join(' et ')} : les vues « lacets » et « triangulation » ne sont pas calculées.</span>`;
 }
 
 // ---------------------------------------------------------------- les tresses mémorisées

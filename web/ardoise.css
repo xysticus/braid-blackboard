@@ -253,3 +253,4 @@ main > *, .deux-colonnes > *, .quatre > *, .libres > * { min-width: 0; }   /* un
 #note-mot::placeholder { color: color-mix(in srgb, var(--doux) 70%, transparent); font-style: italic; }
 .outil-texte:disabled { opacity: 0.55; cursor: default; }
 .outil-texte:disabled:hover { border-color: var(--trait); }
+#etat-limites:empty { display: none; }
