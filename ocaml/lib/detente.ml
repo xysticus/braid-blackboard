@@ -24,10 +24,11 @@ type reglages = {
   tension : float;
   repulsion : float;
   pas_max : float;
+  portee : float;  (** la tension n'agit qu'à cette distance des trous (et s'éteint jusqu'au double) : le lacet se referme derrière un trou ; infinie : partout *)
 }
 
 let defaut =
-  { pas = 4.; ecart = 6.; rayon_trou = 12.; rayon_clou = 150.; calme_clou = 40.; iterations = 400; tension = 0.25; repulsion = 0.5; pas_max = 0.3 }
+  { pas = 4.; ecart = 6.; rayon_trou = 12.; rayon_clou = 150.; calme_clou = 40.; iterations = 400; tension = 0.25; repulsion = 0.5; pas_max = 0.3; portee = Float.infinity }
 
 (* np.interp sur une table croissante (les longueurs cumulées). *)
 let interp x xp fp =
@@ -283,8 +284,17 @@ let detend ?(reglages = defaut) (lignes : point array list) (trous : point array
       for k = 0 to nb_brins - 1 do
         for i = b.(k) to b.(k + 1) - 1 do
           let p = if i = b.(k) then i else i - 1 and s = if i = b.(k + 1) - 1 then i else i + 1 in
-          fx.(i) <- r.tension *. (((xs_.(p) +. xs_.(s)) /. 2.) -. xs_.(i));
-          fy.(i) <- r.tension *. (((ys_.(p) +. ys_.(s)) /. 2.) -. ys_.(i))
+          (* la tension, partout ou seulement près des trous (portée) : plus loin, le lacet reste comme il est *)
+          let poids =
+            if r.portee = Float.infinity then 1.
+            else begin
+              let d = Array.fold_left (fun m (t : point) -> Float.min m (longueur (xs_.(i) -. t.x) (ys_.(i) -. t.y))) Float.infinity trous in
+              let u = clip 0. 1. ((d -. r.portee) /. r.portee) in
+              1. -. (u *. u *. (3. -. (2. *. u)))
+            end
+          in
+          fx.(i) <- poids *. r.tension *. (((xs_.(p) +. xs_.(s)) /. 2.) -. xs_.(i));
+          fy.(i) <- poids *. r.tension *. (((ys_.(p) +. ys_.(s)) /. 2.) -. ys_.(i))
         done
       done;
       (* la répulsion entre brins, éteinte près du clou *)

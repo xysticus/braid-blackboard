@@ -438,7 +438,7 @@ let film mode mot rendu =
    rayon autour des trous lui est égal (le film de la triangulation resserre ses brins près des trous : à 2 écarts, la répulsion
    des trous poussait plusieurs couches de brins à la fois et pouvait en faire passer une par-dessus l'autre). Rend
    { lacets, croisements } (nombre de croisements entre lacets, comme la vérification du film). *)
-let detend (lacets : float Js.js_array Js.t Js.js_array Js.t) (trous : float Js.js_array Js.t) (clou : float Js.js_array Js.t) (force : float) (ecart : float) =
+let detend ?(portee = Float.infinity) (lacets : float Js.js_array Js.t Js.js_array Js.t) (trous : float Js.js_array Js.t) (clou : float Js.js_array Js.t) (force : float) (ecart : float) =
   try
     let points (a : float Js.js_array Js.t) =
       let v = Js.to_array a in
@@ -447,6 +447,7 @@ let detend (lacets : float Js.js_array Js.t Js.js_array Js.t) (trous : float Js.
     let lignes = List.map points (Array.to_list (Js.to_array lacets)) in
     let clou = (points clou).(0) in
     let reglages = if ecart > 0. then { Detente.defaut with ecart; rayon_trou = ecart; repulsion = 4.; iterations = 150 } else Detente.defaut in
+    let reglages = { reglages with Detente.portee } in
     let sortie = Detente.detend ~reglages lignes (points trous) clou force in
     Js.Unsafe.obj
       [| ("lacets", Js.Unsafe.inject (Js.array (Array.of_list (List.map plat sortie))));
@@ -460,4 +461,5 @@ let () =
           ("statique", Js.Unsafe.inject (Js.wrap_callback statique));
           ("film", Js.Unsafe.inject (Js.wrap_callback film));
           ("film_lettres", Js.Unsafe.inject (Js.wrap_callback film_lettres));
-          ("detend", Js.Unsafe.inject (Js.wrap_callback detend)) |])
+          ("detend", Js.Unsafe.inject (Js.wrap_callback (fun l t c f e -> detend l t c f e)));
+          ("detend_local", Js.Unsafe.inject (Js.wrap_callback (fun l t c f e p -> detend ~portee:p l t c f e))) |])

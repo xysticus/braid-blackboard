@@ -253,6 +253,41 @@ function filmEnvers(mot) {
   postMessage({ type: 'fini', message: message || '', erreur: false });
 }
 
+// Le film « cordes sur chevilles » (banc d'essai, mode triangulation_cordes) : comme le film à l'envers, mais sans maillage pour les brins.
+// On part du méandre complet ; les trous reculent comme dans le retour du film « faire et défaire » ; les lacets, des cordes, sont poussés
+// par les trous (chevilles) et se rétractent le long de leur propre chemin par la tension seule (Detente, sans répulsion entre eux plus que
+// d'ordinaire) : chaque image part de la précédente, d'où un calcul séquentiel. On joue le tout à l'envers.
+function filmCordes(mot, portee) {   // portee : la tension n'agit qu'autour des trous (le lacet se referme derrière un trou) ; absente : partout
+  const fixe = self.ardoise.statique('triangulation', mot);
+  if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
+  const image = enFloat32(fixe);
+  postMessage({ type: 'statique', image }, tampons(image));
+  const images = [];
+  let chapitres = null;
+  const message = self.ardoise.film('triangulation_envers', mot, (im, k) => {
+    if (k === 0) chapitres = Array.from(im.chapitres);
+    images[k] = im;
+  });
+  if (!chapitres) { postMessage({ type: 'fini', message: message || 'film indisponible', erreur: true }); return; }
+  let lacets = images[0].lacets;
+  let erreurs = 0;
+  for (let k = 1; k < images.length; k++) {
+    const r = portee
+      ? self.ardoise.detend_local(lacets, Array.from(images[k].trous), images[k].clou, 1, images[k].ecart || 0, portee)
+      : self.ardoise.detend(lacets, Array.from(images[k].trous), images[k].clou, 1, images[k].ecart || 0);
+    if (r.erreur) erreurs++; else lacets = r.lacets;
+    images[k].lacets = lacets;
+  }
+  const retour = images.slice().reverse();
+  const total = retour.length, dernier = total - 1;
+  retour[0].chapitres = chapitres.map((c) => dernier - c).reverse();
+  retour.forEach((im, k) => {
+    const f = enFloat32(im);
+    postMessage({ type: 'image', image: f, k, total }, tampons(f));
+  });
+  postMessage({ type: 'fini', message: erreurs ? `${erreurs} image(s) sans détente` : (message || ''), erreur: false });
+}
+
 onmessage = (e) => {
   const d = e.data;
   if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme
@@ -278,6 +313,8 @@ onmessage = (e) => {
   const { mode, mot } = d;
   if (/^conforme(_detendu)?(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmReparti(mode, mot); return; }
   if (mode === 'triangulation_envers') { filmEnvers(mot); return; }
+  if (mode === 'triangulation_cordes') { filmCordes(mot); return; }
+  if (mode === 'triangulation_cordes_locale') { filmCordes(mot, 100); return; }
   if (mode === 'conforme_pur_detendu' && typeof Worker !== 'undefined') { filmPurDetenduParImages(mot); return; }
   if (/^(triangulation|diagramme)_detendu$/.test(mode) && typeof Worker !== 'undefined') { filmDetenduParImages(mode.replace('_detendu', ''), mot); return; }
   const fixe = self.ardoise.statique(mode, mot);

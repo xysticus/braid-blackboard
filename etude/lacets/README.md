@@ -70,6 +70,19 @@ calcule le film du mot suivi de son inverse (le méandre se construit, puis se d
 le retour ; `filmEnvers` dans `web/travail.js` le renverse. La limite (6 brins, 14 lettres) porte sur le mot, pas sur le mot doublé. Calcul
 très rapide : pas de détente (1 061 images pour la tresse chargée en 2,5 s).
 
+## Cordes sur chevilles : la rétractation sans maillage
+
+Option « cordes sur chevilles (rétractation) » du sélecteur « film » (ou `?cordes`) : même départ (le méandre complet du retour de « faire et
+défaire »), mais les brins ne sont plus posés sur un maillage. Les lacets sont des **cordes** et les trous des **chevilles** : à chaque image
+les trous reculent comme dans le film maillé, poussent les cordes (garde radiale de `Detente`), et la tension seule les rétracte le long
+de leur propre chemin (`Detente.detend`, chaque image part de la précédente : calcul séquentiel, `filmCordes` dans `web/travail.js`, 36 s pour
+459 images). Les voisins ne remplissent pas expressément la place laissée : tous les lacets se tendent et laissent un vide. Mesuré sur `1 -2 1 -2` :
+mêmes nombres d'enroulement que le film maillé sur 115 images échantillonnées sur 115 (une sur quatre), aucune erreur de détente. On joue le tout à l'envers.
+
+Variante « cordes, tension locale » (`?cordeslocales`, réglage `portee` de `Detente`, exposé par `ardoise.detend_local`) : la tension
+n'agit qu'à moins de 100 px d'un trou (elle s'éteint jusqu'à 200 px) ; le lacet **se referme derrière le trou** et garde sa forme ailleurs :
+du vide seulement le long du passage des trous. Mêmes nombres d'enroulement que le film maillé (115 images sur 115), 40 s.
+
 ## Le film de la triangulation
 
 Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page), la triangulation (vue 3, `?triangulation`) et le
