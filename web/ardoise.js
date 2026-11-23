@@ -418,43 +418,69 @@ function traceSegments(ctx, s, couleur, largeur, opacites = null) {
   ctx.globalAlpha = alpha;
 }
 
-function dessineImage(canvas, image, mode, vue = null, construction = false) {
-  if (mode === 'escargot') { dessineEscargot(canvas, image); return; }
-  if (mode === 'bouquet') { dessineBouquet(canvas, image); return; }
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = FOND;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  if (vue) ctx.setTransform(vue.s, 0, 0, vue.s, vue.tx, vue.ty);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  if (construction && image.construction) traceSegments(ctx, image.construction, GRIS_CONSTRUCTION, TRAIT_CONSTRUCTION, image.opacites);
+// La taille de référence des vues d'un mot : les coordonnées des images (et des listes de tracé) sont celles d'un cadre de 800 × 800.
+const TAILLE_REFERENCE = 800;
+
+// La liste de ce qu'on trace pour une image (lacets, trous, clou, lignes de construction), avec les couleurs et le fond
+// COURANTS : { fond, vue, elements }. Chaque élément est { type: 'ligne' | 'segments' | 'disques', pts, couleur, largeur | rayon,
+// opacites? }, en coordonnées de l'image ; `vue` (zoom commun au film) est appliquée au dessin, pas aux points. C'est la
+// base commune du canvas, du PNG, du SVG et de la vidéo : un seul endroit sait comment une vue se dessine.
+// (L'escargot et les iris ont leur propre dessin : voir dessineEscargot et dessineBouquet.)
+function listeDeTrace(image, mode, vue = null, construction = false) {
+  const elements = [];
+  if (construction && image.construction) {
+    elements.push({ type: 'segments', pts: image.construction, couleur: GRIS_CONSTRUCTION, largeur: TRAIT_CONSTRUCTION, opacites: image.opacites || null });
+  }
   image.lacets.forEach((p, i) => {
+    const couleur = PALETTE[i % PALETTE.length];
     if (mode === 'conforme' || mode === 'triangulation') {
-      ctx.strokeStyle = PALETTE[i % PALETTE.length];
-      ctx.lineWidth = mode === 'triangulation' ? image.brin : 3.5;   // la triangulation : trait plus fin quand les brins sont serrés
-      trace(ctx, p);
+      // la triangulation : trait plus fin quand les brins sont serrés
+      elements.push({ type: 'ligne', pts: p, couleur, largeur: mode === 'triangulation' ? image.brin : 3.5 });
     } else if (mode === 'diagramme') {
-      ctx.strokeStyle = FOND;             // liseré de la couleur du fond : les brins voisins restent lisibles
-      ctx.lineWidth = 0.85 * image.ecart;
-      trace(ctx, p);
-      ctx.strokeStyle = PALETTE[i % PALETTE.length];
-      ctx.lineWidth = 2.2;
-      trace(ctx, p);
+      // liseré de la couleur du fond : les brins voisins restent lisibles
+      elements.push({ type: 'ligne', pts: p, couleur: FOND, largeur: 0.85 * image.ecart });
+      elements.push({ type: 'ligne', pts: p, couleur, largeur: 2.2 });
     } else {
-      ctx.strokeStyle = PALETTE[i % PALETTE.length];
-      ctx.lineWidth = 2.5;
-      trace(ctx, p);
+      elements.push({ type: 'ligne', pts: p, couleur, largeur: 2.5 });
     }
   });
   if (mode === 'conforme' || mode === 'triangulation') {
     const r = mode === 'triangulation' ? image.brin : 4;
-    disques(ctx, image.trous, r, '#000');
-    disques(ctx, image.clou, r, '#000');
+    elements.push({ type: 'disques', pts: image.trous, rayon: r, couleur: '#000' });
+    elements.push({ type: 'disques', pts: image.clou, rayon: r, couleur: '#000' });
   } else {
-    disques(ctx, image.fixes, 4, '#8c8c8c');
-    disques(ctx, image.trous, 4, '#000');
+    elements.push({ type: 'disques', pts: image.fixes, rayon: 4, couleur: '#8c8c8c' });
+    elements.push({ type: 'disques', pts: image.trous, rayon: 4, couleur: '#000' });
   }
+  return { fond: FOND, vue, elements };
+}
+
+// Dessine une liste de tracé sur un canvas. `echelle` : 1 pour un canvas de 800 × 800 ; pour une image plus grande (export), on passe
+// canvas.width / 800 : les épaisseurs et les rayons suivent. `fond` : fond plein, sauf `liste.fond` nul (fond transparent).
+function dessineListe(canvas, liste, echelle = canvas.width / TAILLE_REFERENCE) {
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (liste.fond) {
+    ctx.fillStyle = liste.fond;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  const v = liste.vue;
+  if (v) ctx.setTransform(echelle * v.s, 0, 0, echelle * v.s, echelle * v.tx, echelle * v.ty);
+  else ctx.setTransform(echelle, 0, 0, echelle, 0, 0);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const e of liste.elements) {
+    if (e.type === 'segments') traceSegments(ctx, e.pts, e.couleur, e.largeur, e.opacites);
+    else if (e.type === 'ligne') { ctx.strokeStyle = e.couleur; ctx.lineWidth = e.largeur; trace(ctx, e.pts); }
+    else if (e.type === 'disques') disques(ctx, e.pts, e.rayon, e.couleur);
+  }
+}
+
+function dessineImage(canvas, image, mode, vue = null, construction = false) {
+  if (mode === 'escargot') { dessineEscargot(canvas, image); return; }
+  if (mode === 'bouquet') { dessineBouquet(canvas, image); return; }
+  dessineListe(canvas, listeDeTrace(image, mode, vue, construction), 1);
 }
 
 // ---------------------------------------------------------------- un lecteur : image fixe, puis film
