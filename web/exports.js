@@ -52,15 +52,15 @@ function telecharge(blob, nom) {
 const motEnAscii = (lettres) => lettres.join('_');
 
 // ardoise-<mot>-<vue>-image<k>.<ext> (l'escargot et les iris n'ont pas de mot).
-function nomDeFichier(lecteur, ext) {
+function nomDeFichier(lecteur, ext, suffixe = null) {
   const vue = NOMS_DE_VUE[lecteur.mode] || lecteur.mode;
   const mot = MODES_LIBRES.has(lecteur.mode) ? '' : motEnAscii(lecteur.lettres) + '-';
-  return `ardoise-${mot}${vue}-image${lecteur.indice() + 1}.${ext}`;
+  return `ardoise-${mot}${vue}-${suffixe || 'image' + (lecteur.indice() + 1)}.${ext}`;
 }
 
 // Les mentions, selon la nature de l'image : { titre, description, auteur?, licence? }.
-function mentions(lecteur) {
-  const k = lecteur.indice() + 1, n = lecteur.images.length;
+function mentions(lecteur, indice = lecteur.indice()) {
+  const k = indice + 1, n = lecteur.images.length;
   if (MODES_LIBRES.has(lecteur.mode)) {
     const nom = lecteur.mode === 'escargot' ? 'L\'escargot : une spirale de rubans' : 'La floraison des Iris';
     return { titre: `${nom} (image ${k} sur ${n})`, description: CITATION, auteur: 'xysticus', licence: 'CC BY 4.0 ' + URL_CC_BY };
@@ -104,11 +104,11 @@ function canvasEnBlob(canvas, type = 'image/png') {
 
 // Dessine l'image en cours du lecteur sur un canvas hors écran, `echelle` fois plus grand ; fond transparent en option
 // (sauf pour l'escargot et les iris, dont le fond fait partie du dessin).
-function canvasDExport(lecteur, echelle, transparent) {
+function canvasDExport(lecteur, echelle, transparent, indice = lecteur.indice()) {
   const c = document.createElement('canvas');
   c.width = Math.round(lecteur.canvas.width * echelle);
   c.height = Math.round(lecteur.canvas.height * echelle);
-  const image = lecteur.images[lecteur.indice()];
+  const image = lecteur.images[indice];
   if (lecteur.mode === 'escargot') dessineEscargot(c, image, echelle);
   else if (lecteur.mode === 'bouquet') dessineBouquet(c, image, echelle);
   else {
@@ -119,13 +119,69 @@ function canvasDExport(lecteur, echelle, transparent) {
   return c;
 }
 
-async function exportePNG(lecteur, echelle, transparent) {
-  const blob = await canvasEnBlob(canvasDExport(lecteur, echelle, transparent));
-  const m = mentions(lecteur);
+// Les octets du PNG de l'image `indice` du film, avec ses mentions (auteur et licence pour l'escargot et les iris).
+async function octetsPNG(lecteur, echelle, transparent, indice = lecteur.indice()) {
+  const blob = await canvasEnBlob(canvasDExport(lecteur, echelle, transparent, indice));
+  const m = mentions(lecteur, indice);
   const textes = [['Title', m.titre], ['Software', 'Ardoise à tresse (braid-blackboard)'], ['Source', URL_PROJET]];
   if (m.auteur) textes.push(['Author', m.auteur], ['Copyright', `© xysticus, ${m.licence}`], ['License', m.licence], ['Description', m.description]);
-  const octets = ajouteTextesPNG(new Uint8Array(await blob.arrayBuffer()), textes);
-  telecharge(new Blob([octets], { type: 'image/png' }), nomDeFichier(lecteur, 'png'));
+  return ajouteTextesPNG(new Uint8Array(await blob.arrayBuffer()), textes);
+}
+
+async function exportePNG(lecteur, echelle, transparent) {
+  telecharge(new Blob([await octetsPNG(lecteur, echelle, transparent)], { type: 'image/png' }), nomDeFichier(lecteur, 'png'));
+}
+
+// ---------------------------------------------------------------- zip des images clés
+
+// Un zip « stocké » (sans compression : les PNG le sont déjà) : pour chaque fichier un en-tête local, les octets, puis le répertoire
+// central et la fin de répertoire. fichiers : [{ nom, octets }]. Noms en UTF-8 (indicateur 0x0800).
+function construitZip(fichiers) {
+  const enc = new TextEncoder();
+  const d = new Date();
+  const heure = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const date = ((Math.max(1980, d.getFullYear()) - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const morceaux = [], central = [];
+  let position = 0;
+  for (const f of fichiers) {
+    const nom = enc.encode(f.nom), crc = crc32(f.octets), n = f.octets.length;
+    const local = new Uint8Array(30 + nom.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true); lv.setUint16(8, 0, true);
+    lv.setUint16(10, heure, true); lv.setUint16(12, date, true); lv.setUint32(14, crc, true);
+    lv.setUint32(18, n, true); lv.setUint32(22, n, true); lv.setUint16(26, nom.length, true); lv.setUint16(28, 0, true);
+    local.set(nom, 30);
+    const c = new Uint8Array(46 + nom.length);
+    const cv = new DataView(c.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true); cv.setUint16(10, 0, true);
+    cv.setUint16(12, heure, true); cv.setUint16(14, date, true); cv.setUint32(16, crc, true);
+    cv.setUint32(20, n, true); cv.setUint32(24, n, true); cv.setUint16(28, nom.length, true);
+    cv.setUint32(42, position, true);   // le décalage de l'en-tête local
+    c.set(nom, 46);
+    central.push(c);
+    morceaux.push(local, f.octets);
+    position += local.length + n;
+  }
+  const tailleCentral = central.reduce((s, c) => s + c.length, 0);
+  const fin = new Uint8Array(22);
+  const fv = new DataView(fin.buffer);
+  fv.setUint32(0, 0x06054b50, true); fv.setUint16(8, fichiers.length, true); fv.setUint16(10, fichiers.length, true);
+  fv.setUint32(12, tailleCentral, true); fv.setUint32(16, position, true);
+  return new Blob([...morceaux, ...central, fin], { type: 'application/zip' });
+}
+
+// Les L + 1 images clés (l'état de départ, puis l'état après chaque lettre) en PNG : cle-0.png, cle-1.png… `progres(j, total)` est
+// appelé avant chaque image ; on rend la main au navigateur entre deux images pour que la page reste vivante.
+async function exporteZipCles(lecteur, echelle, transparent, progres) {
+  const cles = lecteur.chapitres;
+  const chiffres = String(cles.length - 1).length;
+  const fichiers = [];
+  for (let j = 0; j < cles.length; j++) {
+    progres(j + 1, cles.length);
+    await new Promise((ok) => setTimeout(ok, 0));
+    fichiers.push({ nom: `cle-${String(j).padStart(chiffres, '0')}.png`, octets: await octetsPNG(lecteur, echelle, transparent, cles[j]) });
+  }
+  telecharge(construitZip(fichiers), nomDeFichier(lecteur, 'zip', 'images-cles'));
 }
 
 // ---------------------------------------------------------------- SVG
@@ -247,17 +303,20 @@ function menuExport(lecteur) {
   zone.innerHTML =
     `<button type="button" class="bouton-export" aria-haspopup="true" aria-expanded="false" aria-controls="${id}" title="Exporter l'image en cours" aria-label="Exporter l'image en cours">⤓</button>` +
     `<div class="menu-export" id="${id}" role="group" aria-label="Exporter l'image en cours" hidden>` +
-    `<label>Taille du PNG <select class="taille">${tailles}</select></label>` +
+    `<label>Taille des images <select class="taille">${tailles}</select></label>` +
     (libre ? '' : `<label><input type="checkbox" class="transparent"> fond transparent</label>`) +
     `<button type="button" data-export="png">Image PNG</button>` +
     (libre ? '' : `<button type="button" data-export="svg">Image SVG</button>`) +
     `<button type="button" data-export="json">Données JSON</button>` +
+    (lecteur.aDesChapitres() ? `<button type="button" data-export="zip" title="Une image PNG par image clé : l'état de départ, puis l'état après chaque lettre">Images clés (zip, ${lecteur.chapitres.length} images)</button>` : '') +
     (libre ? `<p class="licence-export">Ces images sont sous licence <a href="${URL_CC_BY}" target="_blank" rel="noopener">CC BY 4.0</a> : cite xysticus et le projet (<a href="${URL_LICENCES}" target="_blank" rel="noopener">licences</a>).</p>` : '') +
-    `<p class="erreur-export" role="status" hidden></p>` +
+    `<p class="progression-export" role="status" hidden></p>` +
+    `<p class="erreur-export" role="alert" hidden></p>` +
     `</div>`;
   const bouton = zone.querySelector('.bouton-export');
   const menu = zone.querySelector('.menu-export');
   const erreur = zone.querySelector('.erreur-export');
+  const progression = zone.querySelector('.progression-export');
   const ferme = (rendFocus) => {
     menu.hidden = true;
     bouton.setAttribute('aria-expanded', 'false');
@@ -270,6 +329,7 @@ function menuExport(lecteur) {
   const ouvre = () => {
     lecteur.arrete();   // on exporte l'image qu'on voit
     erreur.hidden = true;
+    progression.hidden = true;
     menu.hidden = false;
     bouton.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', dehors, true);
@@ -282,9 +342,14 @@ function menuExport(lecteur) {
       const echelle = Number(menu.querySelector('.taille').value);
       const case_ = menu.querySelector('.transparent');
       const transparent = !!case_ && case_.checked;
-      b.disabled = true;
+      const boutons = menu.querySelectorAll('button[data-export]');
+      boutons.forEach((x) => { x.disabled = true; });
+      erreur.hidden = true;
       try {
         if (b.dataset.export === 'png') await exportePNG(lecteur, echelle, transparent);
+        else if (b.dataset.export === 'zip') {
+          await exporteZipCles(lecteur, echelle, transparent, (j, n) => { progression.textContent = `image clé ${j} sur ${n}…`; progression.hidden = false; });
+        }
         else if (b.dataset.export === 'svg') exporteSVG(lecteur, transparent);
         else exporteJSON(lecteur);
         ferme(true);
@@ -292,7 +357,8 @@ function menuExport(lecteur) {
         erreur.textContent = 'Export impossible : ' + e.message;
         erreur.hidden = false;
       } finally {
-        b.disabled = false;
+        boutons.forEach((x) => { x.disabled = false; });
+        progression.hidden = true;
       }
     };
   });
