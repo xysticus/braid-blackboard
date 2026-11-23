@@ -99,6 +99,23 @@ les ouvre, un appui ailleurs, Échap ou un défilement les ferment (le survol n'
 Adaptation aux petits écrans (`ardoise.css`, deux seuils : 1000 px, une seule colonne ; 640 px, marges réduites, exemples sur deux colonnes,
 commandes de lecture plus grandes, infobulle en feuille collée en bas de l'écran) ; testée à 390 px de large.
 
+## Le lecteur, les chapitres et les exports
+
+Chaque film (lacets, diagramme, rubans, triangulation, escargot, iris) a la même barre sous le cadre :
+
+- `|◀` et `▶|` avancent d'une image (l'appui prolongé répète ; ← / → au clavier quand le cadre a le focus) ; ⏸ / ▶ lance ou arrête ; la glissière ; la case
+  « construction » (lignes de construction, quand la vue en a) ; « image k / n » ;
+- **les chapitres** (les quatre vues d'un mot) : une rangée de boutons, un par lettre (σ₁, σ₂⁻¹…). Un clic met en pause et amène à l'**image de départ de
+  la lettre** ; la lettre en cours est en surbrillance ; des repères sur la glissière marquent les débuts de chapitre ; Maj + ← / → saute de lettre en
+  lettre. OCaml donne les débuts (champ `chapitres` de l'image 0 : `avec_chapitres` dans `ocaml/web/ardoise_web.ml`) ;
+- **⤓ exporter** l'image en cours : *Image PNG* (1×, 2× ou 4× la taille du cadre, fond transparent en option), *Image SVG* (les quatre vues d'un mot),
+  *Données JSON* (les polylignes), *Images clés (zip)* (une image par début de lettre, plus la dernière ; les vues d'un mot) et *Film MP4 AV1* (800 × 800 ou 1600 × 1600).
+  Tout est fabriqué par le navigateur ; l'entrée du film est grisée si le navigateur ne sait pas faire d'AV1. Sous Windows, certains lecteurs ne lisent pas
+  l'AV1 sans l'« extension vidéo AV1 » : VLC et les navigateurs, si.
+
+Les exports de l'escargot et des iris portent la licence CC BY 4.0 et le nom de l'auteur (`../LICENCES.md`). Les fichiers : `exports.js`, `mp4.js` (ci-dessous).
+Décisions et raisons : `../etude_exploitation_des_images.md` ; détail technique : `../docs/page_web.md`.
+
 ## Tresses mémorisées et personnalisées
 
 Les 12 exemples sont suivis des tresses de la personne (étude : `etude_tresses_personnalisees.md`), gardées dans le navigateur

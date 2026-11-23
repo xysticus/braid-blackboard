@@ -6,7 +6,7 @@ Ce dépôt a deux licences, selon la nature des fichiers.
 
 Voir [LICENSE](LICENSE). © 2020-2026 xysticus.
 
-Elle couvre le code et les scripts : `python/`, `ocaml/` (bibliothèque, programmes, tests), `web/` (`index.html`, `ardoise.js`, `travail.js`,
+Elle couvre le code et les scripts : `python/`, `ocaml/` (bibliothèque, programmes, tests), `web/` (`index.html`, `ardoise.js`, `exports.js`, `mp4.js`, `travail.js`,
 `ardoise.css`, scripts `*.sh`), `imgs/schemas/*.py` et `*.js`, `.githooks/`, `.github/`, les notebooks de `ipynbks/` et les fichiers de réglages
 (`environment.yml`, `dune-project`…).
 
@@ -24,6 +24,20 @@ Elle couvre les textes (`README.md`, `etude_page_web.md`, `plan_ocaml.md`, `pist
 `conventions_de_signe.md`, `etude_lignes_de_construction.md`, `CLAUDE.md`, `docs/*.md`), les schémas (`imgs/schemas/*.svg`, `web/schemas/*.svg`, `web/favicon.svg`), les images et aperçus de `imgs/`, et les films produits par les programmes.
 
 Pour citer : « Ardoise à tresse (braid-blackboard), xysticus, https://github.com/xysticus/braid-blackboard, licence CC BY 4.0 (contenus) / MIT (code) ».
+
+## Les exports de la page web
+
+Le menu « ⤓ » de la page (`web/exports.js`) fabrique, dans le navigateur de la personne, des images (PNG, SVG), des données (JSON), un zip d'images clés et un
+film MP4 AV1. Leur licence dépend de ce qu'ils montrent :
+
+- **L'escargot et les iris** sont des œuvres du projet : leurs exports (et ce qu'on en tire) sont sous **CC BY 4.0**, © xysticus. La mention est écrite
+  dans chaque fichier : PNG (blocs `Author`, `Copyright`, `License`, `Source`), JSON (`auteur`, `licence`, `source`, `citation`), MP4 (étiquettes de droits
+  `cprt` et `©cpy`, titre, commentaire) et, de façon visible, un générique de fin de 2 s (« Ardoise à tresse — xysticus — CC BY 4.0 »). Pas de SVG pour eux
+  pour l'instant. Citation : celle donnée plus haut.
+- **Les images faites à partir d'un mot de tresse** (lacets, diagramme de courbes, rubans, triangulation) viennent du mot choisi par la personne et de son
+  usage : elles ne portent pas d'exigence de licence et lui appartiennent. Elles portent seulement une mention discrète « Créé avec Ardoise à tresse » et le
+  lien du projet (blocs `Title`, `Software`, `Source` du PNG, `<title>` et `<desc>` du SVG, commentaire du MP4), qu'on peut retirer.
+- Le code qui fabrique ces exports (`exports.js`, `mp4.js`) est sous MIT, comme le reste de `web/`.
 
 ## Ce qui n'est pas à moi
 
