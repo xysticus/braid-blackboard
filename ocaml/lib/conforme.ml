@@ -510,3 +510,44 @@ let aretes l ~reduction s =
   in
   let paires = function [] -> [] | tete :: queue -> List.combine (List.filteri (fun k _ -> k < List.length queue) (tete :: queue)) queue in
   (paires gauche @ paires droite, [| (lg, a); (a, b); (b, r); (lg, b); (a, r) |])
+
+(* --- L'essai « projection conforme seule » (mode conforme_pur du banc d'essai) -----------------------------------------
+   Pas de carte, pas de triangulation : seuls les pieds sont posés sur les lignes de construction (la ligne brisée de l'état e
+   au temps s, par [pied]) ; deux pieds consécutifs d'un lacet sont reliés par un arc de cercle de « bonne courbure » (la flèche
+   de la demi-ellipse aplatie des images clés : aplati × demi-corde), du côté du haut ou du bas selon la parité de l'arc, sans
+   souci des tangentes ; les deux bouts descendent au clou en ligne droite. Les croisements sont permis : l'essai sert à voir les
+   erreurs de la projection seule. *)
+let arc_de_cercle ~haut ~aplati p q =
+  let d = q -: p in
+  let corde = norme d in
+  if corde < 1e-9 then [| p; q |]
+  else begin
+    let a = corde /. 2. and h = aplati *. corde /. 2. in
+    let e = (1. /. corde) *: d in
+    let n = { x = e.y; y = -.e.x } in
+    let u = if (haut && n.y > 0.) || ((not haut) && n.y < 0.) then oppose n else n in
+    let rayon = ((a *. a) +. (h *. h)) /. (2. *. h) in
+    let milieu = (0.5 *: (p +: q)) in
+    let centre = milieu -: ((rayon -. h) *: u) in
+    let alpha = Float.asin (Float.min 1. (a /. rayon)) in
+    Array.init 61 (fun j ->
+        let phi = -.alpha +. (2. *. alpha *. float_of_int j /. 60.) in
+        centre +: (rayon *: ((sin phi *: e) +: (cos phi *: u))))
+  end
+
+(* Les lacets de l'état e au temps s, et les pieds (à l'écran) de tous les lacets. *)
+let dessin_pur l ~reduction e s =
+  let v = ligne l e s in
+  let aplati = aplati l ~reduction s in
+  let pieds =
+    List.map (fun lacet -> Array.map (fun x -> ecran_de l ~reduction (pied l e x s v).position s) lacet) l.etats.(e).Tresses.lacets
+  in
+  let lignes =
+    List.map
+      (fun pl ->
+        let k = Array.length pl in
+        let arcs = List.init (max 0 (k - 1)) (fun j -> arc_de_cercle ~haut:(j mod 2 = 0) ~aplati pl.(j) pl.(j + 1)) in
+        Array.concat (([| l.clou; pl.(0) |] :: arcs) @ [ [| pl.(k - 1); l.clou |] ]))
+      pieds
+  in
+  (lignes, List.concat_map Array.to_list pieds)

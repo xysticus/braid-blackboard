@@ -110,7 +110,11 @@ let image_conforme decalage (im : Film_conforme.image) =
   let r = image ~decalage ~construction ~opacites im.lignes im.trous im.clou in
   let a = Array.make (4 * List.length im.maillage) 0. in
   List.iteri (fun k (p, q) -> let p = p +: decalage and q = q +: decalage in a.(4 * k) <- p.x; a.((4 * k) + 1) <- p.y; a.((4 * k) + 2) <- q.x; a.((4 * k) + 3) <- q.y) im.maillage;
-  Js.Unsafe.set r "maillage" (Js.array a);   (* les arêtes du maillage du raccord, à plat, pour le banc d'essai *)
+  Js.Unsafe.set r "maillage" (Js.array a);
+  Js.Unsafe.set r "reperes" (Js.array (Array.concat (List.map (fun p -> let p = p +: decalage in [| p.x; p.y |]) im.reperes)));   (* les pieds du mode pur *)
+  let plat_lignes ls = Js.array (Array.of_list (List.map (fun p -> Js.array (Array.concat (List.map (fun (q : point) -> let q = q +: decalage in [| q.x; q.y |]) (Array.to_list p)))) ls)) in
+  Js.Unsafe.set r "lacets_bis" (plat_lignes im.lignes_bis);
+  Js.Unsafe.set r "reperes_bis" (Js.array (Array.concat (List.map (fun p -> let p = p +: decalage in [| p.x; p.y |]) im.reperes_bis)));   (* les arêtes du maillage du raccord, à plat, pour le banc d'essai *)
   (match im.etude with
    | None -> ()
    | Some e ->
@@ -207,7 +211,7 @@ let statique_tresse mode mot =
         verifie_limites ~conforme:true tresse;
         let _, _, (film, ecart), _ = prepare_triangulation tresse in
         image_triangulation film ecart
-    | "conforme" | "conforme_libre" | "conforme_sans_maillage" | "conforme_satellites" | "conforme_detendu" ->
+    | "conforme" | "conforme_libre" | "conforme_sans_maillage" | "conforme_satellites" | "conforme_detendu" | "conforme_pur" ->
         verifie_limites tresse;
         image_conforme { x = marge; y = marge } (Film_conforme.image_finale ~hauteur:cote ~largeur:cote ~marge tresse)
     | m ->
@@ -234,14 +238,14 @@ let film_tresse mode mot rendu =
             if k = 0 then avec_chapitres debuts im;
             appelle im k (total + 1));
         Js.string ""
-    | ("conforme" | "conforme_libre" | "conforme_sans_maillage" | "conforme_satellites" | "conforme_detendu") as mode ->
+    | ("conforme" | "conforme_libre" | "conforme_sans_maillage" | "conforme_satellites" | "conforme_detendu" | "conforme_pur") as mode ->
         (* conforme_libre : les arcs ne passent plus par les points « fantômes » (les pieds sur la plus claire des deux lignes de
            construction pendant le raccord) ; sert au banc d'essai etude/lacets, pas à la page publique *)
         verifie_limites ~conforme:true tresse;
         let total = 1 + (nombre_images_conforme * List.length tresse) in
         let k = ref 0 in
         let anomalies =
-          Film_conforme.film ~verifie:true ~sans_fantomes:(mode = "conforme_libre") ~libre:(mode = "conforme_libre") ~sans_maillage:(mode = "conforme_sans_maillage") ~satellites:(if mode = "conforme_satellites" then 8 else 0) ~detente:(mode = "conforme_detendu") ~etude ~hauteur:cote ~largeur:cote ~marge
+          Film_conforme.film ~verifie:true ~sans_fantomes:(mode = "conforme_libre") ~libre:(mode = "conforme_libre") ~sans_maillage:(mode = "conforme_sans_maillage") ~satellites:(if mode = "conforme_satellites" then 8 else 0) ~detente:(mode = "conforme_detendu") ~pur:(mode = "conforme_pur") ~etude ~hauteur:cote ~largeur:cote ~marge
             ~rendu:(fun im ->
               let image = image_conforme { x = marge; y = marge } im in
               if !k = 0 then ignore (avec_chapitres (chapitres_reguliers ~par_lettre:nombre_images_conforme (List.length tresse)) image);
@@ -368,7 +372,7 @@ let film_lettres mode mot (lettres : float Js.js_array Js.t) (premiere : bool Js
     let nom = Js.to_string mode in
     let etude = String.ends_with ~suffix:"+etude" nom in
     let nom = if etude then String.sub nom 0 (String.length nom - 6) else nom in
-    if not (List.mem nom [ "conforme"; "conforme_libre"; "conforme_sans_maillage"; "conforme_satellites"; "conforme_detendu" ]) then
+    if not (List.mem nom [ "conforme"; "conforme_libre"; "conforme_sans_maillage"; "conforme_satellites"; "conforme_detendu"; "conforme_pur" ]) then
       invalid_arg ("film_lettres : mode " ^ nom);
     verifie_limites ~conforme:true tresse;
     let lettres = List.sort compare (List.map int_of_float (Array.to_list (Js.to_array lettres))) in
@@ -379,7 +383,7 @@ let film_lettres mode mot (lettres : float Js.js_array Js.t) (premiere : bool Js
     in
     let anomalies =
       Film_conforme.film ~verifie:true ~sans_fantomes:(nom = "conforme_libre") ~libre:(nom = "conforme_libre") ~sans_maillage:(nom = "conforme_sans_maillage")
-        ~satellites:(if nom = "conforme_satellites" then 8 else 0) ~detente:(nom = "conforme_detendu") ~etude ~premiere ~lettres ~hauteur:cote ~largeur:cote ~marge
+        ~satellites:(if nom = "conforme_satellites" then 8 else 0) ~detente:(nom = "conforme_detendu") ~pur:(nom = "conforme_pur") ~etude ~premiere ~lettres ~hauteur:cote ~largeur:cote ~marge
         ~rendu:(fun im ->
           match !numeros with
           | k :: reste ->

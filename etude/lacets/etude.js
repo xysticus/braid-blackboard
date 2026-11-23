@@ -81,7 +81,7 @@ function lisMot(texte) {
 
 const etat = {
   mot: [], images: [], total: 0, k: 0, lecture: false, derniere: 0, reste: 0, travailleur: null,
-  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
+  construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, pur: false, plein: true, pointille: true, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
 
@@ -374,8 +374,16 @@ function dessine(k) {
     ctx.stroke();
   }
   if (etat.construction && image.construction) segments(ctx, image.construction, image.opacites, etat.etude && image.etude ? stylesDeConstruction(image) : null);
-  image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = etat.film !== 'conforme' && image.brin ? image.brin : 3.5; trace(ctx, p); });   // la triangulation et le diagramme affinent le trait quand les brins sont serrés
+  const deux = image.lacets_bis && image.lacets_bis.length;   // mode pur : deux dessins, au choix
+  if (etat.plein || !deux) image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = etat.film !== 'conforme' && image.brin ? image.brin : 3.5; trace(ctx, p); });   // la triangulation et le diagramme affinent le trait quand les brins sont serrés
   if (image.fixes && image.fixes.length) disques(ctx, image.fixes, 3, '#888');   // les points fixes du diagramme de courbes
+  if (deux && etat.pointille) {   // le mode pur : le dessin de l'arrivée (état k+1 sur L–B–A–R), en pointillés, en même temps que celui du départ
+    ctx.setLineDash([9, 7]);
+    image.lacets_bis.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3; trace(ctx, p); });
+    ctx.setLineDash([]);
+    disques(ctx, image.reperes_bis, 4, '#ff8c00');
+  }
+  if (image.reperes && image.reperes.length && (etat.plein || !deux)) disques(ctx, image.reperes, 4, '#d62728');   // le mode pur : les pieds posés sur les lignes de construction
   disques(ctx, image.trous, 4, '#000');
   disques(ctx, image.clou, 4, '#000');
   if (etat.etude && image.etude && etat.construction) etiquettes(ctx, image);
@@ -472,6 +480,9 @@ function brancheCommandes() {
   $('c-maillage').onchange = (e) => { etat.maillage = e.target.checked; redessine(); };
   $('c-etude').onchange = (e) => { etat.etude = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // le journal et les plans w : recalcule le film
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
+  $('c-plein').onchange = (e) => { etat.plein = e.target.checked; redessine(); };
+  $('c-pointille').onchange = (e) => { etat.pointille = e.target.checked; redessine(); };
+  $('c-pur').onchange = (e) => { etat.pur = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : la projection conforme seule
   $('c-satellites').onchange = (e) => { etat.satellites = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : 8 sommets de plus autour de chacun des deux trous qui tournent
   $('film').onchange = (e) => { etat.film = e.target.value; etat.reprise = null; if (etat.precalcule) { $('c-' + etat.precalcule).checked = false; etat.precalcule = null; } metsAJourOptions(); lance(etat.mot); };   // lacets conformes ou triangulation
   $('c-detendu').onchange = (e) => { etat.detendu = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // la détente du raccord (Detente), calculée par la page
@@ -511,7 +522,7 @@ const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 
 // Les cases qui n'ont de sens que pour les lacets conformes (essais du raccord, projection, fantômes des lignes estompées, maillage
 // du raccord) : grisées quand le film affiché est la triangulation ou le diagramme de courbes.
-const SEULEMENT_CONFORME = ['c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
+const SEULEMENT_CONFORME = ['c-pur', 'c-plein', 'c-pointille', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
 
 function metsAJourOptions() {
   const tri = etat.film !== 'conforme';
@@ -600,7 +611,7 @@ function calcule(mot) {
     }
   };
   if (etat.film !== 'conforme') { w.postMessage({ mode: etat.film + (etat.detendu ? '_detendu' : ''), mot }); return; }   // triangulation, diagramme
-  w.postMessage({ mode: (etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
+  w.postMessage({ mode: (etat.pur ? 'conforme_pur' : etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude && !etat.pur ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
 let motCourant = null;
@@ -632,6 +643,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   if (new URLSearchParams(location.search).has('maillage')) { etat.maillage = true; $('c-maillage').checked = true; }   // ?maillage : arêtes du maillage au départ (captures)
   if (new URLSearchParams(location.search).has('sansmaillage')) { etat.sansMaillage = true; $('c-sans-maillage').checked = true; }   // ?sansmaillage (captures)
+  if (new URLSearchParams(location.search).has('pur')) { etat.pur = true; $('c-pur').checked = true; }   // ?pur (captures)
   if (new URLSearchParams(location.search).has('satellites')) { etat.satellites = true; $('c-satellites').checked = true; }   // ?satellites (captures)
   if (new URLSearchParams(location.search).has('sansprojection')) { etat.etude = false; $('c-etude').checked = false; }   // ?sansprojection (captures)
   if (new URLSearchParams(location.search).has('libre')) { etat.libre = true; $('c-libre').checked = true; }   // ?libre : les arcs libres au départ (captures)

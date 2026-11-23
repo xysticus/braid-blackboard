@@ -27,6 +27,9 @@ type image = {
   maillage : (point * point) list;
       (** Les arêtes de la triangulation sur laquelle les lacets sont posés pendant le raccord (vide hors du raccord, où le dessin est
           conforme) ; avec les arêtes qui vont au bord convexe, hors de l'image. *)
+  lignes_bis : point array list;  (** mode pur : le dessin de l'arrivée (état k+1 sur L–B–A–R), en même temps que celui du départ *)
+  reperes_bis : point list;  (** ses pieds *)
+  reperes : point list;  (** les pieds posés sur les lignes de construction (mode pur seulement) *)
   etude : etude option;  (** le journal et les plans w, seulement si [film ~etude:true] *)
 }
 (* Une image du film, dans le cadre intérieur (avant le décalage de la marge). *)
@@ -40,13 +43,14 @@ let lisse u = u *. u *. (3. -. (2. *. u))
    du raccord : 0 sur la ligne brisée L–A–B–R de l'état k, 1 sur L–B–A–R de l'état k+1. Les segments invisibles sont omis. *)
 let indice_ab l ~reduction s = List.length (fst (Conforme.aretes l ~reduction s))
 
-let construction l ~reduction s ~poids =
+let construction ?(tout = false) l ~reduction s ~poids =
   let axe, cinq = Conforme.aretes l ~reduction s in
   let avec alpha (p, q) = (p, q, alpha) in
   List.map (avec 1.) axe
   @ List.filter
       (fun (_, _, alpha) -> alpha > 0.)
-      [ avec 1. cinq.(1); avec (1. -. poids) cinq.(0); avec (1. -. poids) cinq.(2); avec poids cinq.(3); avec poids cinq.(4) ]
+      (if tout then [ avec 1. cinq.(1); avec 1. cinq.(0); avec 1. cinq.(2); avec 1. cinq.(3); avec 1. cinq.(4) ]
+       else [ avec 1. cinq.(1); avec (1. -. poids) cinq.(0); avec (1. -. poids) cinq.(2); avec poids cinq.(3); avec poids cinq.(4) ])
 
 (* Nombre de croisements entre lacets distincts, hors du voisinage du clou (où ils se rejoignent). Comme le Python :
    segments groupés par paquets de 64 avec leur rectangle englobant, on ne compare que les paquets qui se chevauchent. *)
@@ -117,7 +121,7 @@ let image_finale ?(hauteur = 800.) ?(largeur = 800.) ?(marge = 60.) tresse =
   let k = n_lettres - 1 in
   let l = Conforme.lettre ~hauteur:(hauteur -. (2. *. marge)) ~largeur:(largeur -. (2. *. marge)) (etat k) (etat (k + 1)) (List.nth tresse k) in
   let lignes, reduction = dessin_reduit l 1 1. in
-  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1.; ab = indice_ab l ~reduction 1.; maillage = []; etude = None }
+  { lignes; trous = Conforme.trous_ecran l ~reduction 1.; clou = l.clou; construction = construction l ~reduction 1. ~poids:1.; ab = indice_ab l ~reduction 1.; maillage = []; reperes = []; lignes_bis = []; reperes_bis = []; etude = None }
 
 
 (* Le journal d'une image du film, pour l'étude de la projection : ce qui est projeté, sur quoi, de quand à quand. *)
@@ -179,7 +183,7 @@ let journal_de_l_image ~(l : Conforme.lettre) ~k ~n ~images ~n_lettres ~s ~poids
    dans le film (la page en répartit les lettres sur plusieurs workers). Rend les anomalies. L'ordre des calculs est
    celui du Python, y compris celui des appels qui remplissent le cache des cartes : les derniers chiffres en
    dépendent. *)
-let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ?(satellites = 0) ?(etude = false) ?(detente = false) ?(premiere = true) ?lettres ~hauteur ~largeur ~marge ~rendu tresse =
+let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = false) ?(libre = false) ?(sans_maillage = false) ?(satellites = 0) ?(pur = false) ?(etude = false) ?(detente = false) ?(premiere = true) ?lettres ~hauteur ~largeur ~marge ~rendu tresse =
   let entiers = List.map Tresses.entier_de_lettre tresse in
   let nb_trous = (match entiers with [] -> 5 | _ -> List.fold_left (fun a x -> max a (abs x)) 0 entiers) + 1 in
   let h_int = hauteur -. (2. *. marge) and l_int = largeur -. (2. *. marge) in
@@ -191,7 +195,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
     let premiere = Conforme.lettre ~hauteur:h_int ~largeur:l_int (etat 0) (etat 1) (List.hd tresse) in
     rendu
       { lignes = Conforme.dessin premiere ~reduction:1. 0 0.; trous = Conforme.trous_ecran premiere ~reduction:1. 0.;
-        clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0.; maillage = []; etude = None }
+        clou = premiere.clou; construction = construction premiere ~reduction:1. 0. ~poids:0.; ab = indice_ab premiere ~reduction:1. 0.; maillage = []; reperes = []; lignes_bis = []; reperes_bis = []; etude = None }
   end;
   List.iteri
     (fun k sigma ->
@@ -206,9 +210,20 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
       let precedent = ref None and triangule = ref None in
       for n = 1 to images do
         let s = temps.(n) and poids = poids_de.(n) in
-        let maillage = ref [] in
+        let maillage = ref [] and reperes = ref [] and lignes_bis = ref [] and reperes_bis = ref [] in
         let lignes, reduction =
-          if 0. < poids && poids < 1. then begin
+          if pur then begin
+            (* projection seule, les deux phases confondues : le départ (état k sur L–A–B–R) et l'arrivée (état k+1 sur L–B–A–R)
+               sont dessinés ensemble à chaque image, même là où ils n'existent pas (ligne brisée non simple) *)
+            let ymin ls = List.fold_left (fun a p -> Array.fold_left (fun a q -> Float.min a q.y) a p) Float.infinity ls in
+            let e0, _ = Conforme.dessin_pur l ~reduction:1. 0 s and e1, _ = Conforme.dessin_pur l ~reduction:1. 1 s in
+            let y_min = Float.min (ymin e0) (ymin e1) in
+            let reduction = if y_min < 10. then (l.y_axe -. 10.) /. (l.y_axe -. y_min) else 1. in
+            let lignes, pieds = Conforme.dessin_pur l ~reduction 0 s and bis, pieds_bis = Conforme.dessin_pur l ~reduction 1 s in
+            reperes := pieds; lignes_bis := bis; reperes_bis := pieds_bis;
+            (lignes, reduction)
+          end
+          else if 0. < poids && poids < 1. then begin
             let r =
               match !triangule with
               | Some r -> r
@@ -240,7 +255,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
         in
         let trous = Conforme.trous_ecran l ~reduction s in
         (* la détente du raccord (Detente) : nulle aux bords de la fenêtre, maximale au milieu *)
-        let lignes = if detente && 0. < poids && poids < 1. then Detente.detend lignes trous l.clou (4. *. poids *. (1. -. poids)) else lignes in
+        let lignes = if detente && (not pur) && 0. < poids && poids < 1. then Detente.detend lignes trous l.clou (4. *. poids *. (1. -. poids)) else lignes in
         if verifie then begin
           let en_ordre = List.sort compare (Array.to_list trous) in
           if Float.abs (trous.(l.i - 1).x -. trous.(l.i).x) > 1e-6 then begin
@@ -268,7 +283,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
             Some { journal; phase; n_a; n_b; s_a; s_b; plan_depart; plan_arrivee }
           end
         in
-        rendu { lignes; trous; clou = l.clou; construction = construction l ~reduction s ~poids; ab = indice_ab l ~reduction s; maillage = !maillage;
+        rendu { lignes; trous; clou = l.clou; construction = construction ~tout:pur l ~reduction s ~poids; ab = indice_ab l ~reduction s; maillage = !maillage; reperes = !reperes; lignes_bis = !lignes_bis; reperes_bis = !reperes_bis;
                 etude = etude_de_l_image }
       done
       end)

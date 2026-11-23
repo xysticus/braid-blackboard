@@ -25,6 +25,14 @@ Case « sans maillage » (essai) : mode `conforme_sans_maillage` (`Raccord.ligne
 
 Case « satellites » (essai) : mode `conforme_satellites` (`Raccord.raccord ~satellites:8`) : 8 sommets de plus, sur un cercle de rayon 30 % de la plus petite distance entre trous, autour de chacun des deux trous qui tournent ; ils les suivent. Le maillage a beaucoup d'arêtes courtes autour d'eux (case « maillage » pour les voir). Les mots relus et les croisements sont vérifiés comme pour les autres modes.
 
+Case « pur » (essai, mode `conforme_pur`, `Conforme.dessin_pur`) : **la projection conforme seule**, sans maillage, sans raccord, sans détente.
+À chaque image, les pieds des lacets (points rouges) sont posés sur la ligne brisée de construction : le départ sur L–A–B–R jusqu'à la
+verticale (poids ½ du raccord), l'arrivée sur L–B–A–R ensuite (les lignes de construction passent d'une à l'autre d'un coup). Deux pieds
+consécutifs sont reliés par un arc de cercle de la bonne courbure (flèche = aplatissement × demi-corde, comme la demi-ellipse des images
+clés), du côté du haut ou du bas selon la parité, **sans souci des tangentes** ; les deux bouts descendent au clou en ligne droite. Les
+croisements sont permis : l'essai sert à voir les erreurs de la projection seule (le compte des images douteuses s'affiche à la fin du
+calcul ; `?pur` coche la case au départ). **Les deux phases sont confondues** : à chaque image, on dessine les cinq lignes de construction (L–A–B–R et L–B–A–R, à pleine opacité), le dessin du départ (trait plein, pieds rouges) et celui de l'arrivée (pointillés, pieds orange), même là où l'un n'existe pas encore ou plus (ligne brisée qui se recoupe). Le compte des images douteuses ne porte alors que sur le dessin du départ. Les images clés (début et fin de lettre) sont celles des arcs de cercle, non les images conformes.
+
 ## Essai : le raccord par régions, sans maillage (Python)
 
 `essai_regions.py` (depuis la racine du dépôt) : à la verticale, le plan est coupé en quatre régions (le haut, le bas avec le
