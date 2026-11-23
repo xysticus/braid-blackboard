@@ -21,6 +21,7 @@ const EXEMPLES = [
 
 const MAX_BRINS = 6;      // les limites du film conforme (web/ardoise.js)
 const MAX_LETTRES = 14;
+const lisse = (u) => u * u * (3 - 2 * u);
 const IMAGES_PAR_LETTRE = 48;   // nombre_images_conforme de ocaml/web/ardoise_web.ml
 // Images par lettre du film affiché : 48 pour les lacets conformes ; pour la triangulation, le nombre de sous-pas du film (tout le film
 // se partage également entre les lettres).
@@ -502,7 +503,7 @@ function brancheCommandes() {
   $('c-marqueurs').onchange = (e) => { etat.marqueurs = e.target.checked; redessine(); };
   $('c-plein').onchange = (e) => { etat.plein = e.target.checked; redessine(); };
   $('c-pointille').onchange = (e) => { etat.pointille = e.target.checked; redessine(); };
-  $('c-pur').onchange = (e) => { etat.pur = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : la projection conforme seule
+  $('c-pur').onchange = (e) => { etat.pur = e.target.checked; metsAJourOptions(); etat.reprise = etat.k; lance(etat.mot); };   // essai : la projection conforme seule
   $('c-satellites').onchange = (e) => { etat.satellites = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : 8 sommets de plus autour de chacun des deux trous qui tournent
   $('film').onchange = (e) => { etat.film = e.target.value; etat.reprise = null; if (etat.precalcule) { $('c-' + etat.precalcule).checked = false; etat.precalcule = null; } metsAJourOptions(); lance(etat.mot); };   // lacets conformes ou triangulation
   $('c-detendu').onchange = (e) => { etat.detendu = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // la détente du raccord (Detente), calculée par la page
@@ -544,13 +545,29 @@ const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 // du raccord) : grisées quand le film affiché est la triangulation ou le diagramme de courbes.
 const SEULEMENT_CONFORME = ['c-pur', 'c-morph', 'c-marqueurs', 'c-plein', 'c-pointille', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
 
+// Les cases qui ne jouent pas dans l'essai « pur » (pas de maillage, de raccord ni de détente ; les arcs sont de simples arcs de
+// cercle, sans tangentes ni points fantômes) ; et celles qui ne jouent que dans l'essai « pur ».
+const HORS_PUR = ['c-tangentes', 'c-points', 'c-fantomes', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-detendu'];
+const SEULEMENT_PUR = ['c-plein', 'c-pointille', 'c-morph', 'c-marqueurs'];
+
 function metsAJourOptions() {
   const tri = etat.film !== 'conforme';
-  SEULEMENT_CONFORME.forEach((id) => {
-    $(id).disabled = tri;
-    $(id).closest('label').title = tri ? 'pas pour ce film (lacets conformes seulement)' : ($(id).closest('label').dataset.titre || '');
+  const pur = !tri && etat.pur;
+  const grise = (id, raison) => {
+    const l = $(id).closest('label');
+    $(id).disabled = !!raison;
+    l.title = raison || l.dataset.titre || '';
+    l.style.opacity = raison ? '0.45' : '';
+  };
+  SEULEMENT_CONFORME.forEach((id) => grise(id, tri ? 'pas pour ce film (lacets conformes seulement)' : ''));
+  HORS_PUR.forEach((id) => {
+    if (tri && id === 'c-detendu') return;   // la détente s'applique aussi à la triangulation et au diagramme
+    if (tri && !SEULEMENT_CONFORME.includes(id)) return;
+    if (pur) grise(id, 'ne joue pas dans l\'essai « pur »');
+    else if (!tri) grise(id, '');
   });
-  if (tri) PRECALCULES.forEach((sorte) => { $('c-' + sorte).disabled = true; });
+  if (!tri) SEULEMENT_PUR.forEach((id) => grise(id, pur ? '' : 'seulement avec l\'essai « pur »'));
+  if (tri || pur) PRECALCULES.forEach((sorte) => { $('c-' + sorte).disabled = true; });
   else verifiePrecalcules(etat.mot);
 }
 
@@ -670,7 +687,7 @@ window.addEventListener('DOMContentLoaded', () => {
   PRECALCULES.forEach((sorte) => { if (new URLSearchParams(location.search).has(sorte)) { etat.precalcule = sorte; $('c-' + sorte).checked = true; } });   // ?regions : un film précalculé au départ (captures)
   ['triangulation', 'diagramme'].forEach((f) => { if (new URLSearchParams(location.search).has(f)) { etat.film = f; $('film').value = f; } });   // ?triangulation, ?diagramme (captures)
   if (new URLSearchParams(location.search).has('nondetendu')) { etat.detendu = false; $('c-detendu').checked = false; }   // ?nondetendu : le film à maillage seul (captures)
-  SEULEMENT_CONFORME.forEach((id) => { const l = $(id).closest('label'); l.dataset.titre = l.title || ''; });   // le titre d'origine, rendu quand on revient aux lacets conformes
+  SEULEMENT_CONFORME.concat(HORS_PUR, SEULEMENT_PUR).forEach((id) => { const l = $(id).closest('label'); l.dataset.titre = l.title || ''; });   // le titre d'origine, rendu quand on revient aux lacets conformes
   metsAJourOptions();
   brancheCommandes();
   let minuterie = null;
