@@ -550,7 +550,7 @@ const fichierPrecalcule = (mot, sorte) => sorte + '/' + mot.join('_') + '.json';
 const SEULEMENT_CONFORME = ['c-pur', 'c-morph', 'c-marqueurs', 'c-plein', 'c-pointille', 'c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-fantomes'];
 
 // Les cases qui ne jouent pas dans l'essai « pur » (pas de maillage, de raccord ni de détente) ; et celles qui ne jouent que dans l'essai « pur ».
-const HORS_PUR = ['c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre', 'c-detendu'];
+const HORS_PUR = ['c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c-libre'];
 const SEULEMENT_PUR = ['c-plein', 'c-pointille', 'c-morph', 'c-marqueurs'];
 
 function metsAJourOptions() {
@@ -651,7 +651,7 @@ function calcule(mot) {
     }
   };
   if (etat.film !== 'conforme') { w.postMessage({ mode: etat.film + (etat.detendu ? '_detendu' : ''), mot }); return; }   // triangulation, diagramme
-  w.postMessage({ mode: (etat.pur ? 'conforme_pur' : etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude && !etat.pur ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
+  w.postMessage({ mode: (etat.pur ? (etat.detendu ? 'conforme_pur_detendu' : 'conforme_pur') : etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude && !etat.pur ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
 let motCourant = null;

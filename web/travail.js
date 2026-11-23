@@ -179,6 +179,54 @@ function filmDetenduParImages(base, mot) {
   rend();
 }
 
+// Le film « pur détendu » du banc d'essai (conforme_pur_detendu) : le film pur (sans détente) se calcule ici, et la détente de la
+// transformation de chaque image (lacets_morph ; intensité 4 s (1 − s), s étant le temps de la lettre) est confiée à tour de rôle à des
+// workers auxiliaires, comme pour la triangulation. Images rendues dans l'ordre.
+function filmPurDetenduParImages(mot) {
+  const fixe = self.ardoise.statique('conforme_pur', mot);
+  if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
+  const image = enFloat32(fixe);
+  postMessage({ type: 'statique', image }, tampons(image));
+  const nb = Math.max(1, Math.min(8, (self.navigator.hardwareConcurrency || 2) - 1));
+  const aides = [], enAttente = new Map(), pretes = [];
+  let suivante = 0, total = 0, envoyees = 0, revenues = 0, croisements = 0, messageFilm = null;
+  const rend = () => {
+    while (pretes[suivante] !== undefined) {
+      const f = pretes[suivante];
+      pretes[suivante] = undefined;
+      postMessage({ type: 'image', image: f, k: suivante, total }, tampons(f));
+      suivante++;
+    }
+    if (messageFilm !== null && revenues === envoyees && suivante === total) {
+      aides.forEach((w) => w.terminate());
+      postMessage({ type: 'fini', message: messageFilm, erreur: false });
+    }
+  };
+  for (let i = 0; i < nb; i++) {
+    const w = new Worker('travail.js' + VERSION);
+    w.onmessage = (ev) => {
+      const r = ev.data;
+      const im = enAttente.get(r.k);
+      enAttente.delete(r.k);
+      if (!r.erreur) im.lacets_morph = r.lacets;
+      revenues++;
+      pretes[r.k] = enFloat32(im);
+      rend();
+    };
+    aides.push(w);
+  }
+  const message = self.ardoise.film('conforme_pur', mot, (im, k, t) => {
+    total = t;
+    if (k === 0) { pretes[0] = enFloat32(im); suivante = 0; rend(); return; }   // l'image clé de départ : rien à détendre
+    const s = lisse(((k - 1) % IMAGES_PAR_LETTRE + 1) / IMAGES_PAR_LETTRE);
+    enAttente.set(k, im);
+    aides[envoyees % nb].postMessage({ type: 'detend', k, lacets: im.lacets_morph, trous: Array.from(im.trous), clou: im.clou, force: 4 * s * (1 - s), ecart: 0 });
+    envoyees++;
+  });
+  messageFilm = message || '';
+  rend();
+}
+
 onmessage = (e) => {
   const d = e.data;
   if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme
@@ -203,6 +251,7 @@ onmessage = (e) => {
   }
   const { mode, mot } = d;
   if (/^conforme(_detendu)?(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmReparti(mode, mot); return; }
+  if (mode === 'conforme_pur_detendu' && typeof Worker !== 'undefined') { filmPurDetenduParImages(mot); return; }
   if (/^(triangulation|diagramme)_detendu$/.test(mode) && typeof Worker !== 'undefined') { filmDetenduParImages(mode.replace('_detendu', ''), mot); return; }
   const fixe = self.ardoise.statique(mode, mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }

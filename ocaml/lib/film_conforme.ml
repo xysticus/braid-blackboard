@@ -222,7 +222,7 @@ let film ?(images = 48) ?(fenetre = 0.5) ?(verifie = false) ?(sans_fantomes = fa
             let y_min = Float.min (ymin e0) (ymin e1) in
             let reduction = if y_min < 10. then (l.y_axe -. 10.) /. (l.y_axe -. y_min) else 1. in
             let lignes, pieds = Conforme.dessin_pur l ~reduction 0 s and bis, pieds_bis = Conforme.dessin_pur l ~reduction 1 s in
-            reperes := pieds; trajets := Conforme.trajets l ~reduction s; morph := Conforme.dessin_morph l ~reduction s s; lignes_bis := bis; reperes_bis := pieds_bis;
+            reperes := pieds; trajets := Conforme.trajets l ~reduction s; morph := (let m = Conforme.dessin_morph l ~reduction s s in if detente then Detente.detend m (Conforme.trous_ecran l ~reduction s) l.clou (4. *. s *. (1. -. s)) else m); lignes_bis := bis; reperes_bis := pieds_bis;
             (lignes, reduction)
           end
           else if 0. < poids && poids < 1. then begin
