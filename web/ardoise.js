@@ -146,7 +146,11 @@ function dessineTresse(canvas, mot) {
   const brins = nbBrins(mot);
   const maille = Math.max(18, Math.min(52, 560 / Math.max(mot.length, 1)));
   const marge = 16;
-  const largeur = (brins - 1) * maille + 2 * marge;
+  // à droite, une colonne : le générateur de chaque ligne (σ₁, σ₂⁻¹…), aligné sur son croisement
+  const police = Math.max(11, Math.min(16, maille * 0.5));
+  const colonne = 3.2 * police;
+  const largeurDiagramme = (brins - 1) * maille + 2 * marge;
+  const largeur = largeurDiagramme + colonne;
   const hauteur = mot.length * maille + 2 * marge;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(largeur * dpr);
@@ -173,6 +177,13 @@ function dessineTresse(canvas, mot) {
     trace(trou, FOND, 0);        // le liseré de la couleur du fond coupe ce qui passe dessous
     trace(brin, couleur, 1);
   };
+
+  // le texte est de la couleur la plus lisible sur le fond choisi
+  ctx.fillStyle = luminance(FOND) > 0.4 ? '#4a5160' : '#d6dae3';
+  ctx.font = `${police}px system-ui, sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  mot.forEach((k, ligne) => ctx.fillText(nomLettre(k), largeurDiagramme + 4, marge + (ligne + 0.5) * maille));
 
   mot.forEach((k, ligne) => {
     const col = Math.abs(k) - 1;

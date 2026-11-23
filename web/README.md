@@ -6,7 +6,7 @@ ses tresses, pas enregistré), la note de la tresse enregistrée, et les boutons
 replié dans « Les coulisses ». La page montre :
 
 1. le mot en notation mathématique, tel qu'il est écrit (MathML) ;
-2. le diagramme de tresse classique, de haut en bas ;
+2. le diagramme de tresse classique, de haut en bas, avec à droite, en colonne, le générateur de chaque ligne (σ₁, σ₂⁻¹…) ;
 3. l'action de la tresse sur le groupe libre F_n (l'image de chaque x_i) ;
 4. les méandres en quatre modes, dans l'ordre lacets conformes, diagramme de courbes, rubans, lacets sur la triangulation mobile : d'abord
    une image fixe, puis le film, calculé en tâche de fond par un Web Worker qui la remplace. Les quatre films se calculent **l'un
