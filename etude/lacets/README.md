@@ -91,11 +91,13 @@ dans le banc comme essai ; on ne les poursuit pas pour l'instant. La tresse char
 ## Rétractation : on tire sur les lacets (version simple)
 
 Option « rétractation (on tire sur les lacets) » (ou `?retractation`), `filmRetraction` dans `web/travail.js`. Idée de l'utilisateur, purement
-graphique : le méandre de l'image n est dessiné une fois pour toutes ; on tire **en même temps sur tous les lacets, proportionnellement à leur
-longueur** : chaque lacet est un ruban dont on efface le bout (à partir du point le plus proche du trou qu'il enlace, la lettre du milieu de son
-mot de F_n) en remontant vers le clou, et le trou recule dans le ruban en suivant ce bout (milieu des deux extrémités ouvertes). Rien d'autre ne bouge ;
-on ne retrouve pas les lettres du mot (la version qui les retrouverait est à repenser). 97 % de chaque lacet est effacé, 160 images, lecture à
-l'envers : le méandre se révèle et les trous avancent dans leurs lacets. Les lacets sont dessinés en deux morceaux de même couleur (`indices`).
+graphique : le méandre de l'image n est dessiné une fois pour toutes ; on tire sur les lacets **l'un après l'autre** (la durée de chacun est
+proportionnelle à sa longueur). Chaque lacet est un ruban dont on efface le bout, à partir de l'arc qui passe au-dessus du trou qu'il enlace (la lettre
+du milieu de son mot de F_n ; le plus petit arc, entre deux pieds sur l'axe, dont l'intervalle contient le trou), en remontant vers le clou **jusqu'à son arrivée sur l'axe** (le haut de ses deux descentes au clou, qui ne sont pas
+retirées). Les deux brins du ruban sont raccordés par un bouchon en demi-cercle, du côté du bout (le brin de retour qui fait face au brin d'aller
+est le point le plus proche, pris de façon monotone), et **le trou est le centre du bouchon** : le lacet se referme tout de suite après le trou. Rien
+d'autre ne bouge ; on ne retrouve pas les lettres du mot (la version qui les retrouverait est à repenser). 240 images, lecture à l'envers : le
+méandre se révèle lacet après lacet et les trous avancent dans leurs lacets.
 
 ## Le film de la triangulation
 

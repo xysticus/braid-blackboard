@@ -288,11 +288,13 @@ function filmCordes(mot, portee) {   // portee : la tension n'agit qu'autour des
   postMessage({ type: 'fini', message: erreurs ? `${erreurs} image(s) sans détente` : (message || ''), erreur: false });
 }
 
-// Le film « rétractation » (banc d'essai, mode retractation) : un dessin fixe, le méandre de l'image n ; on tire en même temps sur tous les
-// lacets, proportionnellement à leur longueur : chaque lacet est un ruban dont on efface le bout (à partir du trou qu'il enlace, au milieu de son
-// chemin) en remontant vers le clou, et le trou recule dans le ruban en suivant ce bout. Rien d'autre ne bouge : les trous dansent là où le lacet
-// les emmène, on ne retrouve pas les lettres du mot. On rend les images à l'envers : le méandre se révèle, les trous avancent dans leurs lacets.
-const IMAGES_RETRACTION = 160, RESTE_RETRACTION = 0.97;   // on efface au plus 97 % de chaque lacet
+// Le film « rétractation » (banc d'essai, mode retractation) : un dessin fixe, le méandre de l'image n ; on tire sur les lacets **l'un après
+// l'autre** (le temps de chacun est proportionnel à sa longueur). Chaque lacet est un ruban dont on efface le bout, à partir du trou qu'il
+// enlace (la lettre du milieu de son mot de F_n) en remontant vers le clou, mais seulement jusqu'à l'arrivée du lacet sur l'axe (le haut de ses
+// deux descentes au clou, qui ne sont pas retirées) : les deux brins du ruban sont raccordés par un bouchon en
+// demi-cercle, du côté du bout, et le trou est dans le bouchon (le lacet se referme tout de suite après le trou). Rien d'autre ne bouge :
+// on ne retrouve pas les lettres du mot. On rend les images à l'envers : le méandre se révèle lacet après lacet, les trous avancent dans leurs lacets.
+const IMAGES_RETRACTION = 240;
 function filmRetraction(mot) {
   const fixe = self.ardoise.statique('conforme', mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
@@ -303,7 +305,9 @@ function filmRetraction(mot) {
   const trous = [];
   for (let i = 0; i + 1 < T.length; i += 2) trous.push([T[i], T[i + 1]]);
   const parX = trous.map((t, p) => p).sort((a, b) => trous[a][0] - trous[b][0]);   // le trou j (de 1) : le j-ième de gauche à droite
-  // pour chaque lacet : ses points, ses longueurs cumulées, le trou qu'il enlace (la lettre du milieu de son mot) et le point du lacet le plus proche de ce trou (le bout du ruban)
+  const lisse = (u) => u * u * (3 - 2 * u);
+  // pour chaque lacet : ses points, le trou qu'il enlace, le bout du ruban (le point du lacet le plus proche de ce trou), et pour chaque point
+  // du brin d'aller (du clou au bout) le point du brin de retour qui lui fait face (le plus proche), pour que le bouchon relie deux brins voisins
   const rubans = Array.from(fixe.lacets).map((l, i) => {
     const pts = [];
     for (let k = 0; k + 1 < l.length; k += 2) pts.push([l[k], l[k + 1]]);
@@ -312,42 +316,68 @@ function filmRetraction(mot) {
     const w = mots[i] || [];
     const j = w.length ? Math.abs(w[(w.length - 1) >> 1]) : i + 1;
     const p = parX[Math.min(trous.length, Math.max(1, j)) - 1];
-    let bout = 0, dmin = Infinity;
-    pts.forEach((q, k) => { const d = Math.hypot(q[0] - trous[p][0], q[1] - trous[p][1]); if (d < dmin) { dmin = d; bout = k; } });
-    return { pts, cum, p, bout, L: cum[cum.length - 1] };
+    // les pieds du lacet sur l'axe (les trous y sont) : les groupes de points à la hauteur de l'axe ; le bout du ruban est l'arc qui passe au-dessus
+    // du trou (le plus petit des arcs dont l'intervalle contient le trou), entre deux pieds consécutifs
+    const yAxe = trous[0][1];
+    const pieds = [];
+    for (let k = 0; k < pts.length;) {
+      if (Math.abs(pts[k][1] - yAxe) < 1.5) { let m = k; while (m + 1 < pts.length && Math.abs(pts[m + 1][1] - yAxe) < 1.5) m++; pieds.push((k + m) >> 1); k = m + 1; } else k++;
+    }
+    let jBout = 0, plusPetit = Infinity;
+    for (let q = 0; q + 1 < pieds.length; q++) {
+      const x0 = Math.min(pts[pieds[q]][0], pts[pieds[q + 1]][0]), x1 = Math.max(pts[pieds[q]][0], pts[pieds[q + 1]][0]);
+      if (x0 <= trous[p][0] && trous[p][0] <= x1 && x1 - x0 < plusPetit) { plusPetit = x1 - x0; jBout = q; }
+    }
+    const ia0 = pieds[jBout], ib0 = pieds[jBout + 1];   // les deux pieds de l'arc du bout
+    const k0 = pieds[0], kFin = pieds[pieds.length - 1];   // l'arrivée sur l'axe, en haut des deux descentes
+    // pour chaque point du brin d'aller (de k0 à ia0), le point du brin de retour (de ib0 à kFin) qui lui fait face : le plus proche, de façon monotone
+    const vis = {};
+    let debut = ib0;   // en remontant vers le clou (k décroît), le point qui fait face avance vers la fin du brin de retour (m croît)
+    for (let k = ia0; k >= k0; k--) {
+      let m = debut, d0 = Infinity;
+      for (let q = debut; q <= kFin; q++) { const d = Math.hypot(pts[q][0] - pts[k][0], pts[q][1] - pts[k][1]); if (d < d0) { d0 = d; m = q; } }
+      vis[k] = m; debut = m;
+    }
+    return { pts, cum, p, ia0, ib0, k0, kFin, vis, L: cum[cum.length - 1], N: pts.length };
   });
-  const point = (r, s) => {   // le point du lacet à l'abscisse curviligne s
-    let k = 1;
-    while (k < r.cum.length - 1 && r.cum[k] < s) k++;
-    const u = r.cum[k] === r.cum[k - 1] ? 0 : (s - r.cum[k - 1]) / (r.cum[k] - r.cum[k - 1]);
-    return [r.pts[k - 1][0] + u * (r.pts[k][0] - r.pts[k - 1][0]), r.pts[k - 1][1] + u * (r.pts[k][1] - r.pts[k - 1][1])];
+  const bouchon = (r, ia, ib) => {   // un demi-cercle de pts[ia] à pts[ib], du côté du bout (dans le sens de marche du brin d'aller)
+    const A = r.pts[ia], B = r.pts[ib];
+    const t1 = [r.pts[Math.min(ia + 4, r.ia0)][0] - r.pts[Math.max(ia - 4, 0)][0], r.pts[Math.min(ia + 4, r.ia0)][1] - r.pts[Math.max(ia - 4, 0)][1]];
+    const t2 = [r.pts[Math.max(ib - 4, r.ib0)][0] - r.pts[Math.min(ib + 4, r.N - 1)][0], r.pts[Math.max(ib - 4, r.ib0)][1] - r.pts[Math.min(ib + 4, r.N - 1)][1]];
+    const d = [t1[0] + t2[0], t1[1] + t2[1]];
+    const M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2], rayon = Math.hypot(A[0] - B[0], A[1] - B[1]) / 2;
+    const phi0 = Math.atan2(A[1] - M[1], A[0] - M[0]);
+    const milieu = (sg) => [M[0] + rayon * Math.cos(phi0 + sg * Math.PI / 2), M[1] + rayon * Math.sin(phi0 + sg * Math.PI / 2)];
+    const sg = ((milieu(1)[0] - M[0]) * d[0] + (milieu(1)[1] - M[1]) * d[1]) >= 0 ? 1 : -1;
+    const arc = [];
+    for (let q = 1; q < 14; q++) { const th = sg * Math.PI * q / 14; arc.push([M[0] + rayon * Math.cos(phi0 + th), M[1] + rayon * Math.sin(phi0 + th)]); }
+    return { arc, M };
   };
+  // les fenêtres de temps : un lacet après l'autre, chacun pendant une durée proportionnelle à sa longueur
+  const total = rubans.reduce((a, r) => a + r.L, 0);
+  let t0 = 0;
+  rubans.forEach((r) => { r.t0 = t0; t0 += r.L / total; r.t1 = t0; });
   const images = [];
   for (let n = 0; n < IMAGES_RETRACTION; n++) {
-    const t = n / (IMAGES_RETRACTION - 1), u = RESTE_RETRACTION * t * t * (3 - 2 * t);
-    const lacets = [], indices = [], nouveaux = trous.map((q) => q.slice());
-    rubans.forEach((r, i) => {
-      const sBout = r.cum[r.bout];
-      const a = sBout * (1 - u), b = sBout + (r.L - sBout) * u;   // le bout efface de a à b
-      const debut = [], fin = [];
-      for (let k = 0; k < r.pts.length; k++) {
-        if (r.cum[k] <= a) debut.push(r.pts[k]);
-        if (r.cum[k] >= b) fin.push(r.pts[k]);
-      }
-      const pa = point(r, a), pb = point(r, b);
-      debut.push(pa); fin.unshift(pb);
-      lacets.push(debut.flat()); indices.push(i);
-      lacets.push(fin.flat()); indices.push(i);
-      nouveaux[r.p] = [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2];   // le trou suit le bout du ruban
+    const t = n / (IMAGES_RETRACTION - 1);
+    const lacets = [], nouveaux = trous.map((q) => q.slice());
+    rubans.forEach((r) => {
+      const u = lisse(Math.min(1, Math.max(0, (t - r.t0) / (r.t1 - r.t0))));
+      const ia = Math.round(r.ia0 - u * (r.ia0 - r.k0));
+      if (ia >= r.ia0) { lacets.push(r.pts.flat()); return; }   // pas encore tiré : le lacet entier, le trou à sa place
+      const ib = Math.max(r.ib0, Math.min(r.kFin, r.vis[ia]));
+      const { arc, M } = bouchon(r, ia, ib);
+      lacets.push(r.pts.slice(0, ia + 1).concat(arc, r.pts.slice(ib)).flat());
+      nouveaux[r.p] = M;   // le trou est le centre du bouchon
     });
-    images.push({ lacets, trous: nouveaux.flat(), clou: Array.from(fixe.clou), indices, brin: 3.5, ecart: 0 });
+    images.push({ lacets, trous: nouveaux.flat(), clou: Array.from(fixe.clou), brin: 3.5, ecart: 0 });
   }
   const retour = images.reverse();
-  const total = retour.length, L = mot.length;
-  retour[0].chapitres = Array.from({ length: L + 1 }, (_, j) => Math.round(j * (total - 1) / L));
+  const nb = retour.length, L = mot.length;
+  retour[0].chapitres = Array.from({ length: L + 1 }, (_, j) => Math.round(j * (nb - 1) / L));
   retour.forEach((im, k) => {
     const f = enFloat32(im);
-    postMessage({ type: 'image', image: f, k, total }, tampons(f));
+    postMessage({ type: 'image', image: f, k, total: nb }, tampons(f));
   });
   postMessage({ type: 'fini', message: '', erreur: false });
 }
