@@ -112,7 +112,7 @@ lettres écrites à la même image s'enchaînent sans durée) ; le titre du pann
 les dates des lettres sont les paires [image, lettre] portées par l'image 0). À la fin du film les deux méandres se superposent à l'œil (vérifié sur `1 -2 1 -2`). Le film conforme du témoin se calcule dans un second worker, **sans les limites de mots** (`ardoise.sans_limites`, banc seulement)  ; plus de limite de longueur pour le témoin : il est égal au méandre de gauche, donc pas plus long à dessiner (la tresse chargée, 41 lettres écrites, se calcule en 12 s).
 
 **Rétractation dans le désordre (2026-11-25).** Un panneau « Rétractation » sous le lecteur (visible avec ce film) : **ordre des lacets** (*naturel* : l'un après
-l'autre par numéro ; *au hasard : lacets entiers* ; *au hasard : par morceaux, on change de brin quand on veut*), **graine** et « nouveau tirage » ;
+l'autre par numéro ; *au hasard : lacets entiers* ; **au hasard : un brin, puis un autre, le trou va à la prochaine rencontre de l'axe** (`rencontres`) ; *au hasard : par morceaux arbitraires*), **graine** et « nouveau tirage » ;
 `?ordre=morceaux&graine=N` rejoue un tirage. Par morceaux, chaque lacet est coupé en 2 à 5 morceaux de longueurs tirées (la part retirée va de 0 à 1 = arrivée
 sur l'axe, jamais au-delà), les morceaux de tous les lacets sont entrelacés au hasard (l'ordre propre à chaque lacet est gardé), et le temps d'un morceau est
 proportionnel à la longueur retirée : un lacet peut donc s'arrêter en route, avec son bouchon et son trou, pendant qu'on tire sur un autre
@@ -120,6 +120,10 @@ proportionnel à la longueur retirée : un lacet peut donc s'arrêter en route, 
 différent** (`1 -2 1 -2` : `2 1 2 2 -1 -1 -2 -2` en naturel, `1 1 2 -1 -2 -2` par morceaux avec la graine 2…) mais les méandres sont **toujours égaux** : 150 tirages
 essayés (6 mots, dont la tresse chargée et `4 3 -1 -1 2 -4 1` ; 72 par morceaux, 72 entiers, 6 naturels), 0 écart. Raison : le trou de chaque lacet ne se déplace que
 dans son ruban, et les rubans de deux lacets ne se coupent pas ; les trajets des trous sont disjoints, et pour des trajets disjoints la tresse ne dépend pas du planning.
+**Option « rencontres » (la voulue depuis le début)** : à chaque tirage on choisit un brin au hasard parmi ceux qui ne sont pas finis, et on amène son trou à la
+**prochaine rencontre de ce brin avec l'axe** (un pied du lacet, de la pointe vers le clou) : le bouchon va de pied en pied, il ne s'arrête jamais au milieu d'un demi-plan
+(entre deux pieds il est en mouvement, interpolé), et on change de brin quand on veut. Le temps d'un pas est proportionnel à sa longueur. 72 tirages (6 mots), 72 méandres
+égaux, 69 mots différents obtenus (la graine 1 de `1 -2 1 -2` écrit le mot d'origine `1 -2 1 -2`).
 **Lecture des lettres** : elle se fait sur le mouvement réel des trous, échantillonné en 40 sous-pas par image (`trousAu(t)` : le trou est le milieu des deux extrémités du
 bouchon), et non plus sur des cordes entre images ; avec les cordes, 3 tirages par morceaux sur 40 donnaient des mots faux (signes de lettres perdus quand un trou
 parcourt vite une spirale serrée).

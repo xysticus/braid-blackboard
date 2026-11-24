@@ -340,7 +340,7 @@ function filmRetraction(mot, graine, ordreMode) {   // ordreMode : « naturel »
       for (let q = debut; q <= kFin; q++) { const d = Math.hypot(pts[q][0] - pts[k][0], pts[q][1] - pts[k][1]); if (d < d0) { d0 = d; m = q; } }
       vis[k] = m; debut = m;
     }
-    return { pts, cum, p, ia0, ib0, k0, kFin, vis, L: cum[cum.length - 1], N: pts.length };
+    return { pts, cum, p, ia0, ib0, k0, kFin, vis, pieds, jBout, L: cum[cum.length - 1], N: pts.length };
   });
   const bouchon = (r, ia, ib) => {   // un demi-cercle de pts[ia] à pts[ib], du côté du bout (dans le sens de marche du brin d'aller)
     const A = r.pts[ia], B = r.pts[ib];
@@ -358,11 +358,12 @@ function filmRetraction(mot, graine, ordreMode) {   // ordreMode : « naturel »
   // Le planning : pour chaque lacet, des morceaux de tirage [t0, t1, de u à u'] (u : la part retirée, de 0 à 1 = arrivée sur l'axe). Naturel : un morceau par
   // lacet, dans l'ordre des numéros ; entiers : idem dans un ordre tiré ; morceaux : chaque lacet est coupé en 2 à 5 morceaux de longueurs tirées, et on
   // change de brin quand on veut (entrelacement tiré, l'ordre propre à chaque lacet est gardé). Le temps d'un morceau est proportionnel à la longueur retirée.
-  const mode = graine === undefined || graine === null ? 'naturel' : (ordreMode || 'entiers');
+  const mode = graine === undefined || graine === null ? 'naturel' : (ordreMode || 'entiers');   // naturel, entiers, morceaux, rencontres
   let a0 = (graine || 0) >>> 0;
   const hasard = () => { a0 = (a0 + 0x6D2B79F5) >>> 0; let t = a0; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const retire = rubans.map((r) => Math.max(1, (r.cum[r.ia0] - r.cum[r.k0]) + (r.cum[r.kFin] - r.cum[r.ib0])));   // la longueur retirée par un lacet entier
   const files = rubans.map((r, i) => {   // les morceaux de chaque lacet, dans l'ordre
+    if (mode === 'rencontres') return Array.from({ length: r.jBout }, (_, j) => [j / r.jBout, (j + 1) / r.jBout]);   // une rencontre avec l'axe par morceau
     if (mode !== 'morceaux') return [[0, 1]];
     const q = 2 + Math.floor(hasard() * 4);
     const coupes = Array.from({ length: q - 1 }, () => hasard()).sort((x, y) => x - y);
@@ -370,7 +371,7 @@ function filmRetraction(mot, graine, ordreMode) {   // ordreMode : « naturel »
     return bornes.slice(1).map((b, j) => [bornes[j], b]);
   });
   let sequence = [];   // [lacet, de, à]
-  if (mode === 'morceaux') {
+  if (mode === 'morceaux' || mode === 'rencontres') {   // on choisit un brin au hasard parmi ceux qui ne sont pas finis, on tire son prochain morceau
     const reste = files.map((f) => f.slice());
     while (reste.some((f) => f.length)) {
       const vivants = reste.map((f, i) => (f.length ? i : -1)).filter((i) => i >= 0);
@@ -383,7 +384,12 @@ function filmRetraction(mot, graine, ordreMode) {   // ordreMode : « naturel »
     if (mode === 'entiers') for (let i = ordreL.length - 1; i > 0; i--) { const j = Math.floor(hasard() * (i + 1)); [ordreL[i], ordreL[j]] = [ordreL[j], ordreL[i]]; }
     sequence = ordreL.map((i) => [i, 0, 1]);
   }
-  const poids = sequence.map(([i, de, a]) => (a - de) * retire[i]);
+  const poids = sequence.map(([i, de, a]) => {
+    const r = rubans[i];
+    if (mode !== 'rencontres') return (a - de) * retire[i];
+    const q = r.jBout - Math.round(de * r.jBout);   // le pas va du pied q au pied q − 1
+    return Math.max(1, 2 * (r.cum[r.pieds[q]] - r.cum[r.pieds[q - 1]]));
+  });
   const somme = poids.reduce((x, y) => x + y, 0);
   let t0 = 0;
   const plan = rubans.map(() => []);   // plan[i] : les morceaux {t0, t1, de, a} du lacet i
@@ -397,10 +403,17 @@ function filmRetraction(mot, graine, ordreMode) {   // ordreMode : « naturel »
     return u;
   };
   const ordreTirage = sequence.map(([i]) => i).filter((i, j, tab) => tab.indexOf(i) === j);   // l'ordre dans lequel on commence les lacets
+  // L'indice du point du brin d'aller où s'arrête le bouchon quand la part retirée est u (0 à 1). Mode « rencontres » : u compte les rencontres du lacet avec
+  // l'axe (les pieds) de la pointe vers le clou, et le bouchon va de pied en pied (entre deux pieds : interpolé) ; sinon : linéaire en indice.
+  const iaDe = (r, u) => {
+    if (mode !== 'rencontres') return Math.round(r.ia0 - u * (r.ia0 - r.k0));
+    const q = r.jBout - u * r.jBout, q0 = Math.floor(q), q1 = Math.ceil(q);
+    return Math.round(q0 === q1 ? r.pieds[q0] : r.pieds[q0] * (q1 - q) + r.pieds[q1] * (q - q0));
+  };
   // les positions des trous au temps t de la rétractation (le centre du bouchon est le milieu de ses deux extrémités) : peu coûteux, sert à lire le mot
   // sur un échantillonnage beaucoup plus fin que les images
   const trousAu = (t) => rubans.map((r, i) => {
-    const u = avancement(i, t), ia = Math.round(r.ia0 - u * (r.ia0 - r.k0));
+    const u = avancement(i, t), ia = iaDe(r, u);
     if (ia >= r.ia0) return trous[r.p].slice();
     const ib = Math.max(r.ib0, Math.min(r.kFin, r.vis[ia]));
     return [(r.pts[ia][0] + r.pts[ib][0]) / 2, (r.pts[ia][1] + r.pts[ib][1]) / 2];
@@ -411,7 +424,7 @@ function filmRetraction(mot, graine, ordreMode) {   // ordreMode : « naturel »
     const lacets = [], nouveaux = trous.map((q) => q.slice());
     rubans.forEach((r) => {
       const u = avancement(rubans.indexOf(r), t);
-      const ia = Math.round(r.ia0 - u * (r.ia0 - r.k0));
+      const ia = iaDe(r, u);
       if (ia >= r.ia0) { lacets.push(r.pts.flat()); return; }   // pas encore tiré : le lacet entier, le trou à sa place
       const ib = Math.max(r.ib0, Math.min(r.kFin, r.vis[ia]));
       const { arc, M } = bouchon(r, ia, ib);
@@ -449,7 +462,7 @@ function filmRetraction(mot, graine, ordreMode) {   // ordreMode : « naturel »
   }
   const motGenere = lettres.map((x) => x[1]);
   retour[0].lettres = lettres.flat();   // pour le banc : le mot s'écrit sous le film, à mesure
-  let message = `mot obtenu (${motGenere.length} lettres)` + (mode === 'morceaux' ? `, lacets tirés par morceaux dans le désordre (graine ${graine}, ${sequence.length} tirages, ordre de départ ${ordreTirage.map((i) => i + 1).join(' ')})` : mode === 'entiers' ? `, lacets tirés dans l'ordre ${ordreTirage.map((i) => i + 1).join(' ')} (graine ${graine})` : '');
+  let message = `mot obtenu (${motGenere.length} lettres)` + (mode === 'rencontres' ? `, un brin au hasard à chaque tirage, le trou va à la prochaine rencontre de l'axe (graine ${graine}, ${sequence.length} tirages, ordre de départ ${ordreTirage.map((i) => i + 1).join(' ')})` : mode === 'morceaux' ? `, lacets tirés par morceaux dans le désordre (graine ${graine}, ${sequence.length} tirages, ordre de départ ${ordreTirage.map((i) => i + 1).join(' ')})` : mode === 'entiers' ? `, lacets tirés dans l'ordre ${ordreTirage.map((i) => i + 1).join(' ')} (graine ${graine})` : '');
   if (motGenere.length && n >= 2) {
     const egal = (m1, m2) => { const a = self.ardoise.analyse(m1), b = self.ardoise.analyse(m2); if (a.erreur || b.erreur) return null; const fa = Array.from(a.fn).map((w) => Array.from(w).join(' ')), fb = Array.from(b.fn).map((w) => Array.from(w).join(' ')); return a.n === b.n && fa.join('|') === fb.join('|'); };
     const e1 = egal(mot, motGenere);

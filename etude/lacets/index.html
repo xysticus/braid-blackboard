@@ -82,7 +82,8 @@
         <select id="ordre-mode">
           <option value="naturel">naturel : l'un après l'autre, par numéro</option>
           <option value="entiers">au hasard : lacets entiers</option>
-          <option value="morceaux">au hasard : par morceaux, on change de brin quand on veut</option>
+          <option value="rencontres">au hasard : un brin, puis un autre ; le trou va à la prochaine rencontre de l'axe</option>
+          <option value="morceaux">au hasard : par morceaux arbitraires (bouchons arrêtés n'importe où)</option>
         </select></label>
       <label>graine <input type="number" id="graine" min="0" step="1" value="1"></label>
       <button type="button" id="tirage" title="un nouveau tirage au hasard (la graine rejoue un tirage : ?graine=N&amp;ordre=morceaux)">nouveau tirage</button>
