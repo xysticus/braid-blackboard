@@ -55,7 +55,7 @@
     </div>
     <div class="etat options">
       <label title="le film étudié : les lacets conformes (vue 2 de la page), les lacets sur la triangulation mobile (vue 3) ou le diagramme de courbes (vue 1) ; « détendu » s'applique aux deux, les autres cases d'essai aux lacets conformes seulement (recalcule le film)">film
-        <select id="film"><option value="conforme" selected>lacets conformes</option><option value="triangulation">triangulation</option><option value="triangulation_envers">triangulation à l'envers (faire et défaire)</option><option value="triangulation_cordes">cordes sur chevilles (rétractation)</option><option value="triangulation_cordes_locale">cordes, tension locale (se referme derrière le trou)</option><option value="retractation">rétractation (on tire sur les lacets)</option><option value="diagramme">diagramme de courbes</option></select></label>
+        <select id="film"><option value="conforme" selected>lacets conformes</option><option value="triangulation">triangulation</option><option value="triangulation_envers">triangulation à l'envers (faire et défaire)</option><option value="triangulation_cordes">cordes sur chevilles (rétractation)</option><option value="triangulation_cordes_locale">cordes, tension locale (se referme derrière le trou)</option><option value="retractation">rétractation (on tire sur les lacets)</option><option value="curseurs">curseurs : je fais coulisser les trous moi-même</option><option value="diagramme">diagramme de courbes</option></select></label>
       <label><input type="checkbox" id="c-construction" checked> construction</label>
       <label><input type="checkbox" id="c-tangentes" checked> tangentes</label>
       <label><input type="checkbox" id="c-points" checked> points</label>
@@ -87,6 +87,14 @@
         </select></label>
       <label>graine <input type="number" id="graine" min="0" step="1" value="1"></label>
       <button type="button" id="tirage" title="un nouveau tirage au hasard (la graine rejoue un tirage : ?graine=N&amp;ordre=morceaux)">nouveau tirage</button>
+    </div>
+    <div id="curseurs" class="reglages" hidden>
+      <strong>Curseurs</strong>
+      <span class="aide">Fais coulisser chaque trou le long de son lacet : le méandre complet est dessiné en pâle, c'est sur lui que le trou évolue. Les lettres s'écrivent à mesure (en reculant, les lettres inverses se simplifient).</span>
+      <div id="curseurs-liste"></div>
+      <div class="boutons"><button type="button" id="curseurs-zero">tout au départ</button> <button type="button" id="curseurs-plein">tout au bout</button></div>
+      <div id="curseurs-mot"></div>
+      <div id="curseurs-etat"></div>
     </div>
     <pre id="journal" class="journal" hidden></pre>
   </section>

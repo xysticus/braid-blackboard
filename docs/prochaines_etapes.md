@@ -34,3 +34,6 @@ et entraîne les lacets.
    13 mots essayés) ; les trous sont bien alignés et dans l'ordre au départ. **Fait dans le banc (2026-11-25), idée de l'utilisateur** : un *méandre témoin* à côté, dessiné par
    la méthode conforme avec le mot obtenu, **avec le même timing** : la lettre écrite à l'image k du film de rétractation est jouée dans le film
    conforme à ce moment-là.
+   **Fait dans le banc (2026-11-25) : des curseurs pour faire coulisser soi-même les trous** le long de leurs lacets (un curseur par lacet, éventuellement
+   crantés sur les rencontres de l'axe) ; le mot s'écrit en direct dans l'ordre des gestes et le méandre témoin suit. Le tirage au hasard du banc
+   (`filmRetraction`, mode `rencontres`) en est la version automatique.

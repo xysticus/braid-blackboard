@@ -377,6 +377,11 @@ function dessine(k) {
     ctx.stroke();
   }
   if (etat.construction && image.construction) segments(ctx, image.construction, image.opacites, etat.etude && image.etude ? stylesDeConstruction(image) : null);
+  if (etat.film === 'curseurs' && etat.fantome) {   // le méandre complet, en pâle et aux mêmes couleurs : c'est sur lui que les trous évoluent
+    ctx.globalAlpha = 0.22;
+    etat.fantome.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3.5; trace(ctx, p); });
+    ctx.globalAlpha = 1;
+  }
   const deux = image.lacets_bis && image.lacets_bis.length;   // mode pur : deux dessins, au choix
   const morph = deux && etat.morph && image.lacets_morph && image.lacets_morph.length;   // mode pur : la transformation en couleur, le plein et le pointillé estompés
   if (morph) ctx.globalAlpha = 0.35;
@@ -624,6 +629,8 @@ function termine(message) {
 // du film où elle s'écrit (image 0 : les lettres sont des paires [image, lettre]) ; entre deux lettres, la lettre suivante avance de façon linéaire.
 function arreteTemoin() {
   if (etat.temoin && etat.temoin.travailleur) etat.temoin.travailleur.terminate();
+  if (etat.temoinFixe) { etat.temoinFixe.terminate(); etat.temoinFixe = null; }
+  etat.curseurs = null;
   etat.temoin = null;
   $('temoin').hidden = true;
 }
@@ -702,6 +709,128 @@ function dessineTemoin(k) {
   disques(ctx, image.clou, 4, '#000');
 }
 
+// ---------------------------------------------------------------- les curseurs : on fait coulisser les trous soi-même
+
+function lanceCurseurs(mot) {
+  $('etat-calcul').innerHTML = '<span>préparation des curseurs…</span>';
+  $('temoin').hidden = false;
+  $('temoin-mot').textContent = '';
+  $('temoin-etat').innerHTML = '';
+  efface2(toileTemoin);
+  let w;
+  try { w = new Worker('../../web/travail.js?v=' + Date.now()); } catch (e) { return; }
+  const c = { travailleur: w, attente: false, en_attente: {}, glissieres: [], jBout: [], mot };
+  etat.travailleur = w;
+  etat.curseurs = c;
+  etat.fantome = null;
+  w.onmessage = (e) => {
+    const d = e.data;
+    if (etat.curseurs !== c) return;
+    if (d.type === 'curseurs-init') {
+      c.jBout = d.jBout;
+      etat.vue = calculeVue([d.plein]);   // la même vue pour tout : celle du méandre entier
+      etat.fantome = d.plein;               // et on le dessine en pâle sous les lacets : on voit où le trou va aller
+      construisGlissieres(c);
+      montreCurseurs(c, d);
+      $('etat-calcul').innerHTML = '';
+    } else if (d.type === 'curseurs-etat') {
+      c.attente = false;
+      montreCurseurs(c, d);
+      envoieCurseur(c);
+    } else if (d.type === 'fini') {
+      $('etat-calcul').innerHTML = `<span class="ko">${d.message || 'curseurs indisponibles'}</span>`;
+    }
+  };
+  w.postMessage({ mode: 'curseurs', mot });
+}
+
+function construisGlissieres(c) {
+  const liste = $('curseurs-liste');
+  liste.textContent = '';
+  c.glissieres = c.jBout.map((jb, i) => {
+    const ligne = document.createElement('div');
+    ligne.className = 'glissiere';
+    const pastille = document.createElement('span');
+    pastille.className = 'pastille';
+    pastille.style.background = PALETTE[i % PALETTE.length];
+    const entree = document.createElement('input');
+    entree.type = 'range'; entree.min = '0'; entree.max = String(jb); entree.step = '0.01'; entree.value = '0';
+    entree.setAttribute('aria-label', `trou du lacet ${i + 1}`);
+    if (jb === 0) entree.disabled = true;
+    const valeur = document.createElement('span');
+    valeur.className = 'valeur';
+    valeur.textContent = jb === 0 ? 'aucune rencontre' : `0 / ${jb}`;
+    entree.oninput = () => {
+      const x = Number(entree.value);   // pas d'aimant : il gênait pour faire glisser un trou depuis le départ
+      valeur.textContent = `${Number.isInteger(x) ? x : x.toFixed(2)} / ${jb}`;
+      c.en_attente[i] = x;
+      envoieCurseur(c);
+    };
+    ligne.append(pastille, entree, valeur);
+    liste.appendChild(ligne);
+    return { entree, valeur };
+  });
+  $('curseurs-zero').onclick = () => { c.en_attente = {}; c.travailleur.postMessage({ type: 'curseurs-zero' }); };
+  $('curseurs-plein').onclick = () => { c.en_attente = {}; c.travailleur.postMessage({ type: 'curseurs-plein' }); };
+}
+
+// Un message à la fois au worker (la dernière valeur de chaque curseur l'emporte).
+function envoieCurseur(c) {
+  if (c.attente) return;
+  const k = Object.keys(c.en_attente)[0];
+  if (k === undefined) return;
+  const x = c.en_attente[k];
+  delete c.en_attente[k];
+  c.attente = true;
+  c.travailleur.postMessage({ type: 'curseur', i: Number(k), x });
+}
+
+function montreCurseurs(c, d) {
+  etat.images = [d.image];
+  etat.total = 1;
+  etat.k = 0;
+  dessine(0);
+  d.q.forEach((x, i) => {
+    if (!c.glissieres[i]) return;
+    if (Math.abs(Number(c.glissieres[i].entree.value) - x) > 1e-6) c.glissieres[i].entree.value = String(x);
+    c.glissieres[i].valeur.textContent = c.jBout[i] === 0 ? 'aucune rencontre' : `${Number.isInteger(x) ? x : x.toFixed(2)} / ${c.jBout[i]}`;
+  });
+  $('curseurs-mot').textContent = 'mot écrit par les trous : ' + (d.mot.map(nomLettre).join(' ') || '(rien encore)') + (d.mot.length ? ` (${d.mot.length} lettres)` : '');
+  $('curseurs-etat').innerHTML = d.egal === null ? '' : d.egal ? '<span class="ok">tous les trous sont au bout : les méandres sont égaux</span>' : '<span class="attention">tous les trous sont au bout : les méandres diffèrent</span>';
+  $('temoin-mot').textContent = d.mot.map(nomLettre).join(' ');
+  demandeTemoinCurseurs(c, d.mot);
+}
+
+// Le méandre témoin des curseurs : le méandre conforme du mot écrit jusque-là (calculé par un second worker, sans les limites de mots).
+function demandeTemoinCurseurs(c, mot) {
+  clearTimeout(c.minuterieTemoin);
+  c.minuterieTemoin = setTimeout(() => {
+    if (etat.curseurs !== c) return;
+    if (!mot.length) { efface2(toileTemoin); $('temoin-etat').innerHTML = '<span>mot vide : rien à dessiner</span>'; return; }
+    if (!etat.temoinFixe) {
+      try { etat.temoinFixe = new Worker('../../web/travail.js?v=' + Date.now()); } catch (e) { return; }
+      etat.temoinFixe.onmessage = (e) => {
+        const d = e.data;
+        if (d.type === 'statique') { $('temoin-etat').innerHTML = ''; traceTemoin(d.image, calculeVue([d.image])); }
+        else if (d.type === 'fixe-fini' && d.vide) { efface2(toileTemoin); $('temoin-etat').innerHTML = '<span class="attention">méandre non calculé pour ce mot</span>'; }
+      };
+    }
+    $('temoin-etat').innerHTML = '<span>calcul du méandre témoin…</span>';
+    etat.temoinFixe.postMessage({ type: 'fixe', mode: 'conforme', mot, sansLimites: true });
+  }, 120);
+}
+
+function traceTemoin(image, v) {
+  efface2(toileTemoin);
+  const ctx = toileTemoin.getContext('2d');
+  ctx.setTransform(ECHELLE * v.s, 0, 0, ECHELLE * v.s, ECHELLE * v.tx, ECHELLE * v.ty);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3.5; trace(ctx, p); });
+  disques(ctx, image.trous, 4, '#000');
+  disques(ctx, image.clou, 4, '#000');
+}
+
 function chargePrecalcule(mot, sorte) {
   return fetch(fichierPrecalcule(mot, sorte)).then((r) => { if (!r.ok) throw new Error('absent'); return r.json(); }).then((d) => {
     if (etat.mot.join(' ') !== mot.join(' ')) return true;   // le mot a changé entre-temps
@@ -723,8 +852,11 @@ function lance(mot) {
   etat.mot = mot; etat.images = []; etat.total = 0; etat.k = 0; etat.vue = null;
   efface();
   $('commandes').hidden = true;
+  $('curseurs').hidden = etat.film !== 'curseurs';
+  if (etat.film !== 'curseurs') etat.fantome = null;
   $('mot-titre').textContent = mot.map(nomLettre).join(' ');
-  $('film-titre').textContent = { conforme: 'Lacets conformes', triangulation: 'Triangulation', diagramme: 'Diagramme de courbes' }[etat.film];
+  $('film-titre').textContent = { conforme: 'Lacets conformes', triangulation: 'Triangulation', diagramme: 'Diagramme de courbes', curseurs: 'Curseurs' }[etat.film] || 'Lacets';
+  if (etat.film === 'curseurs') { lanceCurseurs(mot); return; }
   if (etat.precalcule) {
     const sorte = etat.precalcule;
     $('etat-calcul').innerHTML = '<span>chargement des images précalculées…</span>';
@@ -804,6 +936,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (q.has('graine')) { etat.graine = Number(q.get('graine')); $('graine').value = String(etat.graine); if (!q.has('ordre')) { etat.ordre = 'entiers'; $('ordre-mode').value = 'entiers'; } }
     $('graine').disabled = etat.ordre === 'naturel'; }
   if (new URLSearchParams(location.search).has('retractation')) { etat.film = 'retractation'; $('film').value = 'retractation'; }   // ?retractation : on tire sur les lacets
+  if (new URLSearchParams(location.search).has('curseurs')) { etat.film = 'curseurs'; $('film').value = 'curseurs'; }   // ?curseurs : on fait coulisser les trous soi-même
   if (new URLSearchParams(location.search).has('nondetendu')) { etat.detendu = false; $('c-detendu').checked = false; }   // ?nondetendu : le film à maillage seul (captures)
   SEULEMENT_CONFORME.concat(HORS_PUR, SEULEMENT_PUR).forEach((id) => { const l = $(id).closest('label'); l.dataset.titre = l.title || ''; });   // le titre d'origine, rendu quand on revient aux lacets conformes
   metsAJourOptions();

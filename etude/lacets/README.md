@@ -128,6 +128,19 @@ dans son ruban, et les rubans de deux lacets ne se coupent pas ; les trajets des
 bouchon), et non plus sur des cordes entre images ; avec les cordes, 3 tirages par morceaux sur 40 donnaient des mots faux (signes de lettres perdus quand un trou
 parcourt vite une spirale serrée).
 
+## Les curseurs : on fait coulisser les trous soi-même (2026-11-25)
+
+Option « curseurs : je fais coulisser les trous moi-même » du sélecteur « film » (ou `?curseurs`). Un curseur par lacet (même couleur) : de 0 (le lacet est
+retiré jusqu'à son arrivée sur l'axe : l'état de départ, trous alignés dans l'ordre, mot vide) à son nombre de **rencontres de l'axe** (le lacet entier) ; **pas d'aimant** (essayé puis retiré à la demande de l'utilisateur : il gênait pour
+faire glisser un trou depuis le départ, et on ne sait pas où le trou va aller). **Le méandre complet est dessiné en pâle**, aux couleurs des lacets, sous le dessin :
+c'est sur lui que les trous évoluent (`etat.fantome`). Le mot s'écrit à mesure sous les curseurs, lu sur le mouvement
+réel du trou comme dans le film ; en reculant un curseur, les lettres inverses s'écrivent et **une lettre qui défait la précédente l'efface** (σσ⁻¹, réduction libre
+des paires adjacentes seulement). Le méandre témoin dessine à droite, par la méthode conforme, le méandre du mot écrit jusque-là (second worker, sans limites de
+mots, 120 ms de délai). Quand tous les curseurs sont au bout, le méandre d'origine est comparé à celui du mot (« les méandres sont égaux »). Boutons « tout au départ » et
+« tout au bout ». Le worker garde l'état (`demarreCurseurs` dans `web/travail.js`, messages `curseur`, `curseurs-zero`, `curseurs-plein`) ; la préparation des rubans est
+partagée avec le film (`prepareRetraction`). Vérifié en Node : après 60 déplacements aléatoires en avant et en arrière puis « tout au bout », méandres égaux sur
+`1 -2 1 -2`, `2 3 1 4 3 2`, `4 3 -1 -1 2 -4 1` et la tresse chargée.
+
 ## Le film de la triangulation
 
 Le sélecteur « film » choisit entre les lacets conformes (vue 2 de la page), la triangulation (vue 3, `?triangulation`) et le
