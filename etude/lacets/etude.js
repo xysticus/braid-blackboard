@@ -86,7 +86,6 @@ const etat = {
 };
 const toile = $('toile');
 const toileTemoin = $('toile-temoin');
-const LETTRES_TEMOIN = 20;   // au-delà, le méandre témoin (conforme, 48 images par lettre) pèse trop lourd en mémoire
 
 function etenduePartout(images) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -599,7 +598,8 @@ function verifiePrecalcules(mot) {
 function termine(message) {
   etat.total = etat.images.length;
   etat.vue = calculeVue(etat.images);
-  $('etat-calcul').innerHTML = message ? `<span class="attention">${message}</span>` : '';
+  // un message de succès (« les méandres sont égaux ») n'est pas un avertissement : pas d'orange
+  $('etat-calcul').innerHTML = message ? `<span class="${/les méandres sont égaux/.test(message) ? 'ok' : 'attention'}">${message}</span>` : '';
   $('curseur').max = String(etat.total - 1);
   $('numero').max = String(etat.total);
   $('commandes').hidden = false;
@@ -627,10 +627,6 @@ function lanceTemoin() {
   $('temoin').hidden = false;
   $('temoin-mot').textContent = '';
   efface2(toileTemoin);
-  if (mot.length > LETTRES_TEMOIN) {
-    $('temoin-etat').innerHTML = `<span class="attention">mot de ${mot.length} lettres : trop long pour le témoin (${LETTRES_TEMOIN} lettres au plus)</span>`;
-    return;
-  }
   $('temoin-etat').innerHTML = '<progress max="1" value="0"></progress><span>calcul du témoin…</span>';
   let w;
   try { w = new Worker('../../web/travail.js?v=' + Date.now()); } catch (e) { return; }

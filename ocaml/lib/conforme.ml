@@ -276,13 +276,23 @@ let image carte (w : Complex.t) =
 (* Antécédent d'un point intérieur, par la méthode de Newton (les tables du bord sont interpolées : pas mieux que
    ~1e-6 près, on s'arrête à 1e-4). *)
 let antecedent carte (z : Complex.t) =
+  (* Si Newton n'atteint pas 1e-4 mais oscille à moins d'un demi-pixel du but (la précision de [image] est limitée quand le point est loin des
+     sommets : 0,08 px pour le clou dans un état de 4 3 -4 2 1), on rend le meilleur point rencontré au lieu d'abandonner le film. *)
+  let meilleur = ref None in
   let rec newton w iteration =
-    if iteration = 50 then raise (Pas_de_convergence "antécédent d'un point intérieur : Newton ne converge pas");
-    let e = Complex.sub (image carte w) z in
-    if module_c e < 1e-4 then w
-    else
-      let w = Complex.sub w (Complex.div e (derivee carte w)) in
-      newton { w with im = Float.max w.im 1e-3 } (iteration + 1)
+    if iteration = 50 then
+      (match !meilleur with
+       | Some (m, w) when m < 0.5 -> w
+       | _ -> raise (Pas_de_convergence "antécédent d'un point intérieur : Newton ne converge pas"))
+    else begin
+      let e = Complex.sub (image carte w) z in
+      let m = module_c e in
+      (match !meilleur with Some (b, _) when b <= m -> () | _ -> meilleur := Some (m, w));
+      if m < 1e-4 then w
+      else
+        let w = Complex.sub w (Complex.div e (derivee carte w)) in
+        newton { w with im = Float.max w.im 1e-3 } (iteration + 1)
+    end
   in
   newton { re = z.re -. carte.delta; im = Float.max z.im 1. } 0
 

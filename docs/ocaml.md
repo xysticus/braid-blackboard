@@ -73,3 +73,9 @@ Aussi installé sous Fedora (machine personnelle, 2026-11-17) : `sudo dnf instal
 bubblewrap, gcc déjà présents), `opam init --bare --shell-setup --enable-shell-hook`, puis le même
 `opam switch create .` dans `ocaml/`. `dune test` passe (40 tests) ; films de la triangulation et de l'escargot
 identiques octet pour octet au Python avec le ffmpeg de conda (`FFMPEG=…/envs/braid-blackboard/bin/ffmpeg`).
+
+**Newton de l'antécédent d'un point intérieur (2026-11-25).** `Conforme.antecedent` (l'antécédent du clou dans la carte du bas) pouvait
+lever `Pas_de_convergence` alors que Newton oscillait à moins d'un pixel du but : sa précision est limitée quand le point est loin des sommets (0,08 px
+pour le clou dans l'état de `4 3 -4 2 1`, lettre σ₁ à l'image 15). Il rend maintenant le meilleur point rencontré si l'erreur est sous 0,5 px, et
+n'abandonne que sinon. Trouvé par le méandre témoin du banc d'essai (le mot `4 3 -4 2 1 -2 -2`, que les trous écrivent pour `4 3 -1 -1 2 -4 1`) ;
+aucun changement quand Newton converge (les tests contre le Python passent).

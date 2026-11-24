@@ -52,3 +52,5 @@ h1 { font-size: 1.4rem; }
 
 /* une case grisée (sans objet pour le film affiché, ou fichier précalculé absent) */
 label:has(input:disabled) { color: #a8a8a8; cursor: default; }
+.etat .ok { color: #2d7a3a; font-weight: 500; }
+@media (prefers-color-scheme: dark) { .etat .ok { color: #7fd18a; } }

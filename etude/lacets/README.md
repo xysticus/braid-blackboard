@@ -109,7 +109,7 @@ d'origine (`1 -2 1 -2` donne `2 1 2 2 -1 -1 -2 -2`) mais lui est équivalent. **
 qu'il est produit (le mot long est précalculé, ses lettres sont ajoutées au témoin à mesure qu'elles apparaissent sous le film) : avant la première lettre, le
 dessin de départ ; une lettre commence à s'animer à l'image où elle apparaît et s'achève à l'image où la suivante apparaît (la dernière : à la fin du film ; des
 lettres écrites à la même image s'enchaînent sans durée) ; le titre du panneau ne montre que les lettres déjà produites (`imageTemoin`, `motProduit` dans `etude.js` ;
-les dates des lettres sont les paires [image, lettre] portées par l'image 0). À la fin du film les deux méandres se superposent à l'œil (vérifié sur `1 -2 1 -2`). Le film conforme du témoin se calcule dans un second worker, **sans les limites de mots** (`ardoise.sans_limites`, banc seulement) ; au-delà de 20 lettres écrites (`LETTRES_TEMOIN`) le témoin n'est pas calculé (mémoire : 48 images par lettre), par exemple pour la tresse chargée (41 lettres).
+les dates des lettres sont les paires [image, lettre] portées par l'image 0). À la fin du film les deux méandres se superposent à l'œil (vérifié sur `1 -2 1 -2`). Le film conforme du témoin se calcule dans un second worker, **sans les limites de mots** (`ardoise.sans_limites`, banc seulement)  ; plus de limite de longueur pour le témoin : il est égal au méandre de gauche, donc pas plus long à dessiner (la tresse chargée, 41 lettres écrites, se calcule en 12 s).
 
 ## Le film de la triangulation
 
