@@ -573,11 +573,13 @@ onmessage = (e) => {
   if (d.type === 'curseurs-zero') { if (CURSEURS) CURSEURS.zero(); return; }
   if (d.type === 'curseurs-plein') { if (CURSEURS) CURSEURS.plein(); return; }
   if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme (d.id : rendu tel quel ; d.premiere : aussi l'image clé de départ du film)
-    const r = self.ardoise.film_lettres(d.mode, d.mot, [d.k], !!d.premiere, (im, k) => {
+    const rendu = (im, k) => {
       if (d.brutes && forceDetente(k) > 0) { postMessage({ type: 'brute', image: im, k }); return; }   // à détendre : en double précision
       const f = enFloat32(im);
       postMessage({ type: 'image', image: f, k, id: d.id }, tampons(f));
-    });
+    };
+    // d.rapide : le nombre d'images par lettre, sans vérification des croisements (le méandre témoin du banc) ; sinon 48 images vérifiées
+    const r = d.rapide ? self.ardoise.film_lettres_rapide(d.mode, d.mot, [d.k], !!d.premiere, d.rapide, rendu) : self.ardoise.film_lettres(d.mode, d.mot, [d.k], !!d.premiere, rendu);
     postMessage({ type: 'lettre', k: d.k, douteuses: r.douteuses || 0, erreur: r.erreur, id: d.id });
     return;
   }

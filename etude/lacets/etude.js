@@ -631,7 +631,7 @@ function termine(message) {
 // du film où elle s'écrit (image 0 : les lettres sont des paires [image, lettre]) ; entre deux lettres, la lettre suivante avance de façon linéaire.
 function arreteTemoin() {
   if (etat.temoin && etat.temoin.travailleur) etat.temoin.travailleur.terminate();
-  if (etat.temoinFixe) { etat.temoinFixe.terminate(); etat.temoinFixe = null; }
+  if (etat.temoinPool) { etat.temoinPool.forEach((w) => w.terminate()); etat.temoinPool = null; temoinRappels.clear(); }
   etat.curseurs = null;
   etat.libre = null;
   etat.temoin = null;
@@ -805,22 +805,31 @@ function montreCurseurs(c, d) {
 }
 
 // Le méandre témoin des curseurs : le méandre conforme du mot écrit jusque-là (calculé par un second worker, sans les limites de mots).
-// Un second worker calcule les méandres du témoin ; chaque appel porte un identifiant, rendu avec la réponse (images, fin).
+// Un petit groupe de workers calcule les méandres du témoin (chaque lettre du film conforme est indépendante des autres) ; chaque appel porte un identifiant, rendu avec la réponse.
 const temoinRappels = new Map();
 let compteurTemoin = 0;
+const NB_TEMOIN = Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 4) - 1));
 function appelTemoin(message, rappel) {
-  if (!etat.temoinFixe) {
-    try { etat.temoinFixe = new Worker('../../web/travail.js?v=' + Date.now()); } catch (e) { return false; }
-    etat.temoinFixe.onmessage = (e) => {
-      const d = e.data, r = temoinRappels.get(d.id);
-      if (!r) return;
-      r(d);
-      if (d.type === 'fixe-fini' || d.type === 'lettre') temoinRappels.delete(d.id);
-    };
+  if (!etat.temoinPool) {
+    etat.temoinPool = [];
+    for (let k = 0; k < NB_TEMOIN; k++) {
+      let w;
+      try { w = new Worker('../../web/travail.js?v=' + (window.versionBanc || Date.now())); } catch (e) { etat.temoinPool = null; return false; }
+      w.attente = 0;
+      w.onmessage = (e) => {
+        const d = e.data, r = temoinRappels.get(d.id);
+        if (!r) return;
+        r(d);
+        if (d.type === 'fixe-fini' || d.type === 'lettre') { temoinRappels.delete(d.id); w.attente--; }
+      };
+      etat.temoinPool.push(w);
+    }
   }
+  const w = etat.temoinPool.reduce((a, b) => (b.attente < a.attente ? b : a));
   const id = ++compteurTemoin;
   temoinRappels.set(id, rappel);
-  etat.temoinFixe.postMessage({ ...message, id, sansLimites: true });
+  w.attente++;
+  w.postMessage({ ...message, id, sansLimites: true });
   return true;
 }
 
@@ -857,7 +866,9 @@ function traceTemoin(image, v) {
 // avec une avancée u de 0 à 1, et le méandre témoin montre l'image correspondante du film conforme de cette lettre (calculé à la demande, mis en cache) ; la lettre s'écrit à u = 1.
 // Les coordonnées sont celles de l'image de 800 × 800 (le canvas en fait 1600).
 const LIBRE = { axe: 400, x0: 160, x1: 640, rayon: 9, distanceMin: 26, prise: 34, demi: 24 };
-const temoinLibre = { base: new Map(), lettres: new Map() };   // les méandres des mots validés ; les 48 images de chaque lettre en cours
+const PAS_TEMOIN = 24;                 // images par lettre pour le méandre témoin du mouvement libre (assez fin, deux fois plus rapide que 48)
+const LETTRES_EN_CACHE = 40;           // au plus : les plus anciennes sont oubliées (mémoire, téléphones)
+const temoinLibre = { base: new Map(), lettres: new Map(), file: [], enVol: 0 };   // méandres des mots validés ; images de chaque lettre ; précalculs à faire / en cours
 
 function lanceLibre() {
   const n = Math.max(2, Math.min(6, Number($('libre-n').value) || 3));
@@ -865,7 +876,7 @@ function lanceLibre() {
   const l = { n, trous, ordre: trous.map((t, k) => k), mot: [], pend: null, signeCroise: null, prise: null };
   etat.libre = l;
   etat.images = [];
-  temoinLibre.base.clear(); temoinLibre.lettres.clear();
+  temoinLibre.base.clear(); temoinLibre.lettres.clear(); temoinLibre.file = []; temoinLibre.enVol = 0;
   $('mot-titre').textContent = '';   // le mot de la page n'est pas utilisé ici
   $('etat-calcul').innerHTML = '';
   $('commandes').hidden = true;
@@ -873,7 +884,7 @@ function lanceLibre() {
   $('temoin-mot').textContent = '';
   $('temoin-etat').innerHTML = '<span>mot vide : rien à dessiner</span>';
   efface2(toileTemoin);
-  montreLibre(l);
+  montreLibre(l);   // et, au départ, le précalcul de toutes les lettres possibles à partir du mot vide
 }
 
 function dessineLibre(l) {
@@ -930,6 +941,7 @@ function evalueLibre(l, i) {
 
 // Le trou i va en (x, y) : en petits pas ; un trou ne peut pas en traverser un autre (distance minimale).
 function deplaceLibre(l, i, x, y) {
+  l.derniere = i;   // le dernier trou déplacé : ses paires voisines sont précalculées en premier
   const t = l.trous[i], x0 = t.x, y0 = t.y;
   const N = Math.max(1, Math.ceil(Math.hypot(x - x0, y - y0) / 4));
   for (let s = 1; s <= N; s++) {
@@ -945,46 +957,86 @@ function deplaceLibre(l, i, x, y) {
   }
 }
 
-// Le méandre témoin du mouvement libre : celui du mot validé, ou l'image du film de la lettre en cours à l'avancée u. Tout est calculé à la demande par le second worker.
-function majTemoinLibre(l) {
-  const mot = l.mot.slice(), cleMot = mot.join(' ');
-  const demandeBase = () => {
-    if (!mot.length || temoinLibre.base.has(cleMot)) return;
-    temoinLibre.base.set(cleMot, null);
-    appelTemoin({ type: 'fixe', mode: 'conforme', mot }, (d) => {
-      if (d.type === 'statique') { temoinLibre.base.set(cleMot, d.image); if (etat.libre === l) majTemoinLibre(l); }
-    });
-  };
-  const demandeLettre = (lettre) => {
-    const cle = cleMot + '|' + lettre;
-    if (temoinLibre.lettres.has(cle)) return temoinLibre.lettres.get(cle);
-    const f = { images: new Array(48).fill(null), initial: null, complet: false, vue: null };
-    temoinLibre.lettres.set(cle, f);
-    appelTemoin({ type: 'lettre', mode: 'conforme', mot: mot.concat([lettre]), k: mot.length, premiere: mot.length === 0 }, (d) => {
+// Le méandre témoin du mouvement libre : celui du mot validé, ou l'image du film de la lettre en cours à l'avancée u. Il est **précalculé** : dès qu'un mot est validé, on calcule en
+// arrière-plan (groupe de workers, file de priorités) le méandre du mot et les films de toutes les lettres σᵢ et σᵢ⁻¹ des paires voisines, d'abord celles du trou qu'on tient ; et quand un
+// passage est avancé (u ≥ 0,25), ceux du mot qui sera validé. Ainsi, quand le trou approche d'un voisin, les images sont déjà là.
+function pompeTemoinLibre(l) {
+  while (temoinLibre.enVol < NB_TEMOIN && temoinLibre.file.length) {
+    if (etat.libre !== l) { temoinLibre.file = []; return; }   // un autre exercice : on abandonne
+    const travail = temoinLibre.file.shift();
+    temoinLibre.enVol++;
+    travail(() => { if (etat.libre === l) { temoinLibre.enVol = Math.max(0, temoinLibre.enVol - 1); pompeTemoinLibre(l); } });
+  }
+}
+function enfileTemoinLibre(l, travail, urgent) {
+  if (urgent) temoinLibre.file.unshift(travail); else temoinLibre.file.push(travail);
+  pompeTemoinLibre(l);
+}
+
+function assureBaseLibre(l, mot, urgent) {
+  const cle = mot.join(' ');
+  if (!mot.length || temoinLibre.base.has(cle)) return;
+  temoinLibre.base.set(cle, null);
+  enfileTemoinLibre(l, (fini) => {
+    if (!appelTemoin({ type: 'fixe', mode: 'conforme', mot }, (d) => {
+      if (d.type === 'statique') { temoinLibre.base.set(cle, d.image); if (etat.libre === l) majTemoinLibre(l); }
+      else if (d.type === 'fixe-fini') fini();
+    })) fini();
+  }, urgent);
+}
+
+function assureLettreLibre(l, mot, lettre, urgent) {
+  const cle = mot.join(' ') + '|' + lettre;
+  const deja = temoinLibre.lettres.get(cle);
+  if (deja) return deja;
+  const f = { images: new Array(PAS_TEMOIN).fill(null), initial: null, complet: false, vue: null };
+  temoinLibre.lettres.set(cle, f);
+  if (temoinLibre.lettres.size > LETTRES_EN_CACHE) temoinLibre.lettres.delete(temoinLibre.lettres.keys().next().value);
+  enfileTemoinLibre(l, (fini) => {
+    if (!appelTemoin({ type: 'lettre', mode: 'conforme', mot: mot.concat([lettre]), k: mot.length, premiere: mot.length === 0, rapide: PAS_TEMOIN }, (d) => {
       if (d.type === 'image') {
-        const n = d.k - 48 * mot.length;
-        if (n >= 1 && n <= 48) f.images[n - 1] = d.image; else if (d.k === 0) f.initial = d.image;
+        const n = d.k - PAS_TEMOIN * mot.length;
+        if (n >= 1 && n <= PAS_TEMOIN) f.images[n - 1] = d.image; else if (d.k === 0) f.initial = d.image;
       } else if (d.type === 'lettre') {
         f.complet = !d.erreur && f.images.every((im) => im);
-        if (f.complet) f.vue = calculeVue([base0(), ...f.images].filter(Boolean));
+        if (f.complet) f.vue = calculeVue([mot.length ? temoinLibre.base.get(mot.join(' ')) : f.initial, ...f.images].filter(Boolean));
+        fini();
         if (etat.libre === l) majTemoinLibre(l);
       }
-    });
-    return f;
-  };
-  const base0 = () => (mot.length ? temoinLibre.base.get(cleMot) : (temoinLibre.lettres.get(cleMot + '|' + (l.pend ? l.pend.signe * (l.pend.j + 1) : ''))?.initial)) || null;
-  demandeBase();
+    })) fini();
+  }, urgent);
+  return f;
+}
+
+// Précalcule, pour un mot validé, son méandre et les films de toutes les lettres des paires voisines ; celles du trou tenu d'abord.
+function prechargeLibre(l, mot, trou, urgent) {
+  assureBaseLibre(l, mot, urgent);
+  const pos = trou === null || trou === undefined ? -1 : l.ordre.indexOf(trou);
+  const paires = Array.from({ length: l.n - 1 }, (_, j) => j).sort((a, b) => Math.min(Math.abs(a - pos), Math.abs(a + 1 - pos)) - Math.min(Math.abs(b - pos), Math.abs(b + 1 - pos)));
+  paires.forEach((j) => [1, -1].forEach((sg) => assureLettreLibre(l, mot, sg * (j + 1), urgent && pos >= 0 && (j === pos - 1 || j === pos))));
+}
+
+function majTemoinLibre(l) {
+  const mot = l.mot.slice(), cleMot = mot.join(' ');
+  if (l.dernierMot !== cleMot) { l.dernierMot = cleMot; prechargeLibre(l, mot, l.derniere, true); }   // un nouveau mot (ou le départ) : on précalcule
+  if (l.pend && l.pend.u >= 0.25) {   // le passage est avancé : on précalcule déjà pour le mot qui sera validé
+    const lettre = l.pend.signe * (l.pend.j + 1);
+    const suivant = mot.length && mot[mot.length - 1] === -lettre ? mot.slice(0, -1) : mot.concat([lettre]);
+    const cs = suivant.join(' ');
+    if (l.predit !== cs) { l.predit = cs; prechargeLibre(l, suivant, l.derniere, false); }
+  }
+  const base = mot.length ? temoinLibre.base.get(cleMot) || null : null;
   let image = null, vue = null;
   if (l.pend) {
-    const lettre = l.pend.signe * (l.pend.j + 1);
-    const f = demandeLettre(lettre);
+    const f = assureLettreLibre(l, mot, l.pend.signe * (l.pend.j + 1), true);
     if (f.complet) {
-      const k = Math.min(47, Math.max(0, Math.round(48 * l.pend.u) - 1));
-      image = f.images[k]; vue = f.vue;
-    } else image = base0();
-  } else image = mot.length ? temoinLibre.base.get(cleMot) : null;
+      image = f.images[Math.min(PAS_TEMOIN - 1, Math.max(0, Math.round(PAS_TEMOIN * l.pend.u) - 1))];
+      vue = f.vue;
+    } else image = mot.length ? base : f.initial;
+  } else image = base;
   if (image) { $('temoin-etat').innerHTML = ''; traceTemoin(image, vue || calculeVue([image])); }
   else if (!mot.length && !l.pend) { efface2(toileTemoin); $('temoin-etat').innerHTML = '<span>mot vide : rien à dessiner</span>'; }
+  else if (l.pend || mot.length) $('temoin-etat').innerHTML = '<span>calcul du méandre témoin…</span>';
 }
 
 function pointeLibre(ev) {
@@ -1000,6 +1052,7 @@ toile.addEventListener('pointerdown', (ev) => {
   l.trous.forEach((t, k) => { const d = Math.hypot(t.x - x, t.y - y); if (d < dmin) { dmin = d; i = k; } });
   if (i < 0) return;
   l.prise = i;
+  l.repart = (l.repart || 0) + 1;   // on attrape un trou : la répartition en cours s'arrête
   try { toile.setPointerCapture(ev.pointerId); } catch (e) { /* pointeur synthétique ou déjà relâché */ }
   ev.preventDefault();
 });
@@ -1021,7 +1074,24 @@ function lacheLibre() {
     const u = Math.min(1, (maintenant - debut) / 220);
     deplaceLibre(l, i, t.x, y0 + (LIBRE.axe - y0) * (1 - (1 - u) * (1 - u)));
     montreLibre(l);
-    if (u < 1) requestAnimationFrame(pas);
+    if (u < 1) requestAnimationFrame(pas); else repartitionLibre(l);   // arrivé sur l'axe : les trous se répartissent à nouveau
+  };
+  requestAnimationFrame(pas);
+}
+
+// Tous les trous sont sur l'axe, dans l'ordre : ils glissent le long de l'axe vers leurs places équitables (même ordre, donc aucune lettre ne s'écrit ni ne s'efface : la combinaison
+// convexe de deux suites ordonnées reste ordonnée) ; on n'a plus à les remettre en place à la main. Un nouveau geste interrompt ce glissement.
+function repartitionLibre(l) {
+  if (l.prise !== null) return;
+  const cibles = l.ordre.map((id, k) => LIBRE.x0 + (LIBRE.x1 - LIBRE.x0) * k / (l.n - 1));
+  const departs = l.ordre.map((id) => l.trous[id].x);
+  if (departs.every((x, k) => Math.abs(x - cibles[k]) < 0.5)) return;
+  const jeton = (l.repart = (l.repart || 0) + 1), debut = performance.now();
+  const pas = (maintenant) => {
+    if (etat.libre !== l || l.repart !== jeton || l.prise !== null) return;
+    const u = Math.min(1, (maintenant - debut) / 300), e = 1 - (1 - u) * (1 - u);
+    l.ordre.forEach((id, k) => { l.trous[id].x = departs[k] + (cibles[k] - departs[k]) * e; l.trous[id].y = LIBRE.axe; });
+    if (u < 1) { dessineLibre(l); requestAnimationFrame(pas); } else montreLibre(l);
   };
   requestAnimationFrame(pas);
 }

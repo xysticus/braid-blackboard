@@ -388,7 +388,7 @@ let statique_libre film =
 (* Une partie du film conforme, pour les workers auxiliaires de travail.js : l'image clé de départ (si premiere) et les
    lettres d'indices [lettres] ; [rendu] reçoit chaque image avec son numéro dans le film entier. Rend le nombre d'images
    douteuses (mots ou croisements), ou un message d'erreur. *)
-let film_lettres mode mot (lettres : float Js.js_array Js.t) (premiere : bool Js.t) rendu =
+let film_lettres_gen ~images ~verifie mode mot (lettres : float Js.js_array Js.t) (premiere : bool Js.t) rendu =
   try
     let tresse = tresse_de_js mot in
     let nom = Js.to_string mode in
@@ -399,25 +399,33 @@ let film_lettres mode mot (lettres : float Js.js_array Js.t) (premiere : bool Js
     verifie_limites ~conforme:true tresse;
     let lettres = List.sort compare (List.map int_of_float (Array.to_list (Js.to_array lettres))) in
     let premiere = Js.to_bool premiere in
-    let total = 1 + (nombre_images_conforme * List.length tresse) in
+    let total = 1 + (images * List.length tresse) in
     let numeros =
-      ref ((if premiere then [ 0 ] else []) @ List.concat_map (fun k -> List.init nombre_images_conforme (fun n -> 1 + (nombre_images_conforme * k) + n)) lettres)
+      ref ((if premiere then [ 0 ] else []) @ List.concat_map (fun k -> List.init images (fun n -> 1 + (images * k) + n)) lettres)
     in
     let anomalies =
-      Film_conforme.film ~verifie:true ~sans_fantomes:(nom = "conforme_libre") ~libre:(nom = "conforme_libre") ~sans_maillage:(nom = "conforme_sans_maillage")
+      Film_conforme.film ~images ~verifie ~sans_fantomes:(nom = "conforme_libre") ~libre:(nom = "conforme_libre") ~sans_maillage:(nom = "conforme_sans_maillage")
         ~satellites:(if nom = "conforme_satellites" then 8 else 0) ~detente:(nom = "conforme_detendu" || nom = "conforme_pur_detendu") ~pur:(nom = "conforme_pur" || nom = "conforme_pur_detendu") ~etude ~premiere ~lettres ~hauteur:cote ~largeur:cote ~marge
         ~rendu:(fun im ->
           match !numeros with
           | k :: reste ->
               numeros := reste;
               let image = image_conforme { x = marge; y = marge } im in
-              if k = 0 then ignore (avec_chapitres (chapitres_reguliers ~par_lettre:nombre_images_conforme (List.length tresse)) image);
+              if k = 0 then ignore (avec_chapitres (chapitres_reguliers ~par_lettre:images (List.length tresse)) image);
               ignore (Js.Unsafe.fun_call rendu [| Js.Unsafe.inject image; Js.Unsafe.inject k; Js.Unsafe.inject total |])
           | [] -> failwith "film_lettres : une image de trop")
         tresse
     in
     Js.Unsafe.obj [| ("douteuses", Js.Unsafe.inject (List.length anomalies)) |]
   with e -> Js.Unsafe.obj [| ("erreur", Js.Unsafe.inject (Js.string (message e))) |]
+
+(* Les images d'une ou plusieurs lettres du film conforme, 48 par lettre et vérifiées (la page et le film). *)
+let film_lettres mode mot lettres premiere rendu = film_lettres_gen ~images:nombre_images_conforme ~verifie:true mode mot lettres premiere rendu
+
+(* Pour le méandre témoin du mouvement libre (banc d'essai) : [images] par lettre (moins de 48, donc plus rapide et plus léger) et sans la
+   vérification des croisements ; les numéros des images sont ceux d'un film de [images] images par lettre. *)
+let film_lettres_rapide mode mot lettres premiere (images : float) rendu =
+  film_lettres_gen ~images:(max 2 (int_of_float images)) ~verifie:false mode mot lettres premiere rendu
 
 let statique mode mot =
   match Js.to_string mode with
@@ -468,6 +476,7 @@ let () =
           ("statique", Js.Unsafe.inject (Js.wrap_callback statique));
           ("film", Js.Unsafe.inject (Js.wrap_callback film));
           ("film_lettres", Js.Unsafe.inject (Js.wrap_callback film_lettres));
+          ("film_lettres_rapide", Js.Unsafe.inject (Js.wrap_callback film_lettres_rapide));
           ("detend", Js.Unsafe.inject (Js.wrap_callback (fun l t c f e -> detend l t c f e)));
           ("sans_limites", Js.Unsafe.inject (Js.wrap_callback (fun (b : bool Js.t) -> limites_levees := Js.to_bool b)));
           ("detend_local", Js.Unsafe.inject (Js.wrap_callback (fun l t c f e p it pa -> detend ~portee:p ?iterations:(if it > 0. then Some (int_of_float it) else None) ?pas:(if pa > 0. then Some pa else None) l t c f e))) |])
