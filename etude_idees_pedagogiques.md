@@ -1,7 +1,7 @@
 # Idées pédagogiques (étude : rien d'implémenté)
 
 Idées de l'utilisateur (2026-11-25), notées telles quelles pour y revenir. Elles s'appuient sur ce que la page et le banc d'essai savent déjà faire (diagramme
-de tresse, méandres, mot écrit par les trous, curseurs : voir `etude/lacets/README.md`). Aucune n'est commencée.
+de tresse, méandres, mot écrit par le mouvement des trous, curseurs : voir `etude/lacets/README.md`). Aucune n'est commencée.
 
 ## Activités à proposer
 
@@ -43,5 +43,5 @@ ajoutent une lettre à la fois). Précisions de l'utilisateur (2026-11-25) :
 ## Liens avec l'existant
 
 - La vérification par l'action sur F_n (`ardoise.analyse`, comparaison des mots de F_n) sert aux activités 2, 3 et 4.
-- Le mot écrit par les trous (`filmRetraction`, `demarreCurseurs` dans `web/travail.js`) sert à l'activité 2.
+- Le mot écrit par le mouvement des trous (`filmRetraction`, `demarreCurseurs` dans `web/travail.js`) sert à l'activité 2.
 - Le diagramme de tresse et les méandres sont déjà dessinés par la page ; la 3D serait une quatrième représentation.

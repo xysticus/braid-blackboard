@@ -67,3 +67,9 @@ label:has(input:disabled) { color: #a8a8a8; cursor: default; }
 .glissiere .pastille { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .glissiere .valeur { min-width: 5.5em; font-variant-numeric: tabular-nums; color: var(--doux, #666); font-size: 0.9em; }
 #curseurs-mot { word-break: break-word; }
+
+#libre { flex-direction: column; align-items: stretch; }
+#libre .aide { margin: 0; }
+#libre input[type=number] { width: 4.5em; }
+#libre-mot { word-break: break-word; }
+#lecteur canvas.libre { touch-action: none; cursor: grab; }

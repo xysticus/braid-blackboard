@@ -74,7 +74,7 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   des croisements, les deux phases (départ plein, arrivée pointillée) dessinées ensemble, au choix (essai abandonné). Le banc a ensuite reçu, dans le sélecteur « film » :
   « triangulation à l'envers » (faire et défaire, adopté par la page : v1.8), « cordes sur chevilles » (rétractation sans maillage, abandonnée : un trou traverse un lacet sur
   `4 3 -1 -1 2 -4 1`), **la rétractation** (idée de l'utilisateur : le méandre de l'image n reste en place, on tire sur les lacets, bouchon en demi-cercle, trou en son centre ;
-  ordres naturel, au hasard, par rencontres de l'axe ; `filmRetraction` dans `web/travail.js`), **le mot écrit par les trous** (lettres lues sur le mouvement réel des trous,
+  ordres naturel, au hasard, par rencontres de l'axe ; `filmRetraction` dans `web/travail.js`), **le mot écrit par le mouvement des trous** (lettres lues sur le mouvement réel des trous,
   vérifiées par l'action sur F_n : « les méandres sont égaux »), **le méandre témoin** (le mot en train d'être produit, dessiné par la méthode conforme à côté, même timing ;
   `ardoise.sans_limites` lève les limites de mots **dans le banc seulement**) et **les curseurs** (on fait coulisser soi-même les trous, sans aimant, méandre complet en pâle ;
   `demarreCurseurs`). Détail et mesures : `etude/lacets/README.md` ; la suite prévue (proposer la rétractation dans la page publique en générant le mot associé) : `docs/prochaines_etapes.md`

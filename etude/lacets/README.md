@@ -99,7 +99,7 @@ est le point le plus proche, pris de façon monotone), et **le trou est le centr
 d'autre ne bouge ; on ne retrouve pas les lettres du mot (la version qui les retrouverait est à repenser). 240 images, lecture à l'envers : le
 méandre se révèle lacet après lacet et les trous avancent dans leurs lacets.
 
-**Le mot écrit par les trous (2026-11-24).** Au départ du film joué, les trous sont alignés et dans l'ordre (vérifié : écart de hauteur de 0,04 à
+**Le mot écrit par le mouvement des trous (2026-11-24).** Au départ du film joué, les trous sont alignés et dans l'ordre (vérifié : écart de hauteur de 0,04 à
 0,09 px, trous des lacets 1 à n dans l'ordre croissant, sur six mots). Chaque fois que deux trous voisins échangent leur ordre selon l'axe, une
 lettre s'écrit : σᵢ si le trou qui va vers la droite passe au-dessus (comme le demi-tour horaire de σᵢ dans le reste de la page), σᵢ⁻¹ s'il passe
 au-dessous (positions interpolées entre deux images). Les lettres s'écrivent sous le film, de gauche à droite, à mesure qu'on le joue. À la fin
@@ -140,6 +140,20 @@ mots, 120 ms de délai). Quand tous les curseurs sont au bout, le méandre d'ori
 « tout au bout ». Le worker garde l'état (`demarreCurseurs` dans `web/travail.js`, messages `curseur`, `curseurs-zero`, `curseurs-plein`) ; la préparation des rubans est
 partagée avec le film (`prepareRetraction`). Vérifié en Node : après 60 déplacements aléatoires en avant et en arrière puis « tout au bout », méandres égaux sur
 `1 -2 1 -2`, `2 3 1 4 3 2`, `4 3 -1 -1 2 -4 1` et la tresse chargée.
+
+## Le mouvement libre : on déplace les trous où on veut (2026-11-26)
+
+Option « mouvement libre : je déplace les trous où je veux » du sélecteur « film » (ou `?libre`). Première activité pédagogique (`etude_idees_pedagogiques.md`, idée 2) : « mouvement libre »
+= **sans contrainte de lacets**. 2 à 6 trous (champ « nombre de trous », 3 par défaut) alignés sur l'axe ; on les attrape à la souris ou au doigt (événements pointeur,
+`touch-action: none`) et on les déplace n'importe où dans le plan ; **les trous ne laissent aucune trace** (un premier essai dessinait leur chemin en pâle : retiré à la demande de l'utilisateur) ; **quand on lâche un trou, il retombe (ou remonte) verticalement sur l'axe** en 220 ms, par le même calcul que le déplacement (distance minimale, lettres). Quand un trou passe d'un côté à l'autre d'un voisin selon l'axe, une lettre s'écrit : σᵢ si celui
+qui va vers la droite passe **au-dessus** (le demi-tour horaire de la page), σᵢ⁻¹ s'il passe **au-dessous** ; une lettre qui défait exactement la précédente l'efface (revenir par le même côté
+défait la lettre, revenir par l'autre côté fait un tour complet : σ²). Les déplacements sont découpés en pas de 4 px pour ne manquer aucun échange ; un trou ne peut pas en traverser un autre (distance
+minimale de 26). Le **méandre témoin évolue continûment** : un passage est « en cours » tant que le trou n'a pas fini de passer (de dx = +24 à dx = −24 de son voisin, en coordonnées 800) avec une avancée u de 0 à 1
+(0,5 quand les deux trous sont l'un au-dessus de l'autre) ; le témoin montre alors l'image u du film conforme de cette lettre (48 images par lettre, calculées à la demande par le second worker avec
+le mot validé comme départ, mises en cache), et la lettre s'écrit à u = 1 (le côté du passage est retenu au croisement). Si on revient en arrière avant u = 1, le méandre revient en arrière ; revenir
+après u = 1 écrit la lettre inverse (par le même côté elle efface la précédente). Le mot ne s'écrit donc qu'une fois le passage fini. Le méandre du mot validé est un second type de demande (`fixe`). Code : `lanceLibre`, `deplaceLibre`, `montreLibre`
+dans `etude/lacets/etude.js` ; aucun calcul côté worker pour le mouvement. Vérifié par événements synthétiques sous Firefox (trou qui passe au-dessus, retour par le dessus qui efface, passage au-dessous,
+puis un second trou : mot `σ₂` et son méandre dessiné). Pas encore essayé à la main ni sur téléphone. Pas encore de « tourner autour de son voisin par des arcs de cercle » (geste d'un générateur) : le trou suit le pointeur. Le worker répond avec un identifiant (`id`) pour les messages `fixe` et `lettre` (`appelTemoin`). Le libellé est « mot écrit par le mouvement des trous » (et non « par les trous »).
 
 ## Le film de la triangulation
 

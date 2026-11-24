@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lacets : banc d'essai</title>
 <link rel="icon" href="../../web/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="../../web/ardoise.css">
-<link rel="stylesheet" href="etude.css">
+<script>
+// Le banc change souvent : le navigateur ne doit jamais garder une ancienne version de ses fichiers (le serveur de test n'envoie pas d'en-tête de cache).
+{ const v = Date.now(); ['../../web/ardoise.css', 'etude.css'].forEach((f) => document.write('<link rel="stylesheet" href="' + f + '?v=' + v + '">')); window.versionBanc = v; }
+</script>
 </head>
 <body>
 <header>
@@ -55,7 +57,7 @@
     </div>
     <div class="etat options">
       <label title="le film étudié : les lacets conformes (vue 2 de la page), les lacets sur la triangulation mobile (vue 3) ou le diagramme de courbes (vue 1) ; « détendu » s'applique aux deux, les autres cases d'essai aux lacets conformes seulement (recalcule le film)">film
-        <select id="film"><option value="conforme" selected>lacets conformes</option><option value="triangulation">triangulation</option><option value="triangulation_envers">triangulation à l'envers (faire et défaire)</option><option value="triangulation_cordes">cordes sur chevilles (rétractation)</option><option value="triangulation_cordes_locale">cordes, tension locale (se referme derrière le trou)</option><option value="retractation">rétractation (on tire sur les lacets)</option><option value="curseurs">curseurs : je fais coulisser les trous moi-même</option><option value="diagramme">diagramme de courbes</option></select></label>
+        <select id="film"><option value="conforme" selected>lacets conformes</option><option value="triangulation">triangulation</option><option value="triangulation_envers">triangulation à l'envers (faire et défaire)</option><option value="triangulation_cordes">cordes sur chevilles (rétractation)</option><option value="triangulation_cordes_locale">cordes, tension locale (se referme derrière le trou)</option><option value="retractation">rétractation (on tire sur les lacets)</option><option value="curseurs">curseurs : je fais coulisser les trous moi-même</option><option value="libre">mouvement libre : je déplace les trous où je veux</option><option value="diagramme">diagramme de courbes</option></select></label>
       <label><input type="checkbox" id="c-construction" checked> construction</label>
       <label><input type="checkbox" id="c-tangentes" checked> tangentes</label>
       <label><input type="checkbox" id="c-points" checked> points</label>
@@ -96,14 +98,20 @@
       <div id="curseurs-mot"></div>
       <div id="curseurs-etat"></div>
     </div>
+    <div id="libre" class="reglages" hidden>
+      <strong>Mouvement libre</strong>
+      <span class="aide">Déplace les trous où tu veux, sans contrainte de lacets : un trou qui passe devant ou derrière un voisin écrit une lettre (au-dessus en allant vers la droite : σᵢ ; au-dessous : σᵢ⁻¹), et le méandre témoin dessine le méandre du mot écrit. Le mot de tresse de la page n'est pas utilisé ici.</span>
+      <div class="boutons"><label>nombre de trous <input type="number" id="libre-n" min="2" max="6" value="3"></label> <button type="button" id="libre-zero">recommencer</button></div>
+      <div id="libre-mot"></div>
+    </div>
     <pre id="journal" class="journal" hidden></pre>
   </section>
 
   <section class="panneau" id="temoin" hidden>
     <h3>Méandre témoin <span id="temoin-mot"></span></h3>
-    <canvas id="toile-temoin" width="1600" height="1600" aria-label="le méandre du mot écrit par les trous, par la méthode conforme"></canvas>
+    <canvas id="toile-temoin" width="1600" height="1600" aria-label="le méandre du mot écrit par le mouvement des trous, par la méthode conforme"></canvas>
     <div id="temoin-etat" class="etat"></div>
-    <p class="aide">Le mot en train d'être produit par les trous, dessiné par la méthode conforme : chaque lettre s'ajoute au moment où elle apparaît à gauche et s'anime jusqu'à l'apparition de la suivante.</p>
+    <p class="aide">Le mot en train d'être produit par le mouvement des trous, dessiné par la méthode conforme : chaque lettre s'ajoute au moment où elle apparaît à gauche et s'anime jusqu'à l'apparition de la suivante.</p>
   </section>
 </main>
 
@@ -112,6 +120,6 @@
      <code>python3 -m http.server</code>, puis <code>/etude/lacets/</code>.</p>
 </footer>
 
-<script src="etude.js"></script>
+<script>document.write('<script src="etude.js?v=' + window.versionBanc + '"><\/script>');</script>
 </body>
 </html>

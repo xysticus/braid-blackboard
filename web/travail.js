@@ -572,13 +572,13 @@ onmessage = (e) => {
   if (d.type === 'curseur') { if (CURSEURS) CURSEURS.deplace(d.i, d.x); return; }
   if (d.type === 'curseurs-zero') { if (CURSEURS) CURSEURS.zero(); return; }
   if (d.type === 'curseurs-plein') { if (CURSEURS) CURSEURS.plein(); return; }
-  if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme
-    const r = self.ardoise.film_lettres(d.mode, d.mot, [d.k], false, (im, k) => {
+  if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme (d.id : rendu tel quel ; d.premiere : aussi l'image clé de départ du film)
+    const r = self.ardoise.film_lettres(d.mode, d.mot, [d.k], !!d.premiere, (im, k) => {
       if (d.brutes && forceDetente(k) > 0) { postMessage({ type: 'brute', image: im, k }); return; }   // à détendre : en double précision
       const f = enFloat32(im);
-      postMessage({ type: 'image', image: f, k }, tampons(f));
+      postMessage({ type: 'image', image: f, k, id: d.id }, tampons(f));
     });
-    postMessage({ type: 'lettre', k: d.k, douteuses: r.douteuses || 0, erreur: r.erreur });
+    postMessage({ type: 'lettre', k: d.k, douteuses: r.douteuses || 0, erreur: r.erreur, id: d.id });
     return;
   }
   if (d.type === 'detend') {   // un worker auxiliaire : la détente d'une image
@@ -588,8 +588,8 @@ onmessage = (e) => {
   }
   if (d.type === 'fixe') {   // seulement l'image fixe d'un mode : la page l'affiche pendant que les autres films se calculent
     const fixe = imageFixe(d.mode, d.mot);
-    if (!fixe.erreur) { const image = enFloat32(fixe); postMessage({ type: 'statique', image }, tampons(image)); }
-    postMessage({ type: 'fixe-fini', vide: !!fixe.erreur });
+    if (!fixe.erreur) { const image = enFloat32(fixe); postMessage({ type: 'statique', image, id: d.id }, tampons(image)); }
+    postMessage({ type: 'fixe-fini', vide: !!fixe.erreur, id: d.id });
     return;
   }
   const { mode, mot } = d;
