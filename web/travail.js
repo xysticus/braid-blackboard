@@ -296,7 +296,8 @@ function filmCordes(mot, portee) {   // portee : la tension n'agit qu'autour des
 // demi-cercle, du côté du bout, et le trou est dans le bouchon (le lacet se referme tout de suite après le trou). Rien d'autre ne bouge :
 // on ne retrouve pas les lettres du mot. On rend les images à l'envers : le méandre se révèle lacet après lacet, les trous avancent dans leurs lacets.
 const IMAGES_RETRACTION = 240;
-function filmRetraction(mot) {
+// graine : absente, les lacets se tirent dans l'ordre de leur numéro ; présente, dans un ordre tiré au hasard (mélange déterministe, rejouable avec la même graine).
+function filmRetraction(mot, graine, ordreMode) {   // ordreMode : « naturel » (défaut sans graine), « entiers » (lacets entiers dans un ordre tiré) ou « morceaux » (tirages par morceaux entrelacés)
   const fixe = self.ardoise.statique('conforme', mot);
   if (fixe.erreur) { postMessage({ type: 'fini', message: fixe.erreur, erreur: true }); return; }
   const image = enFloat32(fixe);
@@ -354,16 +355,62 @@ function filmRetraction(mot) {
     for (let q = 1; q < 14; q++) { const th = sg * Math.PI * q / 14; arc.push([M[0] + rayon * Math.cos(phi0 + th), M[1] + rayon * Math.sin(phi0 + th)]); }
     return { arc, M };
   };
-  // les fenêtres de temps : un lacet après l'autre, chacun pendant une durée proportionnelle à sa longueur
-  const total = rubans.reduce((a, r) => a + r.L, 0);
+  // Le planning : pour chaque lacet, des morceaux de tirage [t0, t1, de u à u'] (u : la part retirée, de 0 à 1 = arrivée sur l'axe). Naturel : un morceau par
+  // lacet, dans l'ordre des numéros ; entiers : idem dans un ordre tiré ; morceaux : chaque lacet est coupé en 2 à 5 morceaux de longueurs tirées, et on
+  // change de brin quand on veut (entrelacement tiré, l'ordre propre à chaque lacet est gardé). Le temps d'un morceau est proportionnel à la longueur retirée.
+  const mode = graine === undefined || graine === null ? 'naturel' : (ordreMode || 'entiers');
+  let a0 = (graine || 0) >>> 0;
+  const hasard = () => { a0 = (a0 + 0x6D2B79F5) >>> 0; let t = a0; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const retire = rubans.map((r) => Math.max(1, (r.cum[r.ia0] - r.cum[r.k0]) + (r.cum[r.kFin] - r.cum[r.ib0])));   // la longueur retirée par un lacet entier
+  const files = rubans.map((r, i) => {   // les morceaux de chaque lacet, dans l'ordre
+    if (mode !== 'morceaux') return [[0, 1]];
+    const q = 2 + Math.floor(hasard() * 4);
+    const coupes = Array.from({ length: q - 1 }, () => hasard()).sort((x, y) => x - y);
+    const bornes = [0, ...coupes, 1];
+    return bornes.slice(1).map((b, j) => [bornes[j], b]);
+  });
+  let sequence = [];   // [lacet, de, à]
+  if (mode === 'morceaux') {
+    const reste = files.map((f) => f.slice());
+    while (reste.some((f) => f.length)) {
+      const vivants = reste.map((f, i) => (f.length ? i : -1)).filter((i) => i >= 0);
+      const i = vivants[Math.floor(hasard() * vivants.length)];
+      const [de, a] = reste[i].shift();
+      sequence.push([i, de, a]);
+    }
+  } else {
+    const ordreL = rubans.map((r, i) => i);
+    if (mode === 'entiers') for (let i = ordreL.length - 1; i > 0; i--) { const j = Math.floor(hasard() * (i + 1)); [ordreL[i], ordreL[j]] = [ordreL[j], ordreL[i]]; }
+    sequence = ordreL.map((i) => [i, 0, 1]);
+  }
+  const poids = sequence.map(([i, de, a]) => (a - de) * retire[i]);
+  const somme = poids.reduce((x, y) => x + y, 0);
   let t0 = 0;
-  rubans.forEach((r) => { r.t0 = t0; t0 += r.L / total; r.t1 = t0; });
+  const plan = rubans.map(() => []);   // plan[i] : les morceaux {t0, t1, de, a} du lacet i
+  sequence.forEach(([i, de, a], j) => { const t1 = t0 + poids[j] / somme; plan[i].push({ t0, t1, de, a }); t0 = t1; });
+  const avancement = (i, t) => {   // la part du lacet i retirée au temps t (0 à 1)
+    let u = 0;
+    for (const m of plan[i]) {
+      if (t >= m.t1) u = m.a;
+      else { if (t > m.t0) u = m.de + (m.a - m.de) * lisse((t - m.t0) / (m.t1 - m.t0)); break; }
+    }
+    return u;
+  };
+  const ordreTirage = sequence.map(([i]) => i).filter((i, j, tab) => tab.indexOf(i) === j);   // l'ordre dans lequel on commence les lacets
+  // les positions des trous au temps t de la rétractation (le centre du bouchon est le milieu de ses deux extrémités) : peu coûteux, sert à lire le mot
+  // sur un échantillonnage beaucoup plus fin que les images
+  const trousAu = (t) => rubans.map((r, i) => {
+    const u = avancement(i, t), ia = Math.round(r.ia0 - u * (r.ia0 - r.k0));
+    if (ia >= r.ia0) return trous[r.p].slice();
+    const ib = Math.max(r.ib0, Math.min(r.kFin, r.vis[ia]));
+    return [(r.pts[ia][0] + r.pts[ib][0]) / 2, (r.pts[ia][1] + r.pts[ib][1]) / 2];
+  });
   const images = [];
   for (let n = 0; n < IMAGES_RETRACTION; n++) {
     const t = n / (IMAGES_RETRACTION - 1);
     const lacets = [], nouveaux = trous.map((q) => q.slice());
     rubans.forEach((r) => {
-      const u = lisse(Math.min(1, Math.max(0, (t - r.t0) / (r.t1 - r.t0))));
+      const u = avancement(rubans.indexOf(r), t);
       const ia = Math.round(r.ia0 - u * (r.ia0 - r.k0));
       if (ia >= r.ia0) { lacets.push(r.pts.flat()); return; }   // pas encore tiré : le lacet entier, le trou à sa place
       const ib = Math.max(r.ib0, Math.min(r.kFin, r.vis[ia]));
@@ -381,29 +428,28 @@ function filmRetraction(mot) {
   // ou σ_i⁻¹ (il passe au-dessous). Les lettres sont lues dans le sens de lecture du film ; entre deux images, les positions sont interpolées.
   const lettres = [];   // [indice de l'image où la lettre s'écrit, lettre]
   const n = rubans.length;
-  let ordre = Array.from({ length: n }, (_, i) => i).sort((a, b) => retour[0]._trousLacets[a][0] - retour[0]._trousLacets[b][0]);
-  for (let k = 1; k < nb; k++) {
-    const A = retour[k - 1]._trousLacets, B = retour[k]._trousLacets;
-    for (let sub = 1; sub <= 12; sub++) {
-      const t = sub / 12;
-      const P = A.map((a, i) => [a[0] + t * (B[i][0] - a[0]), a[1] + t * (B[i][1] - a[1])]);
-      const nouvel = Array.from({ length: n }, (_, i) => i).sort((a, b) => P[a][0] - P[b][0]);
-      let encore = true;
-      while (encore) {
-        encore = false;
-        for (let j = 0; j + 1 < n; j++) {
-          const g = ordre[j], d = ordre[j + 1];
-          if (nouvel.indexOf(g) > nouvel.indexOf(d)) {   // g passe à droite de d
-            lettres.push([k, P[g][1] < P[d][1] ? j + 1 : -(j + 1)]);
-            ordre[j] = d; ordre[j + 1] = g; encore = true; break;
-          }
+  const PAS_FIN = 40;   // sous-pas par image : le mouvement réel des trous, pas des cordes entre images
+  const depart = trousAu(1);   // au départ du film joué (t = 1) : les trous sont alignés, dans l'ordre
+  let ordre = Array.from({ length: n }, (_, i) => i).sort((a, b) => depart[a][0] - depart[b][0]);
+  for (let sub = 1; sub <= (nb - 1) * PAS_FIN; sub++) {
+    const tau = sub / PAS_FIN;                       // le temps du film joué, en images
+    const P = trousAu(Math.max(0, (nb - 1 - tau) / (nb - 1)));
+    const nouvel = Array.from({ length: n }, (_, i) => i).sort((a, b) => P[a][0] - P[b][0]);
+    let encore = true;
+    while (encore) {
+      encore = false;
+      for (let j = 0; j + 1 < n; j++) {
+        const g = ordre[j], d = ordre[j + 1];
+        if (nouvel.indexOf(g) > nouvel.indexOf(d)) {   // g passe à droite de d
+          lettres.push([Math.ceil(tau), P[g][1] < P[d][1] ? j + 1 : -(j + 1)]);
+          ordre[j] = d; ordre[j + 1] = g; encore = true; break;
         }
       }
     }
   }
   const motGenere = lettres.map((x) => x[1]);
   retour[0].lettres = lettres.flat();   // pour le banc : le mot s'écrit sous le film, à mesure
-  let message = `mot obtenu (${motGenere.length} lettres)`;
+  let message = `mot obtenu (${motGenere.length} lettres)` + (mode === 'morceaux' ? `, lacets tirés par morceaux dans le désordre (graine ${graine}, ${sequence.length} tirages, ordre de départ ${ordreTirage.map((i) => i + 1).join(' ')})` : mode === 'entiers' ? `, lacets tirés dans l'ordre ${ordreTirage.map((i) => i + 1).join(' ')} (graine ${graine})` : '');
   if (motGenere.length && n >= 2) {
     const egal = (m1, m2) => { const a = self.ardoise.analyse(m1), b = self.ardoise.analyse(m2); if (a.erreur || b.erreur) return null; const fa = Array.from(a.fn).map((w) => Array.from(w).join(' ')), fb = Array.from(b.fn).map((w) => Array.from(w).join(' ')); return a.n === b.n && fa.join('|') === fb.join('|'); };
     const e1 = egal(mot, motGenere);
@@ -444,7 +490,7 @@ onmessage = (e) => {
   const { mode, mot } = d;
   if (/^conforme(_detendu)?(\+etude)?$/.test(mode) && typeof Worker !== 'undefined') { filmReparti(mode, mot); return; }
   if (mode === 'triangulation_envers') { filmEnvers(mot); return; }
-  if (mode === 'retractation') { filmRetraction(mot); return; }
+  if (mode === 'retractation') { filmRetraction(mot, d.graine, d.ordre); return; }
   if (mode === 'triangulation_cordes') { filmCordes(mot); return; }
   if (mode === 'triangulation_cordes_locale') { filmCordes(mot, 100); return; }
   if (mode === 'conforme_pur_detendu' && typeof Worker !== 'undefined') { filmPurDetenduParImages(mot); return; }

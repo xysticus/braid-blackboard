@@ -54,3 +54,7 @@ h1 { font-size: 1.4rem; }
 label:has(input:disabled) { color: #a8a8a8; cursor: default; }
 .etat .ok { color: #2d7a3a; font-weight: 500; }
 @media (prefers-color-scheme: dark) { .etat .ok { color: #7fd18a; } }
+
+.reglages { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 10px; padding: 8px 12px; border: 1px solid var(--trait, #d8d4c8); border-radius: 8px; background: rgba(0, 0, 0, 0.03); }
+.reglages input[type=number] { width: 6.5em; }
+.reglages select { max-width: 100%; }

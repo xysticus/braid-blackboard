@@ -85,6 +85,7 @@ const etat = {
   construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, pur: false, plein: true, pointille: true, marqueurs: true, morph: true, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
+etat.graine = 1; etat.ordre = 'naturel';   // la rétractation : l'ordre des lacets (naturel, entiers, morceaux) et la graine du tirage
 const toileTemoin = $('toile-temoin');
 
 function etenduePartout(images) {
@@ -510,6 +511,13 @@ function brancheCommandes() {
   $('c-maillage').onchange = (e) => { etat.maillage = e.target.checked; redessine(); };
   $('c-etude').onchange = (e) => { etat.etude = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // le journal et les plans w : recalcule le film
   $('c-sans-maillage').onchange = (e) => { etat.sansMaillage = e.target.checked; etat.reprise = etat.k; lance(etat.mot); };   // essai : les arcs ne sont plus retenus par les arêtes du maillage
+  const relanceOrdre = () => { $('graine').disabled = etat.ordre === 'naturel'; etat.reprise = null; lance(etat.mot); };
+  $('ordre-mode').onchange = (e) => { etat.ordre = e.target.value; relanceOrdre(); };
+  $('graine').onchange = (e) => { etat.graine = Math.max(0, Math.floor(Number(e.target.value)) || 0); relanceOrdre(); };
+  $('tirage').onclick = () => {   // un nouveau tirage : une nouvelle graine (le mode naturel passe aux morceaux)
+    if (etat.ordre === 'naturel') { etat.ordre = 'morceaux'; $('ordre-mode').value = 'morceaux'; }
+    etat.graine = Math.floor(Math.random() * 1000000); $('graine').value = String(etat.graine); relanceOrdre();
+  };
   $('c-morph').onchange = (e) => { etat.morph = e.target.checked; redessine(); };
   $('c-marqueurs').onchange = (e) => { etat.marqueurs = e.target.checked; redessine(); };
   $('c-plein').onchange = (e) => { etat.plein = e.target.checked; redessine(); };
@@ -565,6 +573,7 @@ const HORS_PUR = ['c-maillage', 'c-sans-maillage', 'c-satellites', 'c-etude', 'c
 const SEULEMENT_PUR = ['c-plein', 'c-pointille', 'c-morph', 'c-marqueurs'];
 
 function metsAJourOptions() {
+  $('reglages-retractation').hidden = etat.film !== 'retractation';
   const tri = etat.film !== 'conforme';
   const pur = !tri && etat.pur;
   const grise = (id, raison) => {
@@ -748,7 +757,7 @@ function calcule(mot) {
       termine(d.message);
     }
   };
-  if (etat.film !== 'conforme') { w.postMessage({ mode: (etat.film === 'triangulation_envers' || etat.film.startsWith('triangulation_cordes') || etat.film === 'retractation') ? etat.film : etat.film + (etat.detendu ? '_detendu' : ''), mot }); return; }   // triangulation, diagramme
+  if (etat.film !== 'conforme') { w.postMessage({ mode: (etat.film === 'triangulation_envers' || etat.film.startsWith('triangulation_cordes') || etat.film === 'retractation') ? etat.film : etat.film + (etat.detendu ? '_detendu' : ''), mot, graine: etat.film === 'retractation' && etat.ordre !== 'naturel' ? etat.graine : undefined, ordre: etat.ordre }); return; }   // triangulation, diagramme ; graine : l'ordre de la rétractation
   w.postMessage({ mode: (etat.pur ? (etat.detendu ? 'conforme_pur_detendu' : 'conforme_pur') : etat.sansMaillage ? 'conforme_sans_maillage' : etat.satellites ? 'conforme_satellites' : etat.libre ? 'conforme_libre' : etat.detendu ? 'conforme_detendu' : 'conforme') + (etat.etude && !etat.pur ? '+etude' : ''), mot });   // libre : les arcs ne passent plus par les fantômes (voir Raccord.lignes ~sans_fantomes)
 }
 
@@ -790,6 +799,10 @@ window.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(location.search).has('envers')) { etat.film = 'triangulation_envers'; $('film').value = 'triangulation_envers'; }   // ?envers : le film de la triangulation à l'envers
   if (new URLSearchParams(location.search).has('cordes')) { etat.film = 'triangulation_cordes'; $('film').value = 'triangulation_cordes'; }   // ?cordes : le film des cordes sur chevilles
   if (new URLSearchParams(location.search).has('cordeslocales')) { etat.film = 'triangulation_cordes_locale'; $('film').value = 'triangulation_cordes_locale'; }   // ?cordeslocales : tension locale
+  { const q = new URLSearchParams(location.search);   // ?graine=N&ordre=entiers|morceaux : l'ordre de la rétractation (captures)
+    if (q.has('ordre')) { etat.ordre = q.get('ordre'); $('ordre-mode').value = etat.ordre; }
+    if (q.has('graine')) { etat.graine = Number(q.get('graine')); $('graine').value = String(etat.graine); if (!q.has('ordre')) { etat.ordre = 'entiers'; $('ordre-mode').value = 'entiers'; } }
+    $('graine').disabled = etat.ordre === 'naturel'; }
   if (new URLSearchParams(location.search).has('retractation')) { etat.film = 'retractation'; $('film').value = 'retractation'; }   // ?retractation : on tire sur les lacets
   if (new URLSearchParams(location.search).has('nondetendu')) { etat.detendu = false; $('c-detendu').checked = false; }   // ?nondetendu : le film à maillage seul (captures)
   SEULEMENT_CONFORME.concat(HORS_PUR, SEULEMENT_PUR).forEach((id) => { const l = $(id).closest('label'); l.dataset.titre = l.title || ''; });   // le titre d'origine, rendu quand on revient aux lacets conformes
