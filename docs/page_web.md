@@ -93,3 +93,9 @@ lieu d'une minute et plus pour la version détendue. Mesures d'essai (`etude/lac
 identiques à toutes les images clés ; un seul défaut vu, un tassement des brins près du trou de gauche à la lettre 7 de la tresse chargée.
 La limite (6 brins, 14 lettres) porte sur le mot, pas sur le mot doublé. Les chapitres (boutons de lettres) sont recalculés à partir de
 la fin. Le mode `triangulation_detendu` reste disponible dans le banc d'essai.
+
+**Ce que le banc d'essai a ajouté depuis (2026-11-24/25), pas dans la page publique.** La rétractation, le mot écrit par les trous, le méandre témoin et les curseurs (`etude/lacets/`, tags
+`banc-retractation`, `banc-retractation-2`, `banc-curseurs`) réutilisent `web/travail.js` et `web/ardoise_lib.js`, qui sont ceux de la page : `web/travail.js` porte donc
+du code que la page n'appelle pas (`filmRetraction`, `demarreCurseurs`, `filmCordes`, `filmEnvers`, `filmPurDetenduParImages`…) et `ardoise_lib.js` des fonctions réservées au
+banc (`ardoise.sans_limites`, `detend_local`, modes `conforme_pur*`, `triangulation_envers`). **`ardoise.sans_limites` lève les limites de mots : seul le banc l'appelle, jamais la page.**
+Un correctif de ce travail touche la page : `Conforme.antecedent` rend le meilleur point de Newton sous 0,5 px au lieu de lever `Pas_de_convergence` (`docs/ocaml.md`).

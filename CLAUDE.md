@@ -71,7 +71,14 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   des arcs (`etude/lacets/README.md`). Il réutilise `web/travail.js` et `web/ardoise_lib.js` sans les modifier. Essais en
   Python : `essai_lissage.py` (la détente, retenue), `essai_regions.py` (raccord par régions, écarté). Essai OCaml « pur » (2026-11-23, case du banc, mode `conforme_pur`,
   `Conforme.dessin_pur`) : la projection conforme seule, pieds sur les lignes de construction, arcs de cercle sans souci des tangentes ni
-  des croisements, les deux phases (départ plein, arrivée pointillée) dessinées ensemble, au choix.
+  des croisements, les deux phases (départ plein, arrivée pointillée) dessinées ensemble, au choix (essai abandonné). Le banc a ensuite reçu, dans le sélecteur « film » :
+  « triangulation à l'envers » (faire et défaire, adopté par la page : v1.8), « cordes sur chevilles » (rétractation sans maillage, abandonnée : un trou traverse un lacet sur
+  `4 3 -1 -1 2 -4 1`), **la rétractation** (idée de l'utilisateur : le méandre de l'image n reste en place, on tire sur les lacets, bouchon en demi-cercle, trou en son centre ;
+  ordres naturel, au hasard, par rencontres de l'axe ; `filmRetraction` dans `web/travail.js`), **le mot écrit par les trous** (lettres lues sur le mouvement réel des trous,
+  vérifiées par l'action sur F_n : « les méandres sont égaux »), **le méandre témoin** (le mot en train d'être produit, dessiné par la méthode conforme à côté, même timing ;
+  `ardoise.sans_limites` lève les limites de mots **dans le banc seulement**) et **les curseurs** (on fait coulisser soi-même les trous, sans aimant, méandre complet en pâle ;
+  `demarreCurseurs`). Détail et mesures : `etude/lacets/README.md` ; la suite prévue (proposer la rétractation dans la page publique en générant le mot associé) : `docs/prochaines_etapes.md`
+  point 7. Tags `banc-retractation`, `banc-retractation-2`, `banc-curseurs` = états du banc (non déployés), à ne pas confondre avec les `v1.N` déployables.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README et un `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés)
