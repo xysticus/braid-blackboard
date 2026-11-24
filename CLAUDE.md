@@ -95,6 +95,7 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 - `etude_exploitation_des_images.md` (**faite**, étapes 1 à 6 : boutons image par image, chapitres par lettre, menu ⤓ d'export de l'image en cours en
   PNG, SVG et JSON, zip des images clés, film MP4 AV1 encodé dans le navigateur par WebCodecs ; code dans `web/exports.js` et `web/mp4.js`, détail dans `docs/page_web.md` ;
   reste à faire : le SVG de l'escargot et des iris, un éventuel film H.264).
+- `etude_idees_pedagogiques.md` (étude, rien d'implémenté : écrire le mot d'un diagramme ou d'un mouvement libre des trous, réduire un mot, relier mots et méandres, représentation 3D par tranches).
 - `pistes_film_conforme.md`, `plan_ocaml.md`, `etude_page_web.md`, `conventions_de_signe.md` (β de l'article *Des matrices pour des
   tresses* = β⁻¹ chez nous : on garde nos conventions), `etude_lignes_de_construction.md` (lignes de construction facultatives, notebook et page web : faite pour les films de la triangulation,
 des lacets et du diagramme de courbes de la page web ; le reste est à l'étude).
