@@ -625,7 +625,7 @@ function lanceTemoin() {
   const mot = [];
   for (let j = 1; j < lettres.length; j += 2) mot.push(lettres[j]);
   $('temoin').hidden = false;
-  $('temoin-mot').textContent = mot.map(nomLettre).join(' ');
+  $('temoin-mot').textContent = '';
   efface2(toileTemoin);
   if (mot.length > LETTRES_TEMOIN) {
     $('temoin-etat').innerHTML = `<span class="attention">mot de ${mot.length} lettres : trop long pour le témoin (${LETTRES_TEMOIN} lettres au plus)</span>`;
@@ -661,20 +661,31 @@ function efface2(cv) {
   ctx.fillRect(0, 0, cv.width, cv.height);
 }
 
-// L'image du film conforme du témoin à montrer quand le film de rétractation en est à l'image k.
+// L'image du film conforme du témoin à montrer quand le film de rétractation en est à l'image k : le témoin dessine le mot **en train d'être produit**.
+// Avant la première lettre, le dessin de départ ; une lettre commence à s'animer à l'image où elle apparaît (c'est-à-dire où elle s'écrit sous le film)
+// et s'achève à l'image où la suivante apparaît (la dernière : à la fin du film). Des lettres écrites à la même image s'enchaînent sans durée.
 function imageTemoin(k) {
   const L = etat.images[0].lettres, M = L.length / 2, P = 48;
-  let m = 0;
+  let m = 0;   // le nombre de lettres déjà apparues
   while (m < M && L[2 * m] <= k) m++;
-  let p = M;
-  if (m < M) { const s0 = m > 0 ? L[2 * (m - 1)] : 0, F = L[2 * m]; p = m + (F > s0 ? (k - s0) / (F - s0) : 1); }
-  return Math.min(etat.temoin.images.length - 1, Math.round(P * p));
+  if (m === 0) return 0;
+  const debut = L[2 * (m - 1)], fin = m < M ? L[2 * m] : etat.total - 1;
+  const u = fin > debut ? Math.min(1, (k - debut) / (fin - debut)) : 1;
+  return Math.min(etat.temoin.images.length - 1, Math.round(P * (m - 1 + u)));
+}
+
+// Le mot déjà produit (les lettres apparues à l'image k), comme sous le film.
+function motProduit(k) {
+  const L = etat.images[0].lettres, mots = [];
+  for (let j = 0; j + 1 < L.length && L[j] <= k; j += 2) mots.push(nomLettre(L[j + 1]));
+  return mots;
 }
 
 function dessineTemoin(k) {
   const t = etat.temoin;
   if (!t || !t.fini || !etat.images[0] || !etat.images[0].lettres) return;
   const image = t.images[imageTemoin(k)];
+  $('temoin-mot').textContent = motProduit(k).join(' ');   // le mot en train d'être produit
   efface2(toileTemoin);
   const ctx = toileTemoin.getContext('2d');
   const v = t.vue || { s: 1, tx: 0, ty: 0 };
