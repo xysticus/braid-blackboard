@@ -97,5 +97,9 @@ la fin. Le mode `triangulation_detendu` reste disponible dans le banc d'essai.
 **Ce que le banc d'essai a ajouté depuis (2026-11-24/25), pas dans la page publique.** La rétractation, le mot écrit par les trous, le méandre témoin et les curseurs (`etude/lacets/`, tags
 `banc-retractation`, `banc-retractation-2`, `banc-curseurs`) réutilisent `web/travail.js` et `web/ardoise_lib.js`, qui sont ceux de la page : `web/travail.js` porte donc
 du code que la page n'appelle pas (`filmRetraction`, `demarreCurseurs`, `filmCordes`, `filmEnvers`, `filmPurDetenduParImages`…) et `ardoise_lib.js` des fonctions réservées au
-banc (`ardoise.sans_limites`, `detend_local`, modes `conforme_pur*`, `triangulation_envers`). **`ardoise.sans_limites` lève les limites de mots : seul le banc l'appelle, jamais la page.**
+banc (`ardoise.sans_limites`, `ardoise.film_lettres_rapide`, `detend_local`, modes `conforme_pur*`, `triangulation_envers`). **`ardoise.sans_limites` lève les limites de mots : seul le banc l'appelle, jamais la page.**
 Un correctif de ce travail touche la page : `Conforme.antecedent` rend le meilleur point de Newton sous 0,5 px au lieu de lever `Pas_de_convergence` (`docs/ocaml.md`).
+
+**Le mouvement libre (2026-11-26), exercice pédagogique destiné à la page publique, aujourd'hui dans le banc seulement.** Pour l'y proposer plus tard : il faudra y autoriser `ardoise.film_lettres_rapide`
+(24 images par lettre, sans vérification des croisements) et `ardoise.sans_limites` (le mot écrit dépasse vite 14 lettres), y apporter le groupe de workers du précalcul (`etude/lacets/etude.js` :
+`appelTemoin`, `prechargeLibre`) et en revoir le poids (mémoire des images sur téléphone, 40 films en cache) et le temps des mots longs. Voir `etude_idees_pedagogiques.md`.

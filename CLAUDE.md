@@ -77,8 +77,11 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   ordres naturel, au hasard, par rencontres de l'axe ; `filmRetraction` dans `web/travail.js`), **le mot écrit par le mouvement des trous** (lettres lues sur le mouvement réel des trous,
   vérifiées par l'action sur F_n : « les méandres sont égaux »), **le méandre témoin** (le mot en train d'être produit, dessiné par la méthode conforme à côté, même timing ;
   `ardoise.sans_limites` lève les limites de mots **dans le banc seulement**) et **les curseurs** (on fait coulisser soi-même les trous, sans aimant, méandre complet en pâle ;
-  `demarreCurseurs`). Détail et mesures : `etude/lacets/README.md` ; la suite prévue (proposer la rétractation dans la page publique en générant le mot associé) : `docs/prochaines_etapes.md`
-  point 7. Tags `banc-retractation`, `banc-retractation-2`, `banc-curseurs` = états du banc (non déployés), à ne pas confondre avec les `v1.N` déployables.
+  `demarreCurseurs`), puis **le mouvement libre** (première activité pédagogique : 2 à 6 trous déplacés au pointeur sans contrainte de lacets, qui retombent sur l'axe et se répartissent
+  à nouveau équitablement ; lettre σᵢ ou σᵢ⁻¹ quand un trou passe devant ou derrière un voisin ; **méandre témoin continu et précalculé** par un groupe de workers :
+  `lanceLibre`, `majTemoinLibre`, `prechargeLibre` dans `etude/lacets/etude.js`, `ardoise.film_lettres_rapide`). Le banc charge ses fichiers avec `?v=<heure>` (script inline
+  de `etude/lacets/index.html`) pour que le navigateur n'en garde pas d'ancienne version. Détail et mesures : `etude/lacets/README.md` ; la suite prévue (proposer la rétractation dans la page publique en générant le mot associé) : `docs/prochaines_etapes.md`
+  point 7. Tags `banc-retractation`, `banc-retractation-2`, `banc-curseurs`, `banc-libre` = états du banc (non déployés), à ne pas confondre avec les `v1.N` déployables.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README et un `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés)

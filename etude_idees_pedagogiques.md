@@ -1,7 +1,7 @@
-# Idées pédagogiques (étude : rien d'implémenté)
+# Idées pédagogiques (étude : l'activité 2 est faite dans le banc d'essai, le reste n'est pas commencé)
 
 Idées de l'utilisateur (2026-11-25), notées telles quelles pour y revenir. Elles s'appuient sur ce que la page et le banc d'essai savent déjà faire (diagramme
-de tresse, méandres, mot écrit par le mouvement des trous, curseurs : voir `etude/lacets/README.md`). Aucune n'est commencée.
+de tresse, méandres, mot écrit par le mouvement des trous, curseurs : voir `etude/lacets/README.md`). **L'activité 2 est faite dans le banc d'essai** (2026-11-26, tag `banc-libre`, option « mouvement libre » : voir la section ci-dessous) ; les autres ne sont pas commencées.
 
 ## Activités à proposer
 
@@ -45,3 +45,14 @@ ajoutent une lettre à la fois). Précisions de l'utilisateur (2026-11-25) :
 - La vérification par l'action sur F_n (`ardoise.analyse`, comparaison des mots de F_n) sert aux activités 2, 3 et 4.
 - Le mot écrit par le mouvement des trous (`filmRetraction`, `demarreCurseurs` dans `web/travail.js`) sert à l'activité 2.
 - Le diagramme de tresse et les méandres sont déjà dessinés par la page ; la 3D serait une quatrième représentation.
+
+## État de l'activité 2, le mouvement libre (2026-11-26, banc d'essai, tag `banc-libre`)
+
+Faite dans le banc (`etude/lacets/`, option « mouvement libre » ou `?libre`), pas encore dans la page publique :
+- 2 à 6 trous alignés sur l'axe, attrapés au pointeur (souris ou doigt) et déplacés **sans contrainte de lacets** ; **aucune trace** ; lâché, un trou **retombe (ou remonte) sur l'axe**,
+  puis **tous les trous se répartissent à nouveau équitablement** sur l'axe (même ordre : aucune lettre).
+- Un trou qui passe devant ou derrière un voisin écrit une lettre : σᵢ s'il passe au-dessus en allant vers la droite, σᵢ⁻¹ au-dessous ; une lettre qui défait la précédente l'efface. Libellé : « mot écrit par le mouvement des trous ».
+- Le **méandre témoin évolue continûment** (l'image u du film conforme de la lettre en cours, la lettre s'écrit à u = 1) et il est **précalculé** (groupe de workers, 24 images par lettre, cache de 40 films).
+- Essayé par l'utilisateur : « ça marche bien et c'est agréable à utiliser ».
+- **Pas encore fait :** le geste où deux trous échangent leur position en se tournant autour par des arcs de cercle (aujourd'hui le trou suit le pointeur) ; le tour à la main sur téléphone ; l'enchaînement avec les autres activités.
+- **Pour la page publique :** revoir le poids du précalcul (workers, mémoire des images sur téléphone), le temps des mots longs (une lettre prend plusieurs secondes), autoriser `film_lettres_rapide` et `sans_limites` (banc seulement aujourd'hui).
