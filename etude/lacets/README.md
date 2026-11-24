@@ -105,7 +105,7 @@ lettre s'écrit : σᵢ si le trou qui va vers la droite passe au-dessus (comme 
 au-dessous (positions interpolées entre deux images). Les lettres s'écrivent sous le film, de gauche à droite, à mesure qu'on le joue. À la fin
 (`filmRetraction`), l'action du mot obtenu sur F_n (`ardoise.analyse`) est comparée à celle du mot d'origine : message « les méandres sont
 égaux ». Mesuré : égaux sur 13 mots (dont `1 -2 1 -2 1 -2 3 -1 2`, 41 lettres, et `4 3 -1 -1 2 -4 1`) ; le mot obtenu n'est pas le mot
-d'origine (`1 -2 1 -2` donne `2 1 2 2 -1 -1 -2 -2`) mais lui est équivalent. Reste à faire : dessiner à côté, par la méthode conforme, le méandre du mot obtenu.
+d'origine (`1 -2 1 -2` donne `2 1 2 2 -1 -1 -2 -2`) mais lui est équivalent. **Le méandre témoin (2026-11-25)** : à côté du film, un second panneau dessine par la méthode conforme le méandre du mot obtenu, **avec le même timing** : la lettre j s'achève à l'image du film où elle s'écrit, et avance linéairement depuis l'image où s'est écrite la lettre précédente (`imageTemoin` dans `etude.js` ; les dates des lettres sont les paires [image, lettre] portées par l'image 0). À la fin du film les deux méandres se superposent à l'œil (vérifié sur `1 -2 1 -2`). Le film conforme du témoin se calcule dans un second worker, **sans les limites de mots** (`ardoise.sans_limites`, banc seulement) ; au-delà de 20 lettres écrites (`LETTRES_TEMOIN`) le témoin n'est pas calculé (mémoire : 48 images par lettre), par exemple pour la tresse chargée (41 lettres).
 
 ## Le film de la triangulation
 

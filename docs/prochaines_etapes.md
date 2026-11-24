@@ -31,6 +31,6 @@ et entraîne les lacets.
    le signe d'une lettre (quel trou passe devant à l'échange d'ordre selon l'axe), et la configuration de départ de la rétractation (trous aux
    bouchons, pas alignés) qui demande un chemin de référence jusqu'à la ligne droite standard.
    **Fait dans le banc (2026-11-24)** : le mot s'écrit sous le film, à mesure, et ses méandres sont comparés à ceux du mot d'origine (égaux sur
-   13 mots essayés) ; les trous sont bien alignés et dans l'ordre au départ. **Idée suivante (utilisateur)** : un *méandre témoin* à côté, dessiné par
+   13 mots essayés) ; les trous sont bien alignés et dans l'ordre au départ. **Fait dans le banc (2026-11-25), idée de l'utilisateur** : un *méandre témoin* à côté, dessiné par
    la méthode conforme avec le mot obtenu, **avec le même timing** : la lettre écrite à l'image k du film de rétractation est jouée dans le film
    conforme à ce moment-là.

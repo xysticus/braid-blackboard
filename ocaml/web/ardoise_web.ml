@@ -38,14 +38,19 @@ let tresse_de_js (mot : float Js.js_array Js.t) =
 
 let nb_brins tresse = List.fold_left (fun a (l : Tresses.sigma Tresses.lettre) -> max a l.indice) 0 tresse + 1
 
+(* Le banc d'essai lève les limites pour le méandre témoin (le mot écrit par les trous dépasse vite 14 lettres) ; jamais la page publique. *)
+let limites_levees = ref false
+
 let verifie_limites ?(conforme = false) tresse =
   if tresse = [] then invalid_arg "mot vide : c'est la tresse nulle, il n'y a rien à dessiner";
   let n = nb_brins tresse and l = List.length tresse in
-  if n > max_brins || l > max_lettres then
-    invalid_arg (Printf.sprintf "limites de la page : %d brins et %d lettres au plus" max_brins max_lettres);
-  if conforme && (n > max_brins_conforme || l > max_lettres_conforme) then
-    invalid_arg
-      (Printf.sprintf "ce film (conforme ou triangulation) est limité à %d brins et %d lettres" max_brins_conforme max_lettres_conforme)
+  if not !limites_levees then begin
+    if n > max_brins || l > max_lettres then
+      invalid_arg (Printf.sprintf "limites de la page : %d brins et %d lettres au plus" max_brins max_lettres);
+    if conforme && (n > max_brins_conforme || l > max_lettres_conforme) then
+      invalid_arg
+        (Printf.sprintf "ce film (conforme ou triangulation) est limité à %d brins et %d lettres" max_brins_conforme max_lettres_conforme)
+  end
 
 (* Polyligne ou liste de points → tableau JS plat. *)
 let plat points =
@@ -464,4 +469,5 @@ let () =
           ("film", Js.Unsafe.inject (Js.wrap_callback film));
           ("film_lettres", Js.Unsafe.inject (Js.wrap_callback film_lettres));
           ("detend", Js.Unsafe.inject (Js.wrap_callback (fun l t c f e -> detend l t c f e)));
+          ("sans_limites", Js.Unsafe.inject (Js.wrap_callback (fun (b : bool Js.t) -> limites_levees := Js.to_bool b)));
           ("detend_local", Js.Unsafe.inject (Js.wrap_callback (fun l t c f e p it pa -> detend ~portee:p ?iterations:(if it > 0. then Some (int_of_float it) else None) ?pas:(if pa > 0. then Some pa else None) l t c f e))) |])

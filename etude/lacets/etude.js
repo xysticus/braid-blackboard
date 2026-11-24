@@ -85,6 +85,8 @@ const etat = {
   construction: true, tangentes: true, points: true, fantomes: true, libre: false, etude: true, sansMaillage: false, satellites: false, pur: false, plein: true, pointille: true, marqueurs: true, morph: true, maillage: false, precalcule: null, detendu: true, film: 'conforme', reprise: null, ips: 25, vue: null,
 };
 const toile = $('toile');
+const toileTemoin = $('toile-temoin');
+const LETTRES_TEMOIN = 20;   // au-delà, le méandre témoin (conforme, 48 images par lettre) pèse trop lourd en mémoire
 
 function etenduePartout(images) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -450,6 +452,7 @@ function va(k) {
   $('numero').value = String(k + 1);
   const tPur = etat.pur && etat.film === 'conforme' ? ` · t = ${(k === 0 ? 0 : lisse((((k - 1) % IMAGES_PAR_LETTRE) + 1) / IMAGES_PAR_LETTRE)).toFixed(3)}` : '';   // le paramètre de la transformation (0 : état k, 1 : état k+1)
   $('position').textContent = `image ${k + 1} / ${etat.total} · ${descriptionImage(k)}${tPur}`;
+  dessineTemoin(k);
   // le mot que les trous écrivent (film « rétractation ») : les lettres s'écrivent de gauche à droite, à mesure que le film est joué
   const lettres = etat.images[0] && etat.images[0].lettres;
   const zone = $('mot-genere');
@@ -603,6 +606,84 @@ function termine(message) {
   const demande = new URLSearchParams(location.search).get('image');   // ?image=N : s'ouvre sur l'image N (captures)
   va(etat.reprise !== null ? etat.reprise : demande ? Number(demande) - 1 : 0);
   etat.reprise = null;
+  lanceTemoin();
+}
+
+// ---------------------------------------------------------------- le méandre témoin
+
+// Le mot écrit par les trous (film « rétractation ») est dessiné à côté par la méthode conforme, avec le même timing : la lettre j s'achève à l'image
+// du film où elle s'écrit (image 0 : les lettres sont des paires [image, lettre]) ; entre deux lettres, la lettre suivante avance de façon linéaire.
+function arreteTemoin() {
+  if (etat.temoin && etat.temoin.travailleur) etat.temoin.travailleur.terminate();
+  etat.temoin = null;
+  $('temoin').hidden = true;
+}
+
+function lanceTemoin() {
+  const lettres = etat.film === 'retractation' && etat.images[0] && etat.images[0].lettres;
+  if (!lettres || !lettres.length) return;
+  const mot = [];
+  for (let j = 1; j < lettres.length; j += 2) mot.push(lettres[j]);
+  $('temoin').hidden = false;
+  $('temoin-mot').textContent = mot.map(nomLettre).join(' ');
+  efface2(toileTemoin);
+  if (mot.length > LETTRES_TEMOIN) {
+    $('temoin-etat').innerHTML = `<span class="attention">mot de ${mot.length} lettres : trop long pour le témoin (${LETTRES_TEMOIN} lettres au plus)</span>`;
+    return;
+  }
+  $('temoin-etat').innerHTML = '<progress max="1" value="0"></progress><span>calcul du témoin…</span>';
+  let w;
+  try { w = new Worker('../../web/travail.js?v=' + Date.now()); } catch (e) { return; }
+  const t = { travailleur: w, images: [], vue: null, fini: false, mot };
+  etat.temoin = t;
+  w.onmessage = (e) => {
+    const d = e.data;
+    if (etat.temoin !== t) return;
+    if (d.type === 'image') {
+      t.images.push(d.image);
+      const barre = $('temoin-etat').querySelector('progress');
+      if (barre) { barre.value = (d.k + 1) / d.total; $('temoin-etat').querySelector('span').textContent = `calcul du témoin : ${Math.round(100 * (d.k + 1) / d.total)} %`; }
+    } else if (d.type === 'fini') {
+      if (d.erreur || t.images.length < 2) { $('temoin-etat').innerHTML = `<span class="ko">${d.message || 'témoin indisponible'}</span>`; return; }
+      t.fini = true;
+      t.vue = calculeVue(t.images);
+      $('temoin-etat').innerHTML = '';
+      dessineTemoin(etat.k);
+    }
+  };
+  w.postMessage({ mode: 'conforme', mot, sansLimites: true });
+}
+
+function efface2(cv) {
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+}
+
+// L'image du film conforme du témoin à montrer quand le film de rétractation en est à l'image k.
+function imageTemoin(k) {
+  const L = etat.images[0].lettres, M = L.length / 2, P = 48;
+  let m = 0;
+  while (m < M && L[2 * m] <= k) m++;
+  let p = M;
+  if (m < M) { const s0 = m > 0 ? L[2 * (m - 1)] : 0, F = L[2 * m]; p = m + (F > s0 ? (k - s0) / (F - s0) : 1); }
+  return Math.min(etat.temoin.images.length - 1, Math.round(P * p));
+}
+
+function dessineTemoin(k) {
+  const t = etat.temoin;
+  if (!t || !t.fini || !etat.images[0] || !etat.images[0].lettres) return;
+  const image = t.images[imageTemoin(k)];
+  efface2(toileTemoin);
+  const ctx = toileTemoin.getContext('2d');
+  const v = t.vue || { s: 1, tx: 0, ty: 0 };
+  ctx.setTransform(ECHELLE * v.s, 0, 0, ECHELLE * v.s, ECHELLE * v.tx, ECHELLE * v.ty);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  image.lacets.forEach((p, i) => { ctx.strokeStyle = PALETTE[i % PALETTE.length]; ctx.lineWidth = 3.5; trace(ctx, p); });
+  disques(ctx, image.trous, 4, '#000');
+  disques(ctx, image.clou, 4, '#000');
 }
 
 function chargePrecalcule(mot, sorte) {
@@ -621,6 +702,7 @@ function chargePrecalcule(mot, sorte) {
 
 function lance(mot) {
   if (etat.travailleur) etat.travailleur.terminate();
+  arreteTemoin();
   arrete();
   etat.mot = mot; etat.images = []; etat.total = 0; etat.k = 0; etat.vue = null;
   efface();

@@ -6,6 +6,7 @@
 // Une éventuelle requête (?v=… : le banc d'essai l'ajoute pour échapper au cache du navigateur) est transmise à la bibliothèque
 // et aux workers auxiliaires, pour qu'ils soient de la même version que ce fichier.
 const VERSION = self.location.search || '';
+let SANS_LIMITES = false;   // le banc d'essai lève les limites de mots pour le méandre témoin (message sansLimites) ; jamais la page publique
 importScripts('ardoise_lib.js' + VERSION);
 
 // Un champ qui est un tableau de nombres devient un Float32Array, un tableau de tableaux (les lacets) un tableau de
@@ -77,7 +78,7 @@ function filmReparti(mode, mot) {
   };
   const donneLettre = (w) => {
     if (erreur || aFaire.length === 0) return;
-    w.postMessage({ type: 'lettre', mode: base, mot, k: aFaire.shift(), brutes: detendu });
+    w.postMessage({ type: 'lettre', mode: base, mot, k: aFaire.shift(), brutes: detendu, sansLimites: SANS_LIMITES });
     enCours++;
   };
   // l'image clé de départ, ici
@@ -419,6 +420,7 @@ function filmRetraction(mot) {
 
 onmessage = (e) => {
   const d = e.data;
+  if (d.sansLimites) { SANS_LIMITES = true; self.ardoise.sans_limites(true); }
   if (d.type === 'lettre') {   // un worker auxiliaire : une lettre du film conforme
     const r = self.ardoise.film_lettres(d.mode, d.mot, [d.k], false, (im, k) => {
       if (d.brutes && forceDetente(k) > 0) { postMessage({ type: 'brute', image: im, k }); return; }   // à détendre : en double précision
