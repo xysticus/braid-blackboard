@@ -64,8 +64,8 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   `web/ardoise_lib.js`, **suivi par git** : le hook `.githooks/pre-push` (à activer par `git config core.hooksPath .githooks`)
   le reconstruit avant chaque push et refuse de pousser s'il a changé (le commiter, puis repousser). Un push qui touche `web/`
   met à jour GitHub Pages. Le lecteur et ses exports sont dans `web/exports.js` et `web/mp4.js` (un fichier de plus à déployer = à ajouter à
-  `.github/workflows/pages.yml` **et** à `web/deploie.sh`). Les exemples de tresses sont dans trois listes à garder alignées : `web/ardoise.js`,
-  `etude/lacets/etude.js`, `python/Interface.py`. Les versions déployables sont des tags annotés `v1.N` (le dernier : voir `git tag`), poussés
+  `.github/workflows/pages.yml` **et** à `web/deploie.sh`). Les exemples de tresses sont dans quatre listes à garder alignées : `web/ardoise.js`,
+  `etude/lacets/etude.js`, `etude/3d/page.js`, `python/Interface.py`. Les versions déployables sont des tags annotés `v1.N` (le dernier : voir `git tag`), poussés
   seulement quand l'utilisateur le demande.
 - `etude/lacets/` : **banc d'essai** (document de travail, non déployé) du film des lacets : une page, un film en 1600 × 1600, lecteur pas à pas, lignes de construction et tangentes
   des arcs (`etude/lacets/README.md`). Il réutilise `web/travail.js` et `web/ardoise_lib.js` sans les modifier. Essais en
@@ -82,6 +82,8 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   `lanceLibre`, `majTemoinLibre`, `prechargeLibre` dans `etude/lacets/etude.js`, `ardoise.film_lettres_rapide`). Le banc charge ses fichiers avec `?v=<heure>` (script inline
   de `etude/lacets/index.html`) pour que le navigateur n'en garde pas d'ancienne version. Détail et mesures : `etude/lacets/README.md` ; la suite prévue (proposer la rétractation dans la page publique en générant le mot associé) : `docs/prochaines_etapes.md`
   point 7. Tags `banc-retractation`, `banc-retractation-2`, `banc-curseurs`, `banc-libre` = états du banc (non déployés), à ne pas confondre avec les `v1.N` déployables.
+- `etude/3d/` : **banc d'essai de la vue 3D** (non déployé, `etude/3d/README.md`) : la tresse dans un cylindre, une tranche par lettre, WebGL 2
+  sans dépendance (`vue3d.js`, réutilisable ; `page.js` pour le banc, aucun calcul OCaml). De face : le diagramme ; de dessus : le film.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README et un `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés)
@@ -98,7 +100,7 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 - `etude_exploitation_des_images.md` (**faite**, étapes 1 à 6 : boutons image par image, chapitres par lettre, menu ⤓ d'export de l'image en cours en
   PNG, SVG et JSON, zip des images clés, film MP4 AV1 encodé dans le navigateur par WebCodecs ; code dans `web/exports.js` et `web/mp4.js`, détail dans `docs/page_web.md` ;
   reste à faire : le SVG de l'escargot et des iris, un éventuel film H.264).
-- `etude_idees_pedagogiques.md` (étude, rien d'implémenté : écrire le mot d'un diagramme ou d'un mouvement libre des trous, réduire un mot, relier mots et méandres, représentation 3D par tranches).
+- `etude_idees_pedagogiques.md` (étude : écrire le mot d'un diagramme ou d'un mouvement libre des trous, réduire un mot, relier mots et méandres, représentation 3D par tranches ; seuls le mouvement libre et la 3D sont faits, dans des bancs d'essai).
 - `pistes_film_conforme.md`, `plan_ocaml.md`, `etude_page_web.md`, `conventions_de_signe.md` (β de l'article *Des matrices pour des
   tresses* = β⁻¹ chez nous : on garde nos conventions), `etude_lignes_de_construction.md` (lignes de construction facultatives, notebook et page web : faite pour les films de la triangulation,
 des lacets et du diagramme de courbes de la page web ; le reste est à l'étude).

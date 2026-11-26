@@ -1,0 +1,17 @@
+/* Le banc d'essai de la vue 3D : la feuille de la page publique (../../web/ardoise.css) plus ce qui lui manque. */
+[hidden] { display: none !important; }
+header { padding-top: 12px; }
+h1 { font-size: 1.4rem; }
+main.trois-d { grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr); align-items: start; }
+@media (max-width: 760px) { main.trois-d { grid-template-columns: minmax(0, 1fr); } header, main { padding-left: 16px; padding-right: 16px; } }
+#saisie label { display: block; font-weight: 600; margin-bottom: 6px; }
+#saisie #exemples { display: grid; gap: 8px; margin-top: 12px; }
+#scene { background: var(--carte); border: 1px solid var(--trait); border-radius: 10px; padding: 12px; }
+/* touch-action : le doigt tourne la vue au lieu de faire défiler la page (qui défile à côté du canvas) */
+#toile { display: block; width: 100%; height: max(420px, calc(100vh - 220px)); touch-action: none; cursor: grab; }
+#toile:active { cursor: grabbing; }
+@media (max-width: 760px) { #toile { height: 68vh; } }
+#mot-lettres { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-bottom: 6px; }
+#mot-lettres button { font: inherit; font-size: 1.15rem; padding: 1px 6px; cursor: pointer; color: var(--encre); background: none;
+  border: 1.5px solid transparent; border-radius: 6px; }
+#mot-lettres button.designee { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }

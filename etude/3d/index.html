@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tresse 3D : banc d'essai</title>
+<link rel="icon" href="../../web/favicon.svg" type="image/svg+xml">
+<script>
+// Le banc change souvent : le navigateur ne doit jamais garder une ancienne version de ses fichiers (le serveur de test n'envoie pas d'en-tête de cache).
+{ const v = Date.now(); ['../../web/ardoise.css', 'style.css'].forEach((f) => document.write('<link rel="stylesheet" href="' + f + '?v=' + v + '">'));
+  ['vue3d.js', 'page.js'].forEach((f) => document.write('<scr' + 'ipt defer src="' + f + '?v=' + v + '"></scr' + 'ipt>')); }
+</script>
+</head>
+<body>
+<header>
+  <h1>Tresse 3D : banc d'essai</h1>
+  <p class="sous-titre">Document de travail (non publié) : la tresse dans son cylindre, une tranche par lettre, la première en haut.</p>
+</header>
+
+<main class="trois-d">
+  <section class="panneau" id="scene">
+    <div id="mot-lettres" aria-label="le mot, lettre par lettre"></div>
+    <canvas id="toile" aria-label="la tresse en trois dimensions"></canvas>
+    <p id="sans-webgl" class="erreur" hidden>Ce navigateur ne propose pas WebGL 2 : la vue 3D ne peut pas s'afficher.</p>
+    <p class="aide">Glisser pour tourner ; molette, ou deux doigts qu'on écarte, pour zoomer. Survoler ou toucher un croisement met sa lettre en évidence, et inversement.</p>
+  </section>
+  <aside id="saisie">
+    <label for="mot">Mot de tresse</label>
+    <input id="mot" type="text" spellcheck="false" autocomplete="off" placeholder="1 -2 3 -1 2     ou     σ1 σ2^-1 σ3">
+    <p id="erreur" class="erreur" hidden></p>
+    <div id="exemples" aria-label="Tresses d'exemple"></div>
+  </aside>
+</main>
+</body>
+</html>

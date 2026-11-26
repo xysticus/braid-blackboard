@@ -1,4 +1,4 @@
-# Idées pédagogiques (étude : l'activité 2 est faite dans le banc d'essai, le reste n'est pas commencé)
+# Idées pédagogiques (étude : l'activité 2 et la vue 3D sont faites dans des bancs d'essai, le reste n'est pas commencé)
 
 Idées de l'utilisateur (2026-11-25), notées telles quelles pour y revenir. Elles s'appuient sur ce que la page et le banc d'essai savent déjà faire (diagramme
 de tresse, méandres, mot écrit par le mouvement des trous, curseurs : voir `etude/lacets/README.md`). **L'activité 2 est faite dans le banc d'essai** (2026-11-26, tag `banc-libre`, option « mouvement libre » : voir la section ci-dessous) ; les autres ne sont pas commencées.
@@ -39,6 +39,11 @@ ajoutent une lettre à la fois). Précisions de l'utilisateur (2026-11-25) :
   - **Mise en évidence réciproque** entre le secteur cylindrique d'un croisement et la lettre du mot : survoler ou toucher l'un met l'autre en évidence, dans les deux sens.
 - Reste à choisir : la technique (voir plus haut), le tracé exact des deux routes d'un croisement (arcs de cercle autour de l'axe du secteur, comme le demi-tour du film
   conforme ?), l'espacement des disques, et la façon de tourner la vue au doigt sur téléphone.
+
+## État de la 3D (2026-11-26, banc d'essai)
+
+Première version dans `etude/3d/` (détail, choix et vérifications : `etude/3d/README.md`), pas encore dans la page publique. Choisis : **WebGL 2 à la main**,
+banc à part, **demi-tour en cercle** dans chaque tranche ; l'écart entre disques et la rotation au doigt sont des premiers réglages, **pas encore essayés sur téléphone**.
 
 ## Liens avec l'existant
 
