@@ -85,7 +85,8 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 - `etude/3d/` : **banc d'essai de la vue 3D** (non déployé, `etude/3d/README.md`) : la tresse dans un cylindre, une tranche par lettre, WebGL 2
   sans dépendance (`vue3d.js`, réutilisable ; `page.js` pour le banc). De face : le diagramme ; de dessus : le film. **Le disque qui descend** porte le méandre à
   sa hauteur (`disque.js` : les images du film conforme détendu, calculées par `web/travail.js`, déformées par un homéomorphisme du plan pour que les trous
-  tombent sur les brins ; vérifier une modification par les nombres d'enroulement).
+  tombent sur les brins ; vérifier une modification par les nombres d'enroulement). Tag `banc-3d` = état de ce banc (non déployé), comme les
+  tags `banc-*` des lacets.
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README et un `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés)
