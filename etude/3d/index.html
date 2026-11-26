@@ -8,7 +8,7 @@
 <script>
 // Le banc change souvent : le navigateur ne doit jamais garder une ancienne version de ses fichiers (le serveur de test n'envoie pas d'en-tête de cache).
 { const v = Date.now(); ['../../web/ardoise.css', 'style.css'].forEach((f) => document.write('<link rel="stylesheet" href="' + f + '?v=' + v + '">'));
-  ['vue3d.js', 'page.js'].forEach((f) => document.write('<scr' + 'ipt defer src="' + f + '?v=' + v + '"></scr' + 'ipt>')); }
+  ['vue3d.js', 'disque.js', 'page.js'].forEach((f) => document.write('<scr' + 'ipt defer src="' + f + '?v=' + v + '"></scr' + 'ipt>')); }
 </script>
 </head>
 <body>
@@ -21,6 +21,15 @@
   <section class="panneau" id="scene">
     <div id="mot-lettres" aria-label="le mot, lettre par lettre"></div>
     <canvas id="toile" aria-label="la tresse en trois dimensions"></canvas>
+    <div id="commandes-disque">
+      <label><input id="avec-disque" type="checkbox" checked> le disque et son méandre</label>
+      <div class="descente">
+        <button id="jouer" type="button" aria-label="faire descendre le disque">▶</button>
+        <input id="hauteur" type="range" min="0" max="0" value="0" step="1" aria-label="hauteur du disque : à gauche en haut, à droite en bas">
+      </div>
+      <div class="points-de-vue"><button id="de-dessus" type="button">vue de dessus</button><button id="de-cote" type="button">vue de côté</button></div>
+      <p id="etat-disque" class="aide" role="status"></p>
+    </div>
     <p id="sans-webgl" class="erreur" hidden>Ce navigateur ne propose pas WebGL 2 : la vue 3D ne peut pas s'afficher.</p>
     <p class="aide">Glisser pour tourner ; molette, ou deux doigts qu'on écarte, pour zoomer. Survoler ou toucher un croisement met sa lettre en évidence, et inversement.</p>
   </section>

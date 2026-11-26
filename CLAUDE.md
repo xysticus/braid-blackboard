@@ -83,7 +83,9 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
   de `etude/lacets/index.html`) pour que le navigateur n'en garde pas d'ancienne version. Détail et mesures : `etude/lacets/README.md` ; la suite prévue (proposer la rétractation dans la page publique en générant le mot associé) : `docs/prochaines_etapes.md`
   point 7. Tags `banc-retractation`, `banc-retractation-2`, `banc-curseurs`, `banc-libre` = états du banc (non déployés), à ne pas confondre avec les `v1.N` déployables.
 - `etude/3d/` : **banc d'essai de la vue 3D** (non déployé, `etude/3d/README.md`) : la tresse dans un cylindre, une tranche par lettre, WebGL 2
-  sans dépendance (`vue3d.js`, réutilisable ; `page.js` pour le banc, aucun calcul OCaml). De face : le diagramme ; de dessus : le film.
+  sans dépendance (`vue3d.js`, réutilisable ; `page.js` pour le banc). De face : le diagramme ; de dessus : le film. **Le disque qui descend** porte le méandre à
+  sa hauteur (`disque.js` : les images du film conforme détendu, calculées par `web/travail.js`, déformées par un homéomorphisme du plan pour que les trous
+  tombent sur les brins ; vérifier une modification par les nombres d'enroulement).
 - `imgs/` : images du README. `*.png` est dans `.gitignore` : les images du README existantes sont suivies,
   les nouvelles sorties ne le sont pas. Un sous-répertoire par méthode (`imgs/conforme/`, `imgs/diagramme/`,
   `imgs/rubans/`, `imgs/rubans_gauche/`), chacun avec un README et un `apercu.jpg` suivi ; les films (`film_*.mp4`, ignorés)
@@ -100,7 +102,7 @@ Conventions de signe comparées à celles de l'article *Des matrices pour des tr
 - `etude_exploitation_des_images.md` (**faite**, étapes 1 à 6 : boutons image par image, chapitres par lettre, menu ⤓ d'export de l'image en cours en
   PNG, SVG et JSON, zip des images clés, film MP4 AV1 encodé dans le navigateur par WebCodecs ; code dans `web/exports.js` et `web/mp4.js`, détail dans `docs/page_web.md` ;
   reste à faire : le SVG de l'escargot et des iris, un éventuel film H.264).
-- `etude_idees_pedagogiques.md` (étude : écrire le mot d'un diagramme ou d'un mouvement libre des trous, réduire un mot, relier mots et méandres, représentation 3D par tranches ; seuls le mouvement libre et la 3D sont faits, dans des bancs d'essai).
+- `etude_idees_pedagogiques.md` (étude : écrire le mot d'un diagramme ou d'un mouvement libre des trous, réduire un mot, relier mots et méandres, représentation 3D par tranches ; seuls le mouvement libre, la 3D et son disque qui descend sont faits, dans des bancs d'essai).
 - `pistes_film_conforme.md`, `plan_ocaml.md`, `etude_page_web.md`, `conventions_de_signe.md` (β de l'article *Des matrices pour des
   tresses* = β⁻¹ chez nous : on garde nos conventions), `etude_lignes_de_construction.md` (lignes de construction facultatives, notebook et page web : faite pour les films de la triangulation,
 des lacets et du diagramme de courbes de la page web ; le reste est à l'étude).

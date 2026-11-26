@@ -61,3 +61,13 @@ Faite dans le banc (`etude/lacets/`, option « mouvement libre » ou `?libre`), 
 - Essayé par l'utilisateur : « ça marche bien et c'est agréable à utiliser ».
 - **Pas encore fait :** le geste où deux trous échangent leur position en se tournant autour par des arcs de cercle (aujourd'hui le trou suit le pointeur) ; le tour à la main sur téléphone ; l'enchaînement avec les autres activités.
 - **Pour la page publique :** revoir le poids du précalcul (workers, mémoire des images sur téléphone), le temps des mots longs (une lettre prend plusieurs secondes), autoriser `film_lettres_rapide` et `sans_limites` (banc seulement aujourd'hui).
+
+## Le disque qui descend, et démêler un méandre (2026-11-26)
+
+Deux idées que l'utilisateur avait aussi de son côté :
+
+- **Le disque qui descend** : un disque horizontal parcourt la tresse en 3D et porte le méandre à sa hauteur ; le diagramme, la 3D et le film sont le même objet.
+  **Fait dans le banc** `etude/3d/` (voir son README).
+- **Démêler un méandre** : partir d'un méandre sans connaître son mot et jouer des σᵢ^±1 jusqu'aux lacets de départ, avec une mesure de la complexité (par exemple
+  la longueur totale des mots de F_n). Pas commencé.
+

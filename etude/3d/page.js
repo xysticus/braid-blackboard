@@ -1,6 +1,6 @@
 'use strict';
-// Le banc d'essai de la vue 3D : la page (saisie, exemples, mot dont chaque lettre répond à son croisement). La vue elle-même
-// est dans vue3d.js, sans lien avec la page. Rien ici n'est déployé : la page publique est dans web/.
+// Le banc d'essai de la vue 3D : la page (saisie, exemples, mot dont chaque lettre répond à son croisement, le disque qui
+// descend). La vue elle-même est dans vue3d.js, sans lien avec la page ; le méandre du disque, dans disque.js. Rien ici n'est déployé : la page publique est dans web/.
 
 const EXEMPLES = [
   { nom: 'σ₁', mot: [1], legende: 'le demi-tour le plus simple' },
@@ -55,6 +55,90 @@ function lisMot(texte) {
 
 let vue = null, motCourant = null;
 
+// ---------------------------------------------------------------- le disque qui descend : le méandre à sa hauteur
+
+const MAX_BRINS_FILM = 6, MAX_LETTRES_FILM = 14;   // les limites du film conforme
+const IMAGES_PAR_SECONDE = 25;
+// le film conforme détendu, calculé par le worker de la page publique (réparti lui-même sur des workers auxiliaires)
+const TRAVAIL = '../../web/travail.js';
+const film = { mot: [], worker: null, images: [], total: 0, f: 0, lecture: false, derniere: 0, message: '' };
+
+// d'après les rayons mesurés du méandre : 1,64 à 2 brins, 1,93 à 3, 2,33 à 4, 2,96 à 5, 3,52 à 6
+const rayonMin = (mot) => Math.max(2, 0.6 * Vue3D.nbBrins(mot) + 0.05);
+
+// Le disque à l'image f demande les images clés qui encadrent sa lettre : il faut que la lettre entière soit arrivée.
+function disponible(f) {
+  const { k } = Disque.instant(f);
+  return Boolean(film.images[f] && film.images[Disque.IMAGES_PAR_LETTRE * (k + 1)]);
+}
+
+function afficheDisque() {
+  const actif = $('avec-disque').checked, f = film.f, curseur = $('hauteur');
+  $('commandes-disque').classList.toggle('eteint', !actif);
+  curseur.value = f;
+  const pret = actif && film.worker !== undefined && disponible(f);
+  if (pret) {
+    const { k } = Disque.instant(f), P = Disque.IMAGES_PAR_LETTRE;
+    vue.disqueMeandre({ tranche: f / P, ...Disque.meandre(film.mot, f, film.images[f], film.images[P * k], film.images[P * (k + 1)]) });
+  } else vue.disqueMeandre(null);
+  const lettre = actif && f > 0 ? Disque.instant(f).k : -1;
+  [...$('mot-lettres').children].forEach((b, i) => b.classList.toggle('courante', i === lettre));
+  const recues = film.images.filter(Boolean).length;
+  let etat = film.message;
+  if (actif && !etat && (!film.total || recues < film.total)) etat = film.total ? `calcul du méandre : ${recues} / ${film.total} images` : 'calcul du méandre…';
+  $('etat-disque').textContent = etat;
+}
+
+function allume(lecture) {
+  film.lecture = lecture;
+  $('jouer').textContent = lecture ? '⏸' : '▶';
+  $('jouer').setAttribute('aria-label', lecture ? 'arrêter la descente' : 'faire descendre le disque');
+  if (lecture) { film.derniere = performance.now(); requestAnimationFrame(descend); }
+}
+
+function descend(maintenant) {
+  if (!film.lecture) return;
+  const pas = Math.floor((maintenant - film.derniere) * IMAGES_PAR_SECONDE / 1000);
+  if (pas > 0) {
+    film.derniere = maintenant;
+    const fin = Disque.IMAGES_PAR_LETTRE * film.mot.length;
+    const suivante = Math.min(fin, film.f + Math.min(pas, 3));
+    if (disponible(suivante)) { film.f = suivante; afficheDisque(); }
+    if (film.f === fin) { allume(false); return; }
+  }
+  requestAnimationFrame(descend);
+}
+
+function calculeFilm(mot) {
+  if (film.worker) film.worker.terminate();
+  Object.assign(film, { mot, worker: null, images: [], total: 0, f: 0, message: '' });
+  allume(false);
+  $('hauteur').max = Disque.IMAGES_PAR_LETTRE * mot.length;
+  if (Vue3D.nbBrins(mot) > MAX_BRINS_FILM || mot.length > MAX_LETTRES_FILM)
+    film.message = `pas de méandre pour ce mot : le film est limité à ${MAX_BRINS_FILM} brins et ${MAX_LETTRES_FILM} lettres`;
+  else {
+    const w = new Worker(TRAVAIL + '?v=' + Date.now());
+    film.worker = w;
+    w.onmessage = (e) => {
+      const d = e.data;
+      if (film.worker !== w) return;
+      if (d.type === 'image') {
+        film.images[d.k] = d.image;
+        film.total = d.total;
+        // redessiner le disque s'il attendait ; sinon seul le compte des images change
+        if (d.k % Disque.IMAGES_PAR_LETTRE === 0 || d.k === d.total - 1) afficheDisque();
+        else if (d.k % 8 === 0) $('etat-disque').textContent = `calcul du méandre : ${d.k + 1} / ${d.total} images`;
+      } else if (d.type === 'fini') {
+        if (d.erreur || d.message) film.message = d.message;
+        afficheDisque();
+      }
+    };
+    w.onerror = () => { film.message = 'le calcul du méandre a échoué'; afficheDisque(); };
+    w.postMessage({ mode: 'conforme_detendu', mot });
+  }
+  afficheDisque();
+}
+
 function met_en_evidence(j) {
   vue.designe(j);
   [...$('mot-lettres').children].forEach((b, i) => b.classList.toggle('designee', i === j));
@@ -86,7 +170,8 @@ function miseAJour(texte) {
   motCourant = cle;
   try { history.replaceState(null, '', '#' + encodeURIComponent(cle)); } catch (e) { /* file:// */ }
   afficheLettres(r.mot);
-  vue.montre(r.mot, PALETTE);
+  vue.montre(r.mot, PALETTE, { rayonMin: rayonMin(r.mot) });
+  calculeFilm(r.mot);
 }
 
 // Le fond et les teintes du verre suivent le thème de la page.
@@ -100,6 +185,15 @@ window.addEventListener('DOMContentLoaded', () => {
   vue = Vue3D.cree($('toile'), { survol: met_en_evidence });
   if (!vue) { $('sans-webgl').hidden = false; $('toile').hidden = true; return; }
   appliqueTheme();
+  $('avec-disque').addEventListener('change', () => { if (!$('avec-disque').checked) allume(false); afficheDisque(); });
+  $('hauteur').addEventListener('input', () => { allume(false); film.f = Number($('hauteur').value); afficheDisque(); });
+  $('jouer').addEventListener('click', () => {
+    if (film.lecture) { allume(false); return; }
+    if (film.f === Disque.IMAGES_PAR_LETTRE * film.mot.length) film.f = 0;
+    allume(true);
+  });
+  $('de-dessus').addEventListener('click', () => vue.oriente(0, Math.PI / 2));
+  $('de-cote').addEventListener('click', () => vue.oriente(0.45, 0.3));
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', appliqueTheme);
   const champ = $('mot');
   EXEMPLES.forEach((e) => {
@@ -119,4 +213,5 @@ window.addEventListener('DOMContentLoaded', () => {
   if (q.has('azimut') || q.has('site') || q.has('zoom'))
     vue.oriente(Number(q.get('azimut') || 0) * Math.PI / 180, Number(q.get('site') || 0) * Math.PI / 180, Number(q.get('zoom') || 1));
   if (q.has('lettre')) met_en_evidence(Number(q.get('lettre')) - 1);
+  if (q.has('image')) { film.f = Math.min(Number(q.get('image')), Disque.IMAGES_PAR_LETTRE * film.mot.length); afficheDisque(); }
 });

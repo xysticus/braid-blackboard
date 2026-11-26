@@ -11,6 +11,9 @@
 // tranche de σ_i, les brins aux positions i et i + 1 font un demi-tour en cercle autour de l'axe vertical du milieu ;
 // les autres descendent tout droit.
 //
+// Le disque qui descend (disqueMeandre) : un disque horizontal à une hauteur quelconque, qui porte le méandre à cette
+// hauteur (calculé par disque.js d'après le film conforme) ; les brins au-dessus de lui deviennent des fantômes.
+//
 // Unités : l'écart entre deux positions voisines vaut 1.
 
 const Vue3D = (() => {
@@ -22,6 +25,9 @@ const Vue3D = (() => {
   const COTES_CERCLE = 96;                          // côtés des disques et des cylindres
   const CHAMP = 30 * Math.PI / 180;                 // champ vertical de la caméra
   const SITE_MAX = Math.PI / 2 - 0.001;
+  const DEMI_TRAIT = 0.024;                         // la demi-largeur d'un lacet sur le disque du méandre
+  const RAYON_TROU = 0.13;                          // un trou sur ce disque : il couvre la coupe du brin
+  const FANTOME = 0.14;                             // l'opacité des brins au-dessus du disque du méandre
 
   const nbBrins = (mot) => mot.reduce((a, k) => Math.max(a, Math.abs(k)), 0) + 1;
 
@@ -159,6 +165,32 @@ const Vue3D = (() => {
     return d;
   }
 
+  // Les lignes brisées à plat (x, z, x, z, …) en rubans horizontaux à la hauteur y.
+  function rubanPlat(ligne, y, demi) {
+    const positions = [], normales = [], indices = [], nb = ligne.length / 2;
+    for (let j = 0; j < nb; j++) {
+      const a = Math.max(j - 1, 0), b = Math.min(j + 1, nb - 1);
+      const dx = ligne[2 * b] - ligne[2 * a], dz = ligne[2 * b + 1] - ligne[2 * a + 1], l = Math.hypot(dx, dz) || 1;
+      for (const cote of [-1, 1]) {
+        positions.push(ligne[2 * j] - cote * demi * dz / l, y, ligne[2 * j + 1] + cote * demi * dx / l);
+        normales.push(0, 1, 0);
+      }
+    }
+    for (let j = 0; j + 1 < nb; j++) indices.push(2 * j, 2 * j + 1, 2 * j + 2, 2 * j + 2, 2 * j + 1, 2 * j + 3);
+    return { positions, normales, indices };
+  }
+
+  // Des pastilles horizontales aux points (x, z) à la hauteur y.
+  function pastilles(points, y, rayon) {
+    const r = { positions: [], normales: [], indices: [] };
+    for (let q = 0; q < points.length; q += 2) {
+      const d = disque(points[q], rayon, y), debut = r.positions.length / 3;
+      for (let v = 2; v < d.positions.length; v += 3) d.positions[v] += points[q + 1];
+      r.positions.push(...d.positions); r.normales.push(...d.normales); r.indices.push(...d.indices.map((i) => i + debut));
+    }
+    return r;
+  }
+
   // ------------------------------------------------------------ WebGL
 
   const SOMMETS = `#version 300 es
@@ -177,10 +209,14 @@ const Vue3D = (() => {
     uniform int mode;
     uniform vec3 oeil;
     uniform vec3 lumiere;
+    uniform float coupe;
+    uniform int cote;
     in vec3 vNormale;
     in vec3 vPosition;
     out vec4 sortie;
     void main() {
+      // cote 1 : ne garder que ce qui est sous la hauteur coupe ; cote 2 : que ce qui est au-dessus
+      if ((cote == 1 && vPosition.y > coupe) || (cote == 2 && vPosition.y <= coupe)) discard;
       if (mode == 2) { sortie = couleur; return; }
       vec3 n = normalize(vNormale);
       vec3 vue = normalize(oeil - vPosition);
@@ -239,6 +275,7 @@ const Vue3D = (() => {
     let prog, uniformes;
     let geo = null, couleurs = [], teintes = { fond: '#ffffff', verre: '#808080', accent: '#2f6fde' };
     let maillages = null;
+    let meandre = null, maillagesMeandre = null;     // le disque qui descend : son contenu, et ses maillages
     let azimut = 0.45, site = 0.3, zoom = 1;
     let designe = null;            // la lettre mise en évidence
     let demande = false;
@@ -246,15 +283,36 @@ const Vue3D = (() => {
     function initialise() {
       prog = programme(gl);
       uniformes = {};
-      for (const nom of ['matrice', 'couleur', 'mode', 'oeil', 'lumiere']) uniformes[nom] = gl.getUniformLocation(prog, nom);
+      for (const nom of ['matrice', 'couleur', 'mode', 'oeil', 'lumiere', 'coupe', 'cote']) uniformes[nom] = gl.getUniformLocation(prog, nom);
+    }
+
+    function supprime(m) {
+      gl.deleteVertexArray(m.vao);
+      m.tampons.forEach((t) => gl.deleteBuffer(t));
+    }
+
+    function construitMeandre() {
+      if (maillagesMeandre) {
+        const a = maillagesMeandre;
+        for (const m of [a.fond, a.bord, a.trous, a.clou, ...a.lacets]) supprime(m);
+        maillagesMeandre = null;
+      }
+      if (!geo || !meandre) return;
+      const y = geo.hauteur / 2 - meandre.tranche * HAUTEUR_TRANCHE;
+      maillagesMeandre = {
+        y,
+        fond: charge(gl, disque(0, geo.rayon, y)),
+        bord: charge(gl, bord(0, geo.rayon, y)),
+        // chaque lacet un rien au-dessus du précédent : là où ils se rejoignent, au clou, ils ne scintillent pas
+        lacets: meandre.lacets.map((l, i) => charge(gl, rubanPlat(l, y + 0.004 + 0.0006 * i, DEMI_TRAIT))),
+        trous: charge(gl, pastilles(meandre.trous, y + 0.012, RAYON_TROU)),
+        clou: charge(gl, pastilles(meandre.clou, y + 0.012, 0.07)),
+      };
     }
 
     function libere() {
       if (!maillages) return;
-      for (const m of [maillages.paroi, ...maillages.brins, ...maillages.disques, ...maillages.bords, ...maillages.secteurs.flatMap((s) => Object.values(s))]) {
-        gl.deleteVertexArray(m.vao);
-        m.tampons.forEach((t) => gl.deleteBuffer(t));
-      }
+      for (const m of [maillages.paroi, ...maillages.brins, ...maillages.disques, ...maillages.bords, ...maillages.secteurs.flatMap((s) => Object.values(s))]) supprime(m);
       maillages = null;
     }
 
@@ -314,10 +372,28 @@ const Vue3D = (() => {
       gl.uniform3f(uniformes.oeil, ...v.oeil);
       gl.uniform3f(uniformes.lumiere, ...unitaire([0, 1, 2].map((q) => 0.8 * v.arriere[q] + 0.55 * v.dessus[q] - 0.35 * v.droite[q])));
 
-      // les brins, opaques
+      // les brins, opaques ; avec le disque du méandre, seulement sous lui
+      const d = maillagesMeandre;
+      const brins = (alpha) => maillages.brins.forEach((m, i) => trace(m, couleurs[i % couleurs.length], alpha, 0));
       gl.enable(gl.DEPTH_TEST);
       gl.disable(gl.BLEND);
-      maillages.brins.forEach((m, i) => trace(m, couleurs[i % couleurs.length], 1, 0));
+      gl.uniform1f(uniformes.coupe, d ? d.y : 0);
+      gl.uniform1i(uniformes.cote, d ? 1 : 0);
+      brins(1);
+      gl.uniform1i(uniformes.cote, 0);
+      if (d) {
+        // le fond du disque, blanc comme celui des films et un peu transparent, puis le méandre
+        gl.enable(gl.BLEND);
+        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.depthMask(false);
+        trace(d.fond, '#ffffff', 0.88, 2);
+        gl.disable(gl.BLEND);
+        gl.depthMask(true);
+        d.lacets.forEach((m, i) => trace(m, couleurs[i % couleurs.length], 1, 2));
+        trace(d.trous, '#000000', 1, 2);
+        trace(d.clou, '#000000', 1, 2);
+        trace(d.bord, teintes.accent, 1, 2, gl.LINES);
+      }
 
       // le verre, par-dessus : il ne masque pas ce qui est derrière lui
       gl.enable(gl.BLEND);
@@ -330,6 +406,11 @@ const Vue3D = (() => {
       if (s) {
         trace(s.paroi, teintes.accent, 0.22, 1);
         for (const m of [s.haut, s.bas, s.disqueHaut, s.disqueBas]) trace(m, teintes.accent, 1, 2, gl.LINES);
+      }
+      if (d) {                                      // les brins au-dessus du disque : en fantômes, on lit à travers
+        gl.uniform1i(uniformes.cote, 2);
+        brins(FANTOME);
+        gl.uniform1i(uniformes.cote, 0);
       }
       gl.depthMask(true);
       gl.bindVertexArray(null);
@@ -410,20 +491,26 @@ const Vue3D = (() => {
       e.preventDefault();
       zoome(Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0015)));
     }, { passive: false });
-    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); maillages = null; });
-    canvas.addEventListener('webglcontextrestored', () => { initialise(); construit(); redessine(); });
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); maillages = null; maillagesMeandre = null; });
+    canvas.addEventListener('webglcontextrestored', () => { initialise(); construit(); construitMeandre(); redessine(); });
     new ResizeObserver(redessine).observe(canvas);
 
     initialise();
     return {
-      montre(mot, nouvellesCouleurs) {
+      // rayonMin : un cylindre élargi pour que le disque du méandre y tienne
+      montre(mot, nouvellesCouleurs, { rayonMin = 0 } = {}) {
         geo = geometrie(mot);
+        geo.rayon = Math.max(geo.rayon, rayonMin);
+        meandre = null;
+        construitMeandre();
         couleurs = nouvellesCouleurs;
         designe = null;
         zoom = 1;
         construit();
         redessine();
       },
+      // contenu : { tranche (hauteur comptée depuis le haut, en tranches), lacets, trous, clou } (voir disque.js), ou null
+      disqueMeandre(contenu) { meandre = contenu; construitMeandre(); redessine(); },
       teinte(nouvelles) { teintes = { ...teintes, ...nouvelles }; redessine(); },
       designe(j) { if (j !== designe) { designe = j; redessine(); } },
       oriente(a, s, z = zoom) { azimut = a; site = Math.min(SITE_MAX, Math.max(-SITE_MAX, s)); zoom = z; redessine(); },
